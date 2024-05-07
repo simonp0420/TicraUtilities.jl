@@ -3,6 +3,13 @@ uuid = "97d36a8d-cc3e-473e-9421-8a7b112c16eb"
 authors = ["Peter Simon <psimon0420@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
+[deps]
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
 [compat]
 julia = "1.6.7"
 

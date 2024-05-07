@@ -1,0 +1,16 @@
+east_harris_9m_rim  tabulated_rim_xy  
+(
+  file_name        : harris_9m_scalloped_rim.xyz,
+  unit             : in,
+  number_of_points : 112,
+  translation      : struct(x: 0.0 in, y: 0.0 in),
+  polar_origin     : struct(status: automatic, x: 0.0 in, y: 0.0 in)
+)
+
+extsub_sw.rim  tabulated_rim_xy  (
+  file_name        : extsub_sw.rim,
+  unit             : in,
+  number_of_points : 360,
+  translation      : struct(x: 0.0 in, y: 0.0 in),
+  polar_origin     : struct(status: automatic, x: 0.0 in, y: 0.0 in))
+

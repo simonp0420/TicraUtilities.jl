@@ -1,0 +1,616 @@
+// Frequency objects:
+frequency  frequency  (frequency_list: sequence(  2.3380 GHz) )
+
+
+// Coordinate systems: 
+
+nadir_coor_sys  coor_sys
+(  origin   : struct(x: 0.000 in,y: 0.000 in,z: 0.000 in)
+)
+ 
+spacecraft_coord_sys  coor_sys  
+(
+  x_axis           : struct(x: 0.9999619231, y: 0.0, z: 0.8726535498E-02),
+  base             : ref(nadir_coor_sys)
+)
+ 
+east_output_coor_sys  coor_sys  
+(
+  origin           : struct(x: 310.0 in, y: 20.0 in, z: -5.0 in),
+  base             : ref(nadir_coor_sys)
+)
+ 
+east_antenna_coor_sys  coor_sys  
+(
+  origin           : struct(x: 96.0 in, y: 25.0 in, z: -52.0 in),
+  x_axis           : struct(x: 1.0, y: 0.3354371653E-18, z: -0.64005224E-17),
+  y_axis           : struct(x: 0.3354371653E-18, y: 0.9945218954, z: 0.1045284633),
+  base             : ref(spacecraft_coord_sys)
+)
+ 
+east_main_reflector_coor_sys  coor_sys  
+(
+  origin           : struct(x: 0.0 m, y: 0.164051E-02 m, z: 0.34268E-03 m),
+  x_axis           : struct(x: 1.0, y: 0.2331554528E-22, z: -0.5343529027E-19),
+  y_axis           : struct(x: 0.2331554527E-22, y: 0.9999996192, z: 0.8726645152E-03),
+  base             : ref(east_antenna_coor_sys)
+)
+ 
+east_sub_prime_focus_coor_sys  coor_sys  
+(
+  origin           : struct(x: -0.1975223978E-01 in, y: -4.343884368 in, z: 225.1120205 in),
+  x_axis           : struct(x: 0.984807753, y: 0.9714451465E-16, z: 0.1736481777),
+  y_axis           : struct(x: -0.908804343E-02, y: -0.9986295348, z: 0.5154085547E-01),
+  base             : ref(east_antenna_coor_sys)
+)
+ 
+east_feed_coord_sys  coor_sys  
+(
+  origin           : struct(x: -39.47095494 in, y: -8.675875584 in, z: 218.5017757 in),
+  x_axis           : struct(x: 0.9589274209, y: 0.1183295797E-01, z: 0.2834046269),
+  y_axis           : struct(x: 0.1815117716E-01, y: 0.9945218954, z: -0.102940441),
+  base             : ref(east_antenna_coor_sys)
+)
+
+feed_local_coord_sys coor_sys
+(
+    base             : ref(east_feed_coord_sys)
+)
+
+// Reflectors and subreflectors
+east_main_reflector  reflector  
+(
+  coor_sys         : ref(east_main_reflector_coor_sys),
+  surface          : ref(east_parent_parabola),
+  rim              : ref(harris_9m_rim),
+  distortions      : sequence(ref(east_main_zernike_surface))
+)
+ 
+east_parent_parabola  paraboloid  
+(
+  focal_length     : 225.0 in
+)
+ 
+east_main_zernike_surface  zernike_surface  
+(
+  file_name        : east_main_reflector.zer,
+  mode_unit        : in,
+  centre           : struct(x: 214.0 in, y: 0.0 in),
+  half_axis        : struct(x: 225.0 in, y: 225.0 in),
+  max_m_mode_index : 2,
+  max_n_mode_index : 2
+)
+ 
+harris_9m_rim  tabulated_rim_xy  
+(
+  file_name        : harris_9m_rim.rim,
+  unit             : in
+)
+ 
+east_subreflector  reflector  
+(
+  coor_sys         : ref(east_sub_prime_focus_coor_sys),
+  surface          : ref(east_parent_ellipsoid),
+  rim              : ref(east_subreflector_rim),
+  distortions      : sequence(ref(east_sub_zernike_surface))
+)
+ 
+east_sub_zernike_surface  zernike_surface  
+(
+  file_name        : east_subreflector.zer,
+  mode_unit        : in,
+  centre           : struct(x: -40.0 in, y: 0.0 in),
+  half_axis        : struct(x: 55.0 in, y: 55.0 in),
+  max_m_mode_index : 48,
+  max_n_mode_index : 48
+)
+ 
+east_parent_ellipsoid  ellipsoid  
+(
+  vertex_distance  : 148.14815 in,
+  foci_distance    : 40.0 in,
+  axis_angle       : 90.0
+)
+ 
+east_subreflector_rim  elliptical_rim  
+(
+  centre           : struct(x: -40.0 in, y: 0.0 in),
+  half_axis        : struct(x: 49.0 in, y: 49.0 in)
+)
+
+
+
+// Arrays: 
+array_f1 tabulated_planar_grid_array 
+  (
+   frequency:            ref(frequency), 
+   coor_sys:            ref(feed_local_coord_sys), 
+   grid_position:       struct(
+                               grid_cenx: 0.0 in, grid_ceny: 0.0 in,
+                               grid_rot: 0.0, grid_spac: 0.1 in
+                              ),
+   elements_file:       scenario1_modes_f001.rsp
+  )
+
+// Main reflector stuff:
+main_reflector  reflector 
+ (
+   coor_sys   : ref(main_refl_coord_sys),
+   surface    : ref(main_surface_paraboloid), 
+   rim        : ref(main_rim)
+ )
+
+main_surface_paraboloid  paraboloid 
+ (
+   vertex : struct(x: 0 m, y: 0 m, z: 0 m), 
+   focal_length :   148.0000 in
+ )
+
+main_rim  elliptical_rim 
+ (
+   centre  : struct(x:    80.0000 in, y: 0.0 in),
+   half_axis : struct(x:    47.0000 in, y:    47.0000 in)
+ )
+
+// PO objects:
+east_subreflector_currents  po_single_face_scatterer  
+(
+  frequency        : ref(frequency),
+  scatterer        : ref(east_subreflector),
+  method           : po,
+  po_points        : struct(po1: 50, po2: 150),
+  spill_over       : on
+)
+ 
+east_main_reflector_currents  po_single_face_scatterer  
+(
+  frequency        : ref(frequency),
+  scatterer        : ref(east_main_reflector),
+  method           : po,
+  po_points        : struct(po1: 50, po2: 150),
+  spill_over       : on
+)
+
+
+// Field on stations: 
+Tfile_f1    tabulated_uv_points
+  (
+      file_name:        Tfile_scenario1_f1.fmt,
+      frequency:        ref(frequency),
+      coor_sys:         ref(east_output_coor_sys),
+      stat_name:        scenario1_coverage.sta
+  )
+
+//Array elements referenced in the .rsp files:
+mode001_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode001_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode001_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode001_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode002_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode002_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode002_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode002_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode003_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode003_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode003_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode003_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode004_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode004_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode004_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode004_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode005_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode005_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode005_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode005_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode006_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode006_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode006_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode006_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode007_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode007_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode007_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode007_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode008_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode008_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode008_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode008_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode009_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode009_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode009_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode009_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode010_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode010_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode010_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode010_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode011_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode011_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode011_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode011_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode012_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode012_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode012_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode012_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode013_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode013_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode013_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode013_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode014_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode014_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode014_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode014_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode015_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode015_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode015_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode015_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode016_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode016_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode016_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode016_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode017_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode017_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode017_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode017_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode018_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode018_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode018_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode018_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode019_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode019_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode019_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode019_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode020_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode020_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode020_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode020_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode021_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode021_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode021_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode021_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode022_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode022_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode022_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode022_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode023_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode023_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode023_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode023_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode024_f1_inc   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode024_f1_inc.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+
+mode024_f1_ref   tabulated_pattern
+   (
+      frequency:    ref(frequency),
+      file_name:    scenario1_mode024_f1_ref.cut,
+      max_m_mode_index: 1,
+      max_n_mode_index: 18,
+      power_norm:   off
+   )
+

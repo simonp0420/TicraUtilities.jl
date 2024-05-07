@@ -1,6 +1,8 @@
-using TicraUtilities
-using Test
+using SafeTestsets
 
-@testset "TicraUtilities.jl" begin
-    # Write your tests here.
-end
+include("TicraCutTest.jl")
+include("SWETest.jl")
+include("TicraStationTest.jl")
+include("TfileTest.jl")
+include("TicraExiTest.jl")
+include("TorFileTest.jl")
