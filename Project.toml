@@ -12,6 +12,12 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 julia = "1.10"
+DSP = "0.7"
+Dierckx = "0.5"
+OffsetArrays = "1.14"
+Printf = "1.6"
+StaticArrays = "1.9.3"
+
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
