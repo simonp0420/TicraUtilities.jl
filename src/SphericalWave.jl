@@ -16,7 +16,9 @@ using Printf: @printf
 Struct containing all the data read from a Ticra-compatible Q-type SWE file for one frequency.
 The `qsmns` field contains the Q coefficients. It is indexed as `qsmns[s,m,n]` where `s ∈ {1,2}`, `m ∈ -mmax:mmax`, 
 `n ∈ {1, ..., mmax}`.  But not all entries are used.  The only possible nonzero entries are where 
-`n ∈ {max(1, abs(m)), ..., nmax}`.
+`n ∈ {max(1, abs(m)), ..., nmax}`.  Note that if the coefficients stored in the SWE files are `Q'`, and
+the cofficients stored in a `SWEQPartition` instance are `Q`, then `Q = sqrt(8π) * conj(Q')`, as discussed
+in the File Formats section of the Ticra official documentation.
 """
 @kwdef struct SWEQPartition
     prgtag::String = ""
@@ -44,6 +46,7 @@ in the file.  If there is only a single partition in the file, then instead of r
 vector, the single element of type `SWEQPartition` is returned as a scalar.
 """
 function read_sphfile(fname::AbstractString)
+    normfactor = sqrt(8π)
     open(fname, "r") do io
         sps = SWEQPartition[]
         while !eof(io)
@@ -65,12 +68,12 @@ function read_sphfile(fname::AbstractString)
                 nmin = max(1, absm)
                 for n in nmin:nmax
                     q1r, q1i, q2r, q2i = parse.(Float64, split(readline(io)))
-                    qsmns[1, -absm, n] = complex(q1r, q1i) # s = 1
-                    qsmns[2, -absm, n] = complex(q2r, q2i) # s = 2
+                    qsmns[1, -absm, n] = normfactor * complex(q1r, q1i) |> conj # s = 1
+                    qsmns[2, -absm, n] = normfactor * complex(q2r, q2i) |> conj # s = 2
                     if !miszero
                         q1r, q1i, q2r, q2i = parse.(Float64, split(readline(io)))
-                        qsmns[1, absm, n] = complex(q1r, q1i) # s = 1
-                        qsmns[2, absm, n] = complex(q2r, q2i) # s = 2
+                        qsmns[1, absm, n] = normfactor * complex(q1r, q1i) |> conj # s = 1
+                        qsmns[2, absm, n] = normfactor * complex(q2r, q2i) |> conj # s = 2
                     end
                 end
             end
@@ -93,6 +96,7 @@ end
 Write SWE coefficients to a Q-type spherical wave expansion file.
 """
 function write_sphfile(fname::AbstractString, sps = Vector{SWEQPartition})
+    inormfactor = inv(sqrt(8π))
     open(fname, "w") do io
         for sp in sps # Loop over partitions
             (; prgtag, idstrg, nθ, nϕ, nmax, mmax) = sp
@@ -110,12 +114,12 @@ function write_sphfile(fname::AbstractString, sps = Vector{SWEQPartition})
                 # Write Q coefficients for current value of absm
                 @printf(io, "%6i %23.17G\n", absm, powerms[absm])
                 for n in nmin:nmax
-                    q1r, q1i = qsmns[1, -absm, n] |> reim # s = 1
-                    q2r, q2i = qsmns[2, -absm, n] |> reim # s = 2
+                    q1r, q1i = inormfactor * qsmns[1, -absm, n] |> conj |> reim # s = 1
+                    q2r, q2i = inormfactor * qsmns[2, -absm, n] |> conj |> reim # s = 2
                     @printf(io, " %23.16E %23.16E %23.16E %23.16E\n", q1r, q1i, q2r, q2i)
                     if !miszero
-                        q1r, q1i = qsmns[1, absm, n] |> reim  # s = 1
-                        q2r, q2i = qsmns[2, absm, n] |> reim # s = 2
+                        q1r, q1i = inormfactor * qsmns[1, absm, n] |> conj |> reim # s = 1
+                        q2r, q2i = inormfactor * qsmns[2, absm, n] |> conj |> reim # s = 2
                         @printf(io, " %23.16E %23.16E %23.16E %23.16E\n", q1r, q1i, q2r, q2i)
                     end
                 end
