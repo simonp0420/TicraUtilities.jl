@@ -1,6 +1,8 @@
 using Printf: @printf
 using DSP: unwrap
 using Dierckx: Spline1D, integrate
+using StaticArrays: @SVector, @SMatrix
+using LinearAlgebra: ⋅
 
 
 """
@@ -8,13 +10,13 @@ using Dierckx: Spline1D, integrate
 
 Note that a single `TicraCut` struct contains all of the ϕ-cuts for a single frequency.
 """
-struct TicraCut
+mutable struct TicraCut
     ncomp::Int
     icut::Int
     icomp::Int
     text::Vector{String}
-    theta::AbstractRange
-    phi::AbstractRange
+    theta::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
+    phi::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
     p1::Array{ComplexF64,2}
     p2::Array{ComplexF64,2}
     p3::Array{ComplexF64,2}
@@ -25,8 +27,8 @@ TicraCut() = TicraCut(
     1,
     0,
     String[],
-    0:-1:10,
-    0:-1:10,
+    0.0:-1.0:10.0,
+    0.0:-1.0:10.0,
     zeros(ComplexF64, 0, 0),
     zeros(ComplexF64, 0, 0),
     zeros(ComplexF64, 0, 0),
@@ -64,16 +66,79 @@ function show(io::IO, t::TicraCut)
     return nothing
 end
 
+"""
+    get_theta(c::TicraCut)
+
+Return the theta values stored in the cut
+"""
 get_theta(c::TicraCut) = c.theta
+
+"""
+    get_phi(c::TicraCut)
+
+Return the phi values stored in the cut.
+"""
 get_phi(c::TicraCut) = c.phi
+
+"""
+    get_p1(c::TicraCut)
+
+Return the ntheta × nphi matrix of complex field values stored in polarization slot 1 of the cut.
+"""
 get_p1(c::TicraCut) = c.p1
+
+"""
+    get_p2(c::TicraCut)
+
+Return the ntheta × nphi matrix of complex field values stored in polarization slot 2 of the cut.
+"""
 get_p2(c::TicraCut) = c.p2
+
+"""
+    get_p3(c::TicraCut)
+
+Return the ntheta × nphi matrix of complex field values stored in polarization slot 3 of the cut.
+"""
 get_p3(c::TicraCut) = c.p3
+
+"""
+    get_ncomp(c::TicraCut)
+
+Return ncomp, the number of polarization components stored in the cut.
+"""
 get_ncomp(c::TicraCut) = c.ncomp
+
+"""
+    get_icut(c::TicraCut)
+
+Return icut, the control parameter of the cut. 1 for a polar cut, 2 for a conical cut.
+"""
 get_icut(c::TicraCut) = c.icut
+
+"""
+    get_icomp(c::TicraCut)
+
+Return icomp, polarization parameter. 1 for Eθ and Eφ, 2 for RHCP and LHCP, 3 for Co and Cx (Ludwig 3).
+"""
 get_icomp(c::TicraCut) = c.icomp
+
+
+"""
+    get_text(c::TicraCut)
+
+Return a string containing the cut identification text.
+"""
 get_text(c::TicraCut) = c.text
 
+"""
+    amplitude_db(c::TicraCut, ipol::Int)
+    amplitude_db(c::TicraCut, polstr::String = "copol")
+
+Return a matrix of amplitudes in dB for some choice of polarization in the cut.
+Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
+"copol" (the default) and "crosspol".
+"""
+function amplitude_db end
 
 function amplitude_db(c::TicraCut, ipol::Int)
     if ipol == 1
@@ -110,6 +175,16 @@ function amplitude_db(c::TicraCut, polstr::String = "copol")
     end
 end
 
+
+"""
+    phase_db(c::TicraCut, ipol::Int)
+    phase_db(c::TicraCut, polstr::String = "copol")
+
+Return a matrix of phases in degrees for some choice of polarization in the cut.
+Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
+"copol" (the default) and "crosspol".
+"""
+function phase_db end
 
 function phase_deg(c::TicraCut, ipol::Int)
     if ipol == 1
@@ -149,7 +224,7 @@ end
     power(cut::Ticracut)::Float64
     
 Compute the total radiated power in a TicraCut object. 
-If only a single phi value is provided, then assume no azimuthal variation.
+If only a single phi value is included in the cut, then assume no azimuthal variation.
 """
 function power(cut::TicraCut)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
@@ -337,7 +412,7 @@ function write_ticra_cut(
     fname::AbstractString,
     cuts::AbstractVector{TicraCut},
     title::String = "Cut file created by write_ticra_cut",
-)
+    )
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
@@ -599,4 +674,45 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
 end
 
 
+"""
+    convert_cut!(cut::TicraCut, icomp::Integer)
 
+Convert `cut` to a new polarization basis determined by `icomp`.  Legal values 
+for `icomp` and their meanings:
+*  1 => Eθ and Eϕ
+*  2 => ERHCP and ELHCP
+*  3 => Eh and Ev (Ludwig 3 co and cx)
+"""
+function convert_cut!(cut, icomp)
+    (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
+    n = icomp
+    get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
+    (m = get_icomp(cut)) == n && return
+    for (col, phi) in enumerate(get_phi(cut))
+        sp, cp = sincosd(phi)
+        for (row, theta) in enumerate(get_theta(cut))
+            Ein = @SVector [cut.p1[row,col], cut.p2[row,col]]
+            p̂s = _pol_basis_vectors(sp, cp)
+            p̂1m, p̂2m = p̂s[m]
+            p̂1n, p̂2n = p̂s[n]
+            mat = @SMatrix [(p̂1n ⋅ p̂1m)  (p̂1n ⋅ p̂2m)
+                            (p̂2n ⋅ p̂1m)  (p̂2n ⋅ p̂2m)]
+            Eout = mat * Ein
+            cut.p1[row,col] = Eout[1]
+            cut.p2[row,col] = Eout[2]
+        end
+    end
+    cut.icomp = n
+    return
+end
+
+const iroot2 = inv(sqrt(2))
+function _pol_basis_vectors(sinϕ, cosϕ)
+    θ̂ = @SVector [1.0+0im, 0.0+0.0im]
+    ϕ̂ = @SVector [0.0+0.0im, 1.0+0im]
+    ĥ = θ̂*cosϕ - ϕ̂*sinϕ
+    v̂ = θ̂*sinϕ + ϕ̂*cosϕ
+    R̂ = iroot2 * (ĥ - im*v̂)
+    L̂ = iroot2 * (ĥ + im*v̂)
+    return ((θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂))
+end
