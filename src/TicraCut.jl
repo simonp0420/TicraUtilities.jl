@@ -6,9 +6,18 @@ using LinearAlgebra: ⋅
 
 
 """
-    TicraCut Holds data for a Ticra "Tabulated Pattern Data" object.
+`TicraCut` Holds data for a Ticra "Tabulated Pattern Data" object.
+Note that a single `TicraCut` instance contains all of the cuts for a single frequency.
 
-Note that a single `TicraCut` struct contains all of the ϕ-cuts for a single frequency.
+### Fields
+
+* `ncomp::Int`: Number of polarization components (2 or 3)
+* `icut::Int`: 1 for standard constant ϕ polar cuts, 2 for conical, constant θ cuts1
+* `icomp::Int`: Polarization control parameter. 1 for Eθ and Eφ, 2 for RHCP and LHCP, 3 for Co and Cx (Ludwig 3).
+* `text::Vector{String}`: Identification text for each constant angle cut.
+* `theta::T<:AbstractRange`: The theta values (in degrees) stored in the cut.
+* `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
+* `p1`, `p2`, `p3`: Matrices of complex field values for the three possible polarization components.
 """
 mutable struct TicraCut{T <: AbstractRange}
     ncomp::Int
@@ -17,9 +26,9 @@ mutable struct TicraCut{T <: AbstractRange}
     text::Vector{String}
     theta::T
     phi::T
-    p1::Array{ComplexF64,2}
-    p2::Array{ComplexF64,2}
-    p3::Array{ComplexF64,2}
+    p1::Matrix{ComplexF64}
+    p2::Matrix{ComplexF64}
+    p3::Matrix{ComplexF64}
 end
 
 TicraCut() = TicraCut(
@@ -69,14 +78,14 @@ end
 """
     get_theta(c::TicraCut)
 
-Return the theta values stored in the cut
+Return the theta values (in degrees) stored in the cut
 """
 get_theta(c::TicraCut) = c.theta
 
 """
     get_phi(c::TicraCut)
 
-Return the phi values stored in the cut.
+Return the phi values (degrees) stored in the cut.
 """
 get_phi(c::TicraCut) = c.phi
 
@@ -126,7 +135,7 @@ get_icomp(c::TicraCut) = c.icomp
 """
     get_text(c::TicraCut)
 
-Return a string containing the cut identification text.
+Return a vector of strings containing the cut identification text.
 """
 get_text(c::TicraCut) = c.text
 
@@ -177,14 +186,14 @@ end
 
 
 """
-    phase_db(c::TicraCut, ipol::Int)
-    phase_db(c::TicraCut, polstr::String = "copol")
+    phase_deg(c::TicraCut, ipol::Int)
+    phase_deg(c::TicraCut, polstr::String = "copol")
 
 Return a matrix of phases in degrees for some choice of polarization in the cut.
 Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
 "copol" (the default) and "crosspol".
 """
-function phase_db end
+function phase_deg end
 
 function phase_deg(c::TicraCut, ipol::Int)
     if ipol == 1
@@ -685,24 +694,24 @@ for `icomp` and their meanings:
 """
 function convert_cut!(cut, icomp)
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
-    n = icomp
+    outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
-    (m = get_icomp(cut)) == n && return
+    (inpol = get_icomp(cut)) == outpol && return
     for (col, phi) in enumerate(get_phi(cut))
         sp, cp = sincosd(phi)
-        for (row, theta) in enumerate(get_theta(cut))
+        p̂s = _pol_basis_vectors(sp, cp)
+        for row in 1:length(get_theta(cut))
             Ein = @SVector [cut.p1[row,col], cut.p2[row,col]]
-            p̂s = _pol_basis_vectors(sp, cp)
-            p̂1m, p̂2m = p̂s[m]
-            p̂1n, p̂2n = p̂s[n]
-            mat = @SMatrix [(p̂1n ⋅ p̂1m)  (p̂1n ⋅ p̂2m)
-                            (p̂2n ⋅ p̂1m)  (p̂2n ⋅ p̂2m)]
+            p̂1in, p̂2in = p̂s[inpol]
+            p̂1out, p̂2out = p̂s[outpol]
+            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
+                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
             Eout = mat * Ein
             cut.p1[row,col] = Eout[1]
             cut.p2[row,col] = Eout[2]
         end
     end
-    cut.icomp = n
+    cut.icomp = outpol
     return
 end
 
