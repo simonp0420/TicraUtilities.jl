@@ -10,13 +10,13 @@ using LinearAlgebra: ⋅
 
 Note that a single `TicraCut` struct contains all of the ϕ-cuts for a single frequency.
 """
-mutable struct TicraCut
+mutable struct TicraCut{T <: AbstractRange}
     ncomp::Int
     icut::Int
     icomp::Int
     text::Vector{String}
-    theta::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
-    phi::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
+    theta::T
+    phi::T
     p1::Array{ComplexF64,2}
     p2::Array{ComplexF64,2}
     p3::Array{ComplexF64,2}
