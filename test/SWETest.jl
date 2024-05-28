@@ -9,7 +9,7 @@ using SafeTestsets
 
     @test length(q1s) == length(q2s)
 
-    equal_test_fields = (:prgtag, :idstrg, :t4, :t5, :t6, :t7, :t8, :nθ, :nϕ, :nmax, :mmax)
+    equal_test_fields = (:prgtag, :idstrg, :t4, :t5, :t6, :t7, :t8, :nthe, :nphi, :nmax, :mmax)
     array_fields =  (:qsmns, :powerms)
     for (q1, q2) in zip(q1s, q2s)
         for f in equal_test_fields
