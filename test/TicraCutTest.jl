@@ -6,14 +6,14 @@ using SafeTestsets
     @test length(t2) == 3
     @test t2[1].theta == t2[2].theta == t2[3].theta == 0.0:0.5:180.0
     @test t2[1].phi == t2[2].phi == t2[3].phi == 0.0:5.0:355.0
-    @test t2[1].p1[1,1] ≈ 0.16835983292 + 0.0092799907903im
-    @test t2[1].p2[1,1] ≈ 1.5392084724 + 3.7955862332im
-    @test t2[1].p1[end,1] ≈ -0.12828987268 + 0.0010199989877im
-    @test t2[1].p2[end,1] ≈ -0.0011099988984 + 0.0064499935988im
-    @test t2[3].p1[1,1] ≈ 0.16835983292 + 0.0092799907903im
-    @test t2[3].p2[1,1] ≈ 1.5392084724 + 3.7955862332im
-    @test t2[3].p1[end,end] ≈ -0.1261598748 + 0.023279976896im
-    @test t2[3].p2[end,end] ≈ -0.0022099978067 + 0.0061599938867im
+    @test t2[1].evec[1,1][1] ≈ 0.16835983292 + 0.0092799907903im
+    @test t2[1].evec[1,1][2] ≈ 1.5392084724 + 3.7955862332im
+    @test t2[1].evec[end,1][1] ≈ -0.12828987268 + 0.0010199989877im
+    @test t2[1].evec[end,1][2] ≈ -0.0011099988984 + 0.0064499935988im
+    @test t2[3].evec[1,1][1] ≈ 0.16835983292 + 0.0092799907903im
+    @test t2[3].evec[1,1][2] ≈ 1.5392084724 + 3.7955862332im
+    @test t2[3].evec[end,end][1] ≈ -0.1261598748 + 0.023279976896im
+    @test t2[3].evec[end,end][2] ≈ -0.0022099978067 + 0.0061599938867im
     @test t2[1].icomp == 2
     @test t2[2].icomp == 3
     @test t2[3].icomp == 4
@@ -27,30 +27,30 @@ end
     t = read_ticra_cut(joinpath(@__DIR__, "test.cut"))
     @test t.theta == 0.0:0.5:180.0
     @test t.phi == 0.0:5.0:355.0
-    @test t.p1[1,1] ≈ 0.16835983292 + 0.0092799907903im
-    @test t.p2[1,1] ≈ 1.5392084724 + 3.7955862332im
-    @test t.p1[end,1] ≈ -0.12828987268 + 0.0010199989877im
-    @test t.p2[end,1] ≈ -0.0011099988984 + 0.0064499935988im
-    @test t.p1[end,end] ≈ -0.1261598748 + 0.023279976896im
-    @test t.p2[end,end] ≈ -0.0022099978067 + 0.0061599938867im
+    @test t.evec[1,1][1] ≈ 0.16835983292 + 0.0092799907903im
+    @test t.evec[1,1][2] ≈ 1.5392084724 + 3.7955862332im
+    @test t.evec[end,1][1] ≈ -0.12828987268 + 0.0010199989877im
+    @test t.evec[end,1][2] ≈ -0.0011099988984 + 0.0064499935988im
+    @test t.evec[end,end][1] ≈ -0.1261598748 + 0.023279976896im
+    @test t.evec[end,end][2] ≈ -0.0022099978067 + 0.0061599938867im
 end
 
 @safetestset "TicraCut amplitude_db" begin 
     using TicraUtilities
     t = read_ticra_cut(joinpath(@__DIR__, "test.cut"))
-    @test 10*log10(abs2(t.p1[10,10])) == amplitude_db(t,1)[10,10]
-    @test 10*log10(abs2(t.p2[10,10])) == amplitude_db(t,2)[10,10]
-    @test 10*log10(abs2(t.p2[10,10])) == amplitude_db(t,"copol")[10,10]
-    @test 10*log10(abs2(t.p1[10,10])) == amplitude_db(t,"crosspol")[10,10]
+    @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,1)[10,10]
+    @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,2)[10,10]
+    @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,"copol")[10,10]
+    @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,"crosspol")[10,10]
 end
 
 @safetestset "TicraCut phase_deg" begin 
     using TicraUtilities
     t = read_ticra_cut(joinpath(@__DIR__, "test.cut"))
-    @test rad2deg(angle(t.p1[10,10])) == phase_deg(t,1)[10,10]
-    @test rad2deg(angle(t.p2[10,10])) == phase_deg(t,2)[10,10]
-    @test rad2deg(angle(t.p2[10,10])) == phase_deg(t,"copol")[10,10]
-    @test rad2deg(angle(t.p1[10,10])) == phase_deg(t,"crosspol")[10,10]
+    @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,1)[10,10]
+    @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,2)[10,10]
+    @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,"copol")[10,10]
+    @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,"crosspol")[10,10]
 end
 
 @safetestset "TicraCut power" begin 
@@ -126,12 +126,8 @@ end
     cut31 = deepcopy(cut12); convert_cut!(cut31, 3)
     cut13 = deepcopy(cut32); convert_cut!(cut13, 1)
     cut23 = deepcopy(cut31); convert_cut!(cut23, 2)
-    @test cut32.p1 ≈ cut31.p1
-    @test cut32.p2 ≈ cut31.p2
-    @test cut13.p1 ≈ cut12.p1
-    @test cut13.p2 ≈ cut13.p2
-    @test cut23.p1 ≈ cut2.p1
-    @test cut23.p2 ≈ cut2.p2
-    @test cut21.p1 ≈ cut2.p1
-    @test cut21.p2 ≈ cut2.p2
+    @test cut32.evec ≈ cut31.evec
+    @test cut13.evec ≈ cut12.evec
+    @test cut23.evec ≈ cut2.evec
+    @test cut21.evec ≈ cut2.evec
 end

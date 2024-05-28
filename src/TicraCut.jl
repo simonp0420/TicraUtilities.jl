@@ -1,8 +1,8 @@
 using Printf: @printf
 using DSP: unwrap
 using Dierckx: Spline1D, integrate
-using StaticArrays: @SVector, @SMatrix
-using LinearAlgebra: ⋅
+using StaticArrays: @SVector, @SMatrix, SVector
+using LinearAlgebra: ⋅, norm
 
 
 """
@@ -17,18 +17,16 @@ Note that a single `TicraCut` instance contains all of the cuts for a single fre
 * `text::Vector{String}`: Identification text for each constant angle cut.
 * `theta::T<:AbstractRange`: The theta values (in degrees) stored in the cut.
 * `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
-* `p1`, `p2`, `p3`: Matrices of complex field values for the three possible polarization components.
+* `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
-mutable struct TicraCut{T <: AbstractRange}
+mutable struct TicraCut{T <: AbstractRange, N}
     ncomp::Int
     icut::Int
     icomp::Int
     text::Vector{String}
     theta::T
     phi::T
-    p1::Matrix{ComplexF64}
-    p2::Matrix{ComplexF64}
-    p3::Matrix{ComplexF64}
+    evec::Matrix{SVector{N,ComplexF64}}
 end
 
 TicraCut() = TicraCut(
@@ -38,9 +36,7 @@ TicraCut() = TicraCut(
     String[],
     0.0:-1.0:10.0,
     0.0:-1.0:10.0,
-    zeros(ComplexF64, 0, 0),
-    zeros(ComplexF64, 0, 0),
-    zeros(ComplexF64, 0, 0),
+    Matrix{SVector{N,ComplexF64}}(undef, 0, 0)
 )
 
 import Base.show
@@ -69,9 +65,7 @@ function show(io::IO, t::TicraCut)
     else
         println(io, "  phi  \tEmpty range")
     end
-    println(io, "  p1   \t$(summary(t.p1))")
-    println(io, "  p2   \t$(summary(t.p2))")
-    t.ncomp > 2 && println(io, "  p3   \t$(summary(t.p3))")
+    println(io, "  evec   \t$(summary(t.evec))")
     return nothing
 end
 
@@ -90,25 +84,11 @@ Return the phi values (degrees) stored in the cut.
 get_phi(c::TicraCut) = c.phi
 
 """
-    get_p1(c::TicraCut)
+    get_evec(c::TicraCut)
 
-Return the ntheta × nphi matrix of complex field values stored in polarization slot 1 of the cut.
+Return the ntheta × nphi matrix of complex field vectors stored in the cut.
 """
-get_p1(c::TicraCut) = c.p1
-
-"""
-    get_p2(c::TicraCut)
-
-Return the ntheta × nphi matrix of complex field values stored in polarization slot 2 of the cut.
-"""
-get_p2(c::TicraCut) = c.p2
-
-"""
-    get_p3(c::TicraCut)
-
-Return the ntheta × nphi matrix of complex field values stored in polarization slot 3 of the cut.
-"""
-get_p3(c::TicraCut) = c.p3
+get_evec(c::TicraCut) = c.evec
 
 """
     get_ncomp(c::TicraCut)
@@ -149,17 +129,7 @@ Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
 """
 function amplitude_db end
 
-function amplitude_db(c::TicraCut, ipol::Int)
-    if ipol == 1
-        return 10 * log10.(abs2.(c.p1))
-    elseif ipol == 2
-        return 10 * log10.(abs2.(c.p2))
-    elseif ipol == 3
-        return 10 * log10.(abs2.(c.p3))
-    else
-        error("Illegal value: $ipol for ipol")
-    end
-end
+amplitude_db(c::TicraCut, ipol::Integer) = 10 * log10.(abs2.(getindex.(get_evec(c), ipol)))
 
 function amplitude_db(c::TicraCut, polstr::String = "copol")
     polstr = lowercase(strip(polstr))
@@ -172,9 +142,9 @@ function amplitude_db(c::TicraCut, polstr::String = "copol")
         throw(ArgumentError("Unknown string \"$polstr\""))
     end
     if maxflag || minflag
-        p1 = abs2.(c.p1)
+        p1 = abs2.(getindex.(get_evec(c), 1))
         p1maxsq = maximum(p1)
-        p2 = abs2.(c.p2)
+        p2 = abs2.(getindex.(get_evec(c), 2))
         p2maxsq = maximum(p2)
         if (p1maxsq > p2maxsq && maxflag) || (p1maxsq < p2maxsq && minflag)
             return 10 * log10.(p1)
@@ -195,17 +165,7 @@ Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
 """
 function phase_deg end
 
-function phase_deg(c::TicraCut, ipol::Int)
-    if ipol == 1
-        return rad2deg.(angle.(c.p1))
-    elseif ipol == 2
-        return rad2deg.(angle.(c.p2))
-    elseif ipol == 3
-        return rad2deg.(angle.(c.p3))
-    else
-        error("Illegal value: $ipol for ipol")
-    end
-end
+phase_deg(c::TicraCut, ipol::Int) = rad2deg.(angle.(getindex.(get_evec(c), ipol)))
 
 function phase_deg(c::TicraCut, polstr::String = "copol")
     polstr = lowercase(polstr)
@@ -218,14 +178,15 @@ function phase_deg(c::TicraCut, polstr::String = "copol")
         throw(ArgumentError("Unknown string \"$polstr\""))
     end
     if maxflag || minflag
-        p1maxsq = maximum(abs2, c.p1)
-        p2maxsq = maximum(abs2, c.p2)
+        p1maxsq = maximum(x -> abs2(x[1]), get_evec(c))
+        p2maxsq = maximum(x -> abs2(x[2]), get_evec(c))
         if (p1maxsq > p2maxsq && maxflag) || (p1maxsq < p2maxsq && minflag)
-            return rad2deg.(angle.(c.p1))
+            ipol = 1
         else
-            return rad2deg.(angle.(c.p2))
+            ipol = 2
         end
     end
+    return phase_deg(c, ipol)
 end
 
 
@@ -239,12 +200,11 @@ function power(cut::TicraCut)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
     # cubic spline interpolant in the theta direction.
     get_ncomp(cut) == 3 && error("Cut has 3 field components.  Only 2 allowed.")
-    sym = cut.theta[begin] < 0  # Symmetrical cut
+    sym = get_theta(cut)[begin] < 0  # Symmetrical cut
     phifullmax = sym ? 180.0 : 360.0
-    ntheta = length(get_theta(cut))
     phi = get_phi(cut)
     nphi = length(phi)
-    p = vec(sum(abs2, get_p1(cut), dims = 2) + sum(abs2, get_p2(cut), dims = 2))
+    p = vec(sum(x -> real(x ⋅ x), get_evec(cut), dims = 2))
     if nphi > 1
         dphi = abs(phi[begin+1] - cut.phi[begin])
         # Check that the full range of phi is covered in the cut object:
@@ -290,7 +250,7 @@ function read_ticra_cuts(fname::AbstractString)
         cutphi = Float64[]
         header = String[]
         kf = 0  # Initialize frequency counter
-        local dth, header, icomp, icut, kf, ncomp, nphi, nth, p1allphi, p2allphi, p3allphi, pnext, ths
+        local dth, header, icomp, icut, kf, ncomp, nphi, nth, evecallphi, evecnext, ths
         cuts = TicraCut[]
         while !eof(fid)
             textline = rstrip(readline(fid))
@@ -302,73 +262,56 @@ function read_ticra_cuts(fname::AbstractString)
             if kf == 0 || phi ∈ cuts[end].phi # Begin a new frequency
                 if kf ≠ 0 # Finish off old frequency
                     cut = cuts[end]
-                    p1 = reshape(p1allphi, length(cut.theta), length(cut.phi))
-                    p2 = reshape(p2allphi, length(cut.theta), length(cut.phi))
-                    if ncomp == 3
-                        p3 = reshape(p3allphi, length(cut.theta), length(cut.phi))
-                    else
-                        p3 = Matrix{ComplexF64}(undef, 0, 0)
-                    end
-                    cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, p1, p2, p3)
+                    evec = reshape(evecallphi, length(cut.theta), length(cut.phi))
+                    cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
                 else
-                    pnext = zeros(ComplexF64, nth) # Storage increment for reading field values
+                    if ncomp == 2
+                        evecnext = [@SVector[0.0+0.0im, 0.0+0.0im] for _ in 1:nth]
+                    else
+                        evecnext = [@SVector[0.0+0.0im, 0.0+0.0im, 0.0+0.0im] for _ in 1:nth]# Storage increment for reading field values
+                    end
                 end
                 kf += 1
                 header = String[textline]
                 cutphi = phi:phi
                 theta = range(start = ths, step = dth, length = nth)
-                p1allphi = zeros(ComplexF64, 0)
-                p2allphi = zeros(ComplexF64, 0)
-                ncomp == 3 && (p3allphi = zeros(ComplexF64, 0))
-                p1 = p2 = p3 = zeros(ComplexF64,0,0)
-                cut = TicraCut(ncomp, icut, icomp, header, theta, cutphi, p1, p2, p3)
+                evecallphi = ncomp == 2 ? Array{SVector{2,ComplexF64},1}(undef,0) : Array{SVector{3,ComplexF64},1}(undef,0) 
+                evec = ncomp == 2 ? Array{SVector{2,ComplexF64},2}(undef,0,0) : Array{SVector{3,ComplexF64},2}(undef,0,0) 
+                cut = TicraCut(ncomp, icut, icomp, header, theta, cutphi, evec)
                 push!(cuts, cut)
             else
                 # Begin an additional phi cut at current frequency:
                 cut = cuts[end]
                 cutphi = first(cut.phi):(phi-last(cut.phi)):phi
                 push!(cut.text, textline)
-                cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cutphi, cut.p1, cut.p2, cut.p3)
+                cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cutphi, cut.evec)
             end
             # Check consistency
             cut = cuts[end]
             @assert (icomp, icut, ncomp) == (cut.icomp, cut.icut, cut.ncomp)
             @assert (ths, dth, nth) == (first(cut.theta), cut.theta[2]-cut.theta[1], length(cut.theta)) 
-            append!(p1allphi, pnext)
-            p1thisphi = @view p1allphi[end-nth+1:end]
-            append!(p2allphi, pnext)
-            p2thisphi = @view p2allphi[end-nth+1:end]
-            if ncomp == 3
-                append!(p3allphi, pnext)
-                p3thisphi = @view p3allphi[end-nth+1:end]
-            end
+            append!(evecallphi, evecnext)
+            evecthisphi = @view evecallphi[end-nth+1:end]
 
             # Read in the field data for this phi cut
             for i = 1:nth
                 str = readline(fid)
                 if ncomp == 2
                     (t1, t2, t3, t4) = (parse(Float64, s) for s in split(str))
+                    evecthisphi[i] = @SVector[complex(t1,t2), complex(t3,t4)]
                 else
                     (t1, t2, t3, t4, t5, t6) = (parse(Float64, s) for s in split(str))
-                    p3thisphi[i] = complex(t5, t6)
+                    evecthisphi[i] = @SVector[complex(t1,t2), complex(t3,t4), complex(t5,t6)]
                 end
-                p1thisphi[i] = complex(t1, t2)
-                p2thisphi[i] = complex(t3, t4)
             end
         end # while
         # Finish final cut
         cut = cuts[end]
         nphi = length(cut.phi)
         nth = length(cut.theta)
-        p1 = reshape(p1allphi, nth, nphi)
-        p2 = reshape(p2allphi, nth, nphi)
-        if ncomp == 3
-            p3 = reshape(p3allphi, nth, nphi)
-        else
-            p3 = Matrix{ComplexF64}(undef, 0, 0)
-        end
+        evec = reshape(evecallphi, nth, nphi)
         cut = cuts[end]
-        cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, p1, p2, p3)
+        cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
 
         return cuts
     end # function
@@ -402,8 +345,9 @@ function write_ticra_cut(
                 cut.ncomp
             )
             for (m, theta) in enumerate(cut.theta)
-                e1 = cut.p1[m, n]
-                e2 = cut.p2[m, n]
+                e = cut.evec[m, n]
+                e1 = e[1]
+                e2 = e[2]
                 @printf(
                     fid,
                     " %18.10E %18.10E %18.10E %18.10E\n",
@@ -438,8 +382,9 @@ function write_ticra_cut(
                     cut.ncomp
                 )
                 for (m, theta) in enumerate(cut.theta)
-                    e1 = cut.p1[m, n]
-                    e2 = cut.p2[m, n]
+                    e = cut.evec[m, n]
+                    e1 = e[1]
+                    e2 = e[2]
                     @printf(
                         fid,
                         " %18.10E %18.10E %18.10E %18.10E\n",
@@ -479,17 +424,9 @@ in dB greater than `min_dropoff` relative to the peak field are considered.
 """
 function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
     # Determine which pol slot has main polarization:
-    p1max = maximum(abs2, get_p1(cut)) |> sqrt
-    p2max = maximum(abs2, get_p2(cut)) |> sqrt
-    if p1max > p2max
-        pmax = p1max
-        p = 1
-        E = get_p1(cut)
-    else
-        pmax = p2max
-        p = 2
-        E = get_p2(cut)
-    end
+    p1max, p2max = (maximum(x -> abs2(x[i]), get_evec(cut)) for i in 1:2)
+    p = p1max > p2max ? 1 : 2
+    E = getindex.(get_evec(cut), p)
 
     thetamin = minimum(get_theta(cut))
     x = deg2rad.(cut.theta)
@@ -606,8 +543,8 @@ Ticra cut file.
 function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
     pwr_tot = power(cut)  # Total power in the cut
 
-    pol1db = 10 * log10.(abs2.(cut.p1))
-    pol2db = 10 * log10.(abs2.(cut.p2))
+    pol1db = 20 * log10.(norm.(getindex.(get_evec(cut), 1)))
+    pol2db = 20 * log10.(norm.(getindex.(get_evec(cut), 2)))
 
     if maximum(pol1db) > maximum(pol2db)
         copol = pol1db
@@ -617,7 +554,6 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
         cxpol = pol1db
     end
 
-    
     clamp!(cxpol, -500.0, Inf) # Eliminate negative infinities
 
     # Check that cut is asymmetric:
@@ -637,8 +573,8 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
     if h1 > 0.001 && length(cut.theta) > length(ind)
         h = h1 / (cut.theta[indm+1] - cut.theta[indm])
         push!(theta, thetamax)
-        conew = zeros(1, size(cut.p1, 2))
-        cxnew = zeros(1, size(cut.p1, 2))
+        conew = zeros(1, size(cut.evec, 2))
+        cxnew = zeros(1, size(cut.evec, 2))
         for k = 1:size(cut.p1, 2)
             conew[1, k] = (1 - h) * copol[indm, k] + h * copol[indm+1, k]
             cxnew[1, k] = (1 - h) * cxpol[indm, k] + h * cxpol[indm+1, k]
@@ -671,9 +607,8 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
 
     # Zero out the power in the cone theta <= thetamax:
     cut2theta = range(cut.theta[1], cut.theta[indm], length=length(ind))  # Truncate to the thetamax cone
-    p1 = cut.p1[ind, :]
-    p2 = cut.p2[ind, :]
-    cut2 = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut2theta, cut.phi, p1, p2, cut.p3)
+    evec = get_evec(cut)[ind, :]
+    cut2 = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut2theta, cut.phi, evec)
     pwr_beam = power(cut2)
     sp = 10 * log10(pwr_tot / pwr_beam)
 
@@ -697,18 +632,16 @@ function convert_cut!(cut, icomp)
     outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
     (inpol = get_icomp(cut)) == outpol && return
+    evec = get_evec(cut)
     for (col, phi) in enumerate(get_phi(cut))
         sp, cp = sincosd(phi)
         p̂s = _pol_basis_vectors(sp, cp)
         for row in 1:length(get_theta(cut))
-            Ein = @SVector [cut.p1[row,col], cut.p2[row,col]]
             p̂1in, p̂2in = p̂s[inpol]
             p̂1out, p̂2out = p̂s[outpol]
             mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
                             (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
-            Eout = mat * Ein
-            cut.p1[row,col] = Eout[1]
-            cut.p2[row,col] = Eout[2]
+            evec[row,col] = mat * evec[row,col]
         end
     end
     cut.icomp = outpol
