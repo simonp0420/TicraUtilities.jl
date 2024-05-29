@@ -250,8 +250,8 @@ function read_ticra_cuts(fname::AbstractString)
         cutphi = Float64[]
         header = String[]
         kf = 0  # Initialize frequency counter
-        local dth, header, icomp, icut, kf, ncomp, nphi, nth, evecallphi, evecnext, ths
-        cuts = TicraCut[]
+        local dth, header, icomp, icut, kf, ncomp, nphi, nth, evecallphi, evecnext, ths, cuts
+        firstcut = true
         while !eof(fid)
             textline = rstrip(readline(fid))
             str = readline(fid)
@@ -278,7 +278,12 @@ function read_ticra_cuts(fname::AbstractString)
                 evecallphi = ncomp == 2 ? Array{SVector{2,ComplexF64},1}(undef,0) : Array{SVector{3,ComplexF64},1}(undef,0) 
                 evec = ncomp == 2 ? Array{SVector{2,ComplexF64},2}(undef,0,0) : Array{SVector{3,ComplexF64},2}(undef,0,0) 
                 cut = TicraCut(ncomp, icut, icomp, header, theta, cutphi, evec)
-                push!(cuts, cut)
+                if firstcut
+                    cuts = [cut]
+                    firstcut = false
+                else
+                    push!(cuts, cut)
+                end
             else
                 # Begin an additional phi cut at current frequency:
                 cut = cuts[end]
@@ -327,35 +332,30 @@ Write `TicraCut` cut data to a Ticra-compatible cut file.
 """
 function write_ticra_cut(
     fname::AbstractString,
-    cut::TicraCut,
-    title::String = "Cut file created by write_ticra_cut",
-)
+    cut::TicraCut{T,N},
+    title::String = "Cut file created by write_ticra_cut"
+) where {T,N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
             @printf(fid, "%s, phi = %8.3f\n", title, phi)
-            @printf(
-                fid,
-                "%8.3f %8.3f %d %8.3f %d %d %d\n",
-                cut.theta[1],
-                cut.theta[2] - cut.theta[1],
-                length(cut.theta),
-                phi,
-                cut.icomp,
-                cut.icut,
-                cut.ncomp
-            )
-            for (m, theta) in enumerate(cut.theta)
+            @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
+                cut.theta[1], cut.theta[2] - cut.theta[1],
+                length(cut.theta), phi, cut.icomp, cut.icut,
+                cut.ncomp)
+            for m in 1:length(cut.theta)
                 e = cut.evec[m, n]
                 e1 = e[1]
                 e2 = e[2]
-                @printf(
-                    fid,
-                    " %18.10E %18.10E %18.10E %18.10E\n",
-                    real(e1),
-                    imag(e1),
-                    real(e2),
-                    imag(e2)
-                )
+                if N == 2
+                    @printf(fid, " %18.10E %18.10E %18.10E %18.10E\n",
+                        real(e1), imag(e1), real(e2), imag(e2))
+                elseif N == 3
+                    e3 = e[3]
+                    @printf(fid, " %18.10E %18.10E %18.10E %18.10E %18.10E %18.10E\n",
+                        real(e1), imag(e1), real(e2), imag(e2), real(e3), imag(e3))
+                else
+                    error("Unknown type parameter $N")
+                end
             end
         end
     end
@@ -363,36 +363,30 @@ end
 
 function write_ticra_cut(
     fname::AbstractString,
-    cuts::AbstractVector{TicraCut},
+    cuts::AbstractVector{TicraCut{T,N}},
     title::String = "Cut file created by write_ticra_cut",
-    )
+    ) where {T,N}
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
                 @printf(fid, "%s, phi = %8.3f\n", title, phi)
-                @printf(
-                    fid,
-                    "%8.3f %8.3f %d %8.3f %d %d %d\n",
-                    cut.theta[1],
-                    cut.theta[2] - cut.theta[1],
-                    length(cut.theta),
-                    phi,
-                    cut.icomp,
-                    cut.icut,
-                    cut.ncomp
-                )
-                for (m, theta) in enumerate(cut.theta)
+                @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
+                    cut.theta[1], cut.theta[2] - cut.theta[1], length(cut.theta),
+                    phi, cut.icomp, cut.icut, cut.ncomp)
+                for m in 1:length(cut.theta)
                     e = cut.evec[m, n]
                     e1 = e[1]
                     e2 = e[2]
-                    @printf(
-                        fid,
-                        " %18.10E %18.10E %18.10E %18.10E\n",
-                        real(e1),
-                        imag(e1),
-                        real(e2),
-                        imag(e2)
-                    )
+                    if N == 2
+                        @printf(fid, " %18.10E %18.10E %18.10E %18.10E\n",
+                            real(e1), imag(e1), real(e2), imag(e2))
+                    elseif N == 3
+                        e3 = e[3]
+                        @printf(fid, " %18.10E %18.10E %18.10E %18.10E %18.10E %18.10E\n",
+                            real(e1), imag(e1), real(e2), imag(e2), real(e3), imag(e3))
+                    else
+                            error("Unknown type parameter $N")
+                    end
                 end
             end
         end
@@ -627,20 +621,27 @@ for `icomp` and their meanings:
 *  2 => ERHCP and ELHCP
 *  3 => Eh and Ev (Ludwig 3 co and cx)
 """
-function convert_cut!(cut, icomp)
+function convert_cut!(cut::TicraCut{Tc,N}, icomp) where {Tc,N}
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
     outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
     (inpol = get_icomp(cut)) == outpol && return
     evec = get_evec(cut)
-    for (col, phi) in enumerate(get_phi(cut))
-        sp, cp = sincosd(phi)
-        p̂s = _pol_basis_vectors(sp, cp)
+    @inbounds for (col, phi) in enumerate(get_phi(cut))        
+        p̂s = _pol_basis_vectors(phi)
         for row in 1:length(get_theta(cut))
             p̂1in, p̂2in = p̂s[inpol]
             p̂1out, p̂2out = p̂s[outpol]
-            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
-                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
+            if N == 2
+                mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
+                                (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
+            elseif N == 3
+                mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in) 0 
+                                (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in) 0
+                                     0              0          1]
+            else
+                error("Unknown type parameter $N")
+            end
             evec[row,col] = mat * evec[row,col]
         end
     end
@@ -649,7 +650,8 @@ function convert_cut!(cut, icomp)
 end
 
 const iroot2 = inv(sqrt(2))
-function _pol_basis_vectors(sinϕ, cosϕ)
+function _pol_basis_vectors(ϕ)
+    sinϕ, cosϕ = sincosd(ϕ)
     θ̂ = @SVector [1.0+0im, 0.0+0.0im]
     ϕ̂ = @SVector [0.0+0.0im, 1.0+0im]
     ĥ = θ̂*cosϕ - ϕ̂*sinϕ
@@ -657,4 +659,15 @@ function _pol_basis_vectors(sinϕ, cosϕ)
     R̂ = iroot2 * (ĥ - im*v̂)
     L̂ = iroot2 * (ĥ + im*v̂)
     return ((θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂))
+end
+
+function _add_3rd_component(cut::TicraCut)
+    ncomp_old = get_ncomp(cut)
+    ncomp_old == 1 && error("Can't handle one-component cut")
+    ncomp_old == 3 && return deepcopy(cut)
+    evec_old = get_evec(cut)
+    evec = [@SVector[t[1], t[2], rand(ComplexF64)] for t in evec_old]
+    cut_new = TicraCut(3, get_icut(cut), get_icomp(cut), get_text(cut), 
+                       get_theta(cut), get_phi(cut), evec)
+    return cut_new
 end
