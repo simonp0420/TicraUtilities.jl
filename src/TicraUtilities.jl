@@ -3,20 +3,18 @@ module TicraUtilities
 export
     amplitude_db, 
     convert_cut!,
-    CoorSys,
-    EllipticalRim,
+    cut2sph, 
+    cut2sph_adaptive, 
     eval_cut,
-    get_theta, 
-    get_phi,
-    get_p1,
-    get_p2,
-    get_p3,
-    get_ncomp,
-    get_icut,
+    get_evec,
+    get_header,
     get_icomp,
+    get_icut,
+    get_ids,
+    get_ncomp,
+    get_phi,
     get_text,
-    header,
-    ids,
+    get_theta, 
     parse_tor_file,
     phase_deg,  
     phscen,
@@ -28,10 +26,6 @@ export
     read_tfile,
     read_ticra_cut,
     read_ticra_cuts,
-    SuperEllipticalRim,
-    TabulatedRimXYold,
-    TicraStation,
-    TorObj,
     write_exi,
     write_sphfile,
     write_station,
@@ -66,8 +60,6 @@ include("TicraExi.jl")
 include("TorFile.jl")
 include("TicraGeom.jl")
 include("SphericalWave.jl")
-
-using .SphericalWave: read_sphfile, write_sphfile
 
 #==
 include("TicraSfc.jl")

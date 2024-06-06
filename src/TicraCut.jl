@@ -191,7 +191,7 @@ end
 
 
 """
-    power(cut::Ticracut)::Float64
+    power(cut::TicraCut)::Float64
     
 Compute the total radiated power in a TicraCut object. 
 If only a single phi value is included in the cut, then assume no azimuthal variation.
