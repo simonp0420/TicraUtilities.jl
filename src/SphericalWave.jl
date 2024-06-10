@@ -10,6 +10,8 @@ using QuadGK: quadgk, kronrod
 using Interpolations: cubic_spline_interpolation
 using Dates: now
 
+
+
 """
     SWEQPartition
 Struct containing all the data read from a Ticra-compatible Q-type SWE file for one frequency.
@@ -57,8 +59,10 @@ end
 """
     read_sphfile(fname) -> Vector{SWEQPartition}
 
-Read the SWE coefficients from a Q-type spherical wave expansion file.
+Read the SWE coefficients from a Q-type spherical wave expansion file. 
 
+In the process of reading the data, the coefficients in the file (Q′) are conjugated and then
+multiplied by the factor √(8π) to achieve Ticra-standard normalization.  
 Each element of the returned vector corresponds to a particular operating frequency partition
 in the file.  If there is only a single partition in the file, then instead of returning a 1-element
 vector, the single element of type `SWEQPartition` is returned as a scalar.
@@ -112,6 +116,9 @@ end
     write_sphfile(fname, qs::SWEQPartition)
 
 Write SWE coefficients to a Q-type spherical wave expansion file.
+
+In the process of writing the data, the coefficients in the file (Q) are conjugated and then
+multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
 """
 function write_sphfile(fname::AbstractString, sps = Vector{SWEQPartition})
     inormfactor = inv(sqrt(8π))
@@ -159,97 +166,6 @@ P̄nm(n, m, x) = legendre(Qcoef, n, m, x)
 P̄nm!(Λ, n, m, x) = legendre!(Qcoef, Λ, n, m, x)
 #Pnm(n, m, x) = Plm(n, m, x)
 #Pnm!(Λ, n, m, x) = Plm!(Λ, n, m, x)
-
-"""
-    cut2sph_trap(cut::TicraCut; keywords...) -> s::SWEQPartition
-
-Convert a `TicraCut` object to a `SWEQPartition` using a fast but less accurate
-trapezoidal rule for the θ quadrature.
-
-## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
-  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
-  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
-  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
-  θ values included in each ϕ = constant polar cut.
-"""
-function cut2sph_trap(cut::TicraCut; mmax=NMMAX, nmax=NMMAX)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= Δϕ * Nϕ # undo scaling
-    ifft!(eϕ, 2);  eϕ .*= Δϕ * Nϕ # undo scaling
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-    nmax = min(Nθ - 1, nmax)
-    nrange = 1:nmax
-    if isodd(Nϕ)
-        mabsmax = min(Nϕo2, mmax)
-        Eθ = OffsetArray(eθ, 1:Nθ, -Nϕo2:Nϕo2)
-        Eϕ = OffsetArray(eϕ, 1:Nθ, -Nϕo2:Nϕo2)
-    else
-        mabsmax = min(Nϕo2 - 1, mmax)
-        Eθ = OffsetArray(eθ, 1:Nθ, -Nϕo2:(Nϕo2-1))
-        Eϕ = OffsetArray(eϕ, 1:Nθ, -Nϕo2:(Nϕo2-1))
-    end
-    mrange = -mabsmax:mabsmax
-    result_parent = Matrix{typeof(Dual(1.0,1.0))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
-    result = Origin(0)(result_parent)
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    cfactor = Δθ * inv(sqrt(π)) # Includes extra factor 2Δθ/sqrt(2) needed for f1 and f2 and the θ quadrature
-    for iθ in 1:Nθ
-        intfactor = 1.0 # Trapezoid rule factor
-        (iθ == 1 || iθ == Nθ) && (intfactor = 0.5)
-        θ = θs[iθ]
-        iszero(θ) && (θ = 1.e-5) # Avoid derivative singularity
-        θ == 180 && (θ = 180.0 - 1.e-5) # Avoid derivative singularity
-        sin²θ = sind(θ)^2
-        P̄nm!(result_parent, nmax, mabsmax, Dual(cosd(θ), 1.0))
-        for m in mrange
-            mabs = abs(m)
-            mfactor = 1
-            if m > 0 && isodd(m)
-                mfactor = -1
-            end
-
-            negjⁿ = negj = complex(0,-1)
-            negjⁿ⁺¹ = complex(-1,0)
-            for n in nrange
-                n < mabs && continue
-                negjⁿ⁺¹ = negjⁿ * negj
-                nfactor = inv(sqrt(n*(n+1)))
-                cmn = cfactor * mfactor * nfactor
-                pnm = value(result[n,mabs])
-                pnm′ = derivative(result[n,mabs])
-                f1factor = negjⁿ⁺¹ * cmn 
-                f1θconj = f1factor * negj * m * pnm 
-                f1ϕconj = f1factor * (-sin²θ) * pnm′ 
-                f2factor = negjⁿ * cmn 
-                f2θconj = f2factor * (-sin²θ) * pnm′ 
-                f2ϕconj = f2factor * (-negj) * m * pnm 
-                qsmns[1,m,n] += intfactor * (f1θconj * Eθ[iθ, m] + f1ϕconj * Eϕ[iθ, m])
-                qsmns[2,m,n] += intfactor * (f2θconj * Eθ[iθ, m] + f2ϕconj * Eϕ[iθ, m])
-                negjⁿ = negjⁿ⁺¹
-            end
-        end
-    end
-
-    # The Q coefficients have now been calculated.
-    powerms = Origin(0)(zeros(mabsmax+1))
-    powerms[0] = 0.5 * sum(abs2, (qsmns[s,0,n] for s in 1:2 for n in nrange))
-    for mabs in 1:mabsmax
-        powerms[mabs] = 0.5 * sum(abs2, (qsmns[s,m,n] for s in 1:2 for m in (-mabs,mabs) for n in nrange))
-    end
-    qpwr = sum(powerms)
-    return (qpwr, powerms, qsmns)
-end
-
 
 
 
@@ -340,8 +256,8 @@ function cut2sph_adaptive(cut::TicraCut; mmax=NMMAX, nmax=NMMAX, pwrtol=1.e-10, 
 
     # Create output SWEQPartition
     date, clock = split(string(now()), 'T')
-    fname = _caller_name()
-    prgtag = string(fname, " ", date, " ", clock)
+    funcname = nameof(var"#self#")
+    prgtag = string(funcname, " ", date, " ", clock)
     idstrg = "Spherical Wave Q-Coefficients"
     nthe = 2nmax
     mmax = mabsmax
@@ -482,8 +398,8 @@ function cut2sph(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gkorder=GK
 
     # Create output SWEQPartition
     date, clock = split(string(now()), 'T')
-    fname = _caller_name()
-    prgtag = string(fname, " ", date, " ", clock)
+    funcname = nameof(var"#self#")
+    prgtag = string(funcname, " ", date, " ", clock)
     idstrg = "Spherical Wave Q-Coefficients"
     nthe = 2nmax
     mmax = mabsmax
@@ -547,9 +463,5 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
 end
 
 
-function _caller_name()
-    s = string(stacktrace()[2])
-    i = findfirst('(', s)
-    isnothing(i) && return ""
-    return s[1:i-1]
-end
+
+
