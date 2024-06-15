@@ -19,7 +19,7 @@ Note that a single `TicraCut` instance contains all of the cuts for a single fre
 * `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
 * `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
-mutable struct TicraCut{T <: AbstractRange, N}
+@kwdef mutable struct TicraCut{T <: AbstractRange, N}
     ncomp::Int
     icut::Int
     icomp::Int
@@ -29,15 +29,6 @@ mutable struct TicraCut{T <: AbstractRange, N}
     evec::Matrix{SVector{N,ComplexF64}}
 end
 
-TicraCut() = TicraCut(
-    0,
-    1,
-    0,
-    String[],
-    0.0:-1.0:10.0,
-    0.0:-1.0:10.0,
-    Matrix{SVector{N,ComplexF64}}(undef, 0, 0)
-)
 
 import Base.show
 function show(io::IO, t::TicraCut)
@@ -49,6 +40,7 @@ function show(io::IO, t::TicraCut)
     if isempty(t.text)
         println(io, "")
     elseif length(t.text) < 6
+        println(io,"")
         for line in t.text
             println(io, "      \t" * line)
         end
@@ -394,12 +386,6 @@ function write_ticra_cut(
 end
 
 
-function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff = -10)
-    cut = read_ticra_cut(cutfile)
-    phscen(cut, fghz; min_dropoff)
-end
-
-
 """
     (x,y,z0,z90) = phscen(cutfile::AbstractString, fghz=11.802852677165355; min_dropoff=-10)
 
@@ -416,6 +402,8 @@ phi = 0ᵒ and phi = 90ᵒ plane estimates of the phase center location.
 In determining the phase center locations, only field values with magnitudes
 in dB greater than `min_dropoff` relative to the peak field are considered.
 """
+function phscen end
+
 function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
     # Determine which pol slot has main polarization:
     p1max, p2max = (maximum(x -> abs2(x[i]), get_evec(cut)) for i in 1:2)
@@ -470,7 +458,7 @@ function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
         (_, kk) = findmin(abs, x)
         y .-= y[kk] # Normalize to theta = 0 value
         big_enough = findall(≥(min_dropoff), cutdb)
-        (krho[k], kz[k]) = find_phase_center(x[big_enough], y[big_enough])
+        (krho[k], kz[k]) = _find_phase_center(x[big_enough], y[big_enough])
 
     end
 
@@ -487,8 +475,13 @@ function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
     return (x0, y0, z0[1], z0[2])
 end
 
+function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff = -10)
+    cut = read_ticra_cut(cutfile)
+    phscen(cut, fghz; min_dropoff)
+end
 
-function find_phase_center(theta::Vector{Float64}, phase::Vector{Float64})
+
+function _find_phase_center(theta::Vector{Float64}, phase::Vector{Float64})
     # theta and phase in radians. phase should be unwrapped.
     # Set up least squares solution:
     soln = hcat(ones(length(theta)), sin.(theta), cos.(theta)) \ phase
@@ -611,6 +604,20 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
     return (c, xn, sp, slh, et, pc, xpd)
 end
 
+"""
+    normalize2dir!(cut::TicraCut)
+
+Normalize a TicraCut object so it's total power is 4π.  This results
+in field magnitude squared being directivity.
+"""
+function normalize2dir!(cut::TicraCut)
+    pwr = power(cut)
+    c = sqrt(4π/pwr)
+    @inbounds for i in eachindex(cut.evec)
+        cut.evec[i] *= c
+    end
+    return cut
+end
 
 """
     convert_cut!(cut::TicraCut, icomp::Integer)
@@ -621,7 +628,7 @@ for `icomp` and their meanings:
 *  2 => ERHCP and ELHCP
 *  3 => Eh and Ev (Ludwig 3 co and cx)
 """
-function convert_cut!(cut::TicraCut{Tc,N}, icomp) where {Tc,N}
+function convert_cut!(cut::TicraCut{Tc,N}, icomp::Integer) where {Tc,N}
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
     outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
@@ -650,7 +657,17 @@ function convert_cut!(cut::TicraCut{Tc,N}, icomp) where {Tc,N}
 end
 
 const iroot2 = inv(sqrt(2))
-function _pol_basis_vectors(ϕ)
+
+"""
+    _pol_basis_vectors(ϕ::Real)
+Return a tuple containing the three sets of unitary polarization basis vectors:
+`((θ̂(ϕ), ϕ̂(ϕ)), (R̂(ϕ), L̂(ϕ)), (ĥ(ϕ), v̂(ϕ)))`.
+
+The input argument `ϕ` is the azimuthal angle in *degrees*. The returned basis vectors
+are of type `SVector{2, ComplexF64}` and are represented as (θ̂, ϕ̂) components.  E.g.,
+in this representation `θ̂ == [1,0]` and `ϕ̂ == [0,1]`.
+"""
+function _pol_basis_vectors(ϕ::Real)
     sinϕ, cosϕ = sincosd(ϕ)
     θ̂ = @SVector [1.0+0im, 0.0+0.0im]
     ϕ̂ = @SVector [0.0+0.0im, 1.0+0im]
@@ -671,3 +688,5 @@ function _add_3rd_component(cut::TicraCut)
                        get_theta(cut), get_phi(cut), evec)
     return cut_new
 end
+
+_norm²(E::SVector{N,T}) where {N,T} = sum(abs2, E[n] for n in 1:N)
