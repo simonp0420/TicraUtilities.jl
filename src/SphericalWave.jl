@@ -302,10 +302,12 @@ function cut2sph_adaptive(cut::TicraCut; mmax=NMMAX, nmax=NMMAX, pwrtol=1.e-10, 
     funcname = nameof(var"#self#")
     prgtag = string(funcname, " ", date, " ", clock)
     idstrg = "Spherical Wave Q-Coefficients"
-    nthe = (Nθ - 1) * 2
     mmax = last(axes(qsmn, 2))
     nmax = last(axes(qsmn, 3))
-    nphi = Nϕ
+    #nthe = (Nθ - 1) * 2
+    nthe = max(2*nmax, 6)
+    #nphi = Nϕ
+    nphi = max(2(mmax + 1), 4)
     t4 = t5 = t6 = t7 = "Dummy Text"
     return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
 end
@@ -447,10 +449,12 @@ function cut2sph(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gkorder=GK
     funcname = nameof(var"#self#")
     prgtag = string(funcname, " ", date, " ", clock)
     idstrg = "Spherical Wave Q-Coefficients"
-    nthe = (Nθ - 1) * 2
     mmax = last(axes(qsmn, 2))
     nmax = last(axes(qsmn, 3))
-    nphi = Nϕ
+    #nthe = (Nθ - 1) * 2
+    nthe = max(2*nmax, 6)
+    #nphi = Nϕ
+    nphi = max(2(mmax + 1), 4)
     t4 = t5 = t6 = t7 = "Dummy Text"
     return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
 end
@@ -669,19 +673,31 @@ function sph2cut(swe::SWEQPartition;
     else
         Nϕ = length(ϕs)
     end
+
+    # Precompute complex exponentials for fast lookup
+    expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax+1)
+    expmjmϕs = OffsetArray(expmjmϕs_parent, 1:Nϕ, 0:mabsmax)
+    expmjmϕs[:,1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
+    for m in 2:mabsmax
+        for iϕ in axes(expmjmϕs,1)
+            expmjmϕs[iϕ, m] = expmjmϕs[iϕ, m-1] * expmjmϕs[iϕ, 1]
+        end
+    end
+
+
     (θ̂, ϕ̂) = _pol_basis_vectors(0)[1] # θ̂ and ϕ̂ are independent of ϕ in (θ, ϕ) basis
     Es = zeros(SVector{2, ComplexF64}, Nθ, Nϕ)
     cfactor = 1/(2*sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
     Eθϕ_maxnorm = @SVector[complex(0.0,0.0), complex(0.0,0.0)]
     Enorm²max = 0.0
     ϕ_maxnorm = zero(eltype(ϕs))
+
     for (iθ, θ) in enumerate(θs)
         θis0 = iszero(θ)
         θis180 = θ == 180
         sinθ, cosθ = sincosd(θ)
 
         for (iϕ, ϕ) in enumerate(ϕs)
-
             Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
             nsign = 1
             jⁿ = complex(0,1)
@@ -699,7 +715,6 @@ function sph2cut(swe::SWEQPartition;
                     mrange = -mlim:mlim
                 end # Limiting cases
 
-
                 nfactor = inv(sqrt(n*(n+1)))
 
                 for m in mrange
@@ -716,7 +731,9 @@ function sph2cut(swe::SWEQPartition;
                         dP = -sinθ * derivative(res)
                     end
                     mfactor = (m > 0 && isodd(m)) ? -1 : 1
-                    cmn = (cfactor * mfactor * nfactor) * cis(-m * deg2rad(ϕ))
+                    cisfact = m ≥ 0 ? expmjmϕs[iϕ, m] : conj(expmjmϕs[iϕ, abs(m)])
+                    #cisfact = cis(-m * deg2rad(ϕ))
+                    cmn = (cfactor * mfactor * nfactor) * cisfact
                     f1factor = -jⁿ⁺¹ * cmn 
                     f2factor = jⁿ * cmn 
                     f⃗₁ = f1factor * (im * mP * θ̂  +       dP * ϕ̂)
