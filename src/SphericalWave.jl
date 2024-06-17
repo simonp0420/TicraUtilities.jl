@@ -265,11 +265,11 @@ function cut2sph_adaptive(cut::TicraCut; mmax=NMMAX, nmax=NMMAX, pwrtol=1.e-10, 
         mabs = abs(m)
         mfactor = 1
         (m > 0 && isodd(m)) && (mfactor = -1)
-        negjⁿ = negj = complex(0,-1)
-        negjⁿ⁺¹ = complex(-1,0)
+        negjⁿ⁺¹ = negjⁿ = negj = complex(0,-1)
         for n in nrange
-            n < mabs && continue
+            negjⁿ = negjⁿ⁺¹
             negjⁿ⁺¹ = negjⁿ * negj
+            n < mabs && continue
             nfactor = inv(sqrt(n*(n+1)))
             cmn = cfactor * mfactor * nfactor
             f1factor = negjⁿ⁺¹ * cmn 
@@ -290,7 +290,6 @@ function cut2sph_adaptive(cut::TicraCut; mmax=NMMAX, nmax=NMMAX, pwrtol=1.e-10, 
                 return integrand
             end
             qsmns[1,m,n], qsmns[2,m,n] = int
-            negjⁿ = negjⁿ⁺¹
         end
     end
 
@@ -397,9 +396,11 @@ function cut2sph(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gkorder=GK
             mfactor =  (m > 0 && isodd(m)) ? -1 : 1
             Eθᵢₘ = Eθ[i, m]
             Eϕᵢₘ = Eϕ[i, m]
-            negjⁿ = negj = complex(0,-1)
-            negjⁿ⁺¹ = complex(-1,0)
-            for n in max(1,mabs):nmax
+            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
+            for n in 1:nmax
+                negjⁿ = negjⁿ⁺¹
+                negjⁿ⁺¹ = negjⁿ * negj
+                n < mabs && continue
                 nfactor = inv(sqrt(n*(n+1)))
                 cmn = cfactor * mfactor * nfactor
                 pnm = value(result[n,mabs])
@@ -425,8 +426,6 @@ function cut2sph(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gkorder=GK
                     qsmns_low[1,m,n] += gwts[ii] * q1
                     qsmns_low[2,m,n] += gwts[ii] * q2
                 end
-                negjⁿ = negjⁿ⁺¹
-                negjⁿ⁺¹ = negjⁿ * negj
             end
         end
     end
@@ -539,9 +538,11 @@ function cut2sph_gauss(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaus
             end
             Eθᵢₘ = Eθ[i, m]
             Eϕᵢₘ = Eϕ[i, m]
-            negjⁿ = negj = complex(0,-1)
-            negjⁿ⁺¹ = complex(-1,0)
-            for n in max(1,mabs):nmax
+            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
+            for n in 1:nmax
+                negjⁿ = negjⁿ⁺¹
+                negjⁿ⁺¹ = negjⁿ * negj
+                n < mabs && continue
                 nfactor = inv(sqrt(n*(n+1)))
                 cmn = cfactor * mfactor * nfactor
                 pnm = value(result[n,mabs])
@@ -561,8 +562,6 @@ function cut2sph_gauss(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaus
                 wt = 90 * wts[i]
                 qsmns[1,m,n] += wt * q1
                 qsmns[2,m,n] += wt * q2
-                negjⁿ = negjⁿ⁺¹
-                negjⁿ⁺¹ = negjⁿ * negj
             end
         end
     end
