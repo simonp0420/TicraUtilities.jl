@@ -12,7 +12,6 @@ using Interpolations: cubic_spline_interpolation
 using Dates: now
 
 
-
 """
     SWEQPartition
 Struct containing all the data read from a Ticra-compatible Q-type SWE file for one frequency.
@@ -583,6 +582,139 @@ function cut2sph_gauss(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaus
 end
 
 
+"""
+    cut2sph_gauss_generic(cut::TicraCut; keywords...) -> s::SWEQPartition
+
+Convert a `TicraCut` object to a `SWEQPartition` using a fixed-order Gauss-Kronrod
+quadrature scheme for the θ integrals.
+
+## Keyword Arguments (and their default values)
+* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
+  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
+  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
+* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
+  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
+  θ values included in each ϕ = constant polar cut.
+* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
+  modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
+  precludes removal of any modes.
+* `gaussorder=1200: The order of Gauss-Legendre quadrature to use for the θ integrals.
+  There is no test performed to determine if this value is large enough for accurate calculation of
+  all requested modal Q coefficients.  However the default value is sufficient for accurate results
+  in most circumstances.
+"""
+function cut2sph_gauss_generic(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaussorder=1200)
+    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
+    cutpwr = power(cut)
+    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
+    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
+    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
+    eθ = first.(get_evec(cutθϕ))
+    eϕ = last.(get_evec(cutθϕ))
+    # Perform ϕ integration:
+    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
+    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
+    eθ = fftshift(eθ, 2)
+    eϕ = fftshift(eϕ, 2)
+    Nϕo2 = Nϕ ÷ 2
+    nmax = min(Nθ - 1, nmax)
+    if nmax > NMMAX
+        @warn "Reducing nmax to NMMAX = $(NMMAX)."
+        nmax = NMMAX
+    end
+
+    T = typeof(float(pwrtol))
+    CT = complex(T)
+
+    θnodes_orig, wts_orig  = gausslegendre(gaussorder)
+    θnodes, wts  = (θnodes_orig), (wts_orig)
+
+    lnodes = length(θnodes)
+
+    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
+    mabsmax = min(last(erange), mmax)
+    mabsmax > NMMAX && error("mabsmax is $(mabsmax) but may not exceed NMMAX = $(NMMAX).")
+    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
+    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
+    Eθ, Eϕ = (OffsetArray(zeros(CT, lnodes, Nϕ), 1:lnodes, erange) for _ in 1:2)
+
+    mrange = -mabsmax:mabsmax
+    for m in mrange
+        Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
+        Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
+        #Eθfun = scale(interpolate(view(eθoffset, :, m), BSpline(Quadratic())), θs)
+        #Eϕfun = scale(interpolate(view(eϕoffset, :, m), BSpline(Quadratic())), θs)
+        #Eθfun = pchip(θs, view(eθoffset, :, m))
+        #Eϕfun = pchip(θs, view(eϕoffset, :, m))
+        @inbounds for i in 1:lnodes
+            θ = 90 * (θnodes[i] + 1)
+            Eθ[i,m] = Eθfun(θ)
+            Eϕ[i,m] = Eϕfun(θ)
+        end
+    end
+    result_parent = Matrix{typeof(Dual(T(1.0),T(1.0)))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
+    result = Origin(0)(result_parent)
+    qsmns = OffsetArray(zeros(CT, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
+    cfactor = sqrt(T(BigFloat(π)))/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
+    @inbounds for i in 1:lnodes
+        θ = T(90 * (θnodes[i] + 1))
+        #(θ < 1.e-5 || θ > 180 - 1.e-5) && continue # No contribution from endpoints
+        sinθ, cosθ = sincosd(θ)
+        sin²θ = sinθ * sinθ
+        P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, one(T)))
+        for m in mrange
+            mabs = abs(m)
+            mfactor = 1
+            if m > 0 && isodd(m)
+                mfactor = -1
+            end
+            Eθᵢₘ = Eθ[i, m]
+            Eϕᵢₘ = Eϕ[i, m]
+            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
+            for n in 1:nmax
+                negjⁿ = negjⁿ⁺¹
+                negjⁿ⁺¹ = negjⁿ * negj
+                n < mabs && continue
+                nfactor = inv(sqrt(T(n)*(n+1)))
+                cmn = cfactor * mfactor * nfactor
+                pnm = value(result[n,mabs])
+                mpnm = m*pnm
+                pnm′ = derivative(result[n,mabs])
+                f1factor = negjⁿ⁺¹ * cmn 
+                jf1factor = complex(-imag(f1factor), real(f1factor))
+                f1θconj = jf1factor * mpnm
+                f1ϕconj = f1factor * (sin²θ * pnm′)
+                f2factor = negjⁿ * cmn 
+                jf2factor = complex(-imag(f2factor), real(f2factor))
+                f2θconj = f2factor * ((-sin²θ) * pnm′)
+                f2ϕconj = jf2factor * mpnm
+                q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
+                q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
+                # Compute Gaussian quadrature:
+                wt = 90 * wts[i]
+                qsmns[1,m,n] += wt * q1
+                qsmns[2,m,n] += wt * q2
+            end
+        end
+    end
+
+    # Eliminate modes with negligible power
+    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
+
+    # Create output SWEQPartition
+    date, clock = split(string(now()), 'T')
+    funcname = nameof(var"#self#")
+    prgtag = string(funcname, " ", date, " ", clock)
+    idstrg = "Spherical Wave Q-Coefficients"
+    nthe = (Nθ - 1) * 2
+    mmax = last(axes(qsmn, 2))
+    nmax = last(axes(qsmn, 3))
+    nphi = Nϕ
+    t4 = t5 = t6 = t7 = "Dummy Text"
+    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
+end
+
+
 function _filter_qmodes_by_power(qsmns, pwrtol)
     srange, mrange, nrange = axes(qsmns)
     mabsmax = last(mrange)
@@ -801,3 +933,71 @@ end # function
 
 
 
+
+
+
+function compute_single_mode(cut::TicraCut, s::Int, m::Int, n::Int)
+    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
+    cutpwr = power(cut)
+    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
+    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
+    (first(θs) == 0 && last(θs) == 180) || error("bad theta limits")
+    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
+    eθ = first.(get_evec(cutθϕ))
+    eϕ = last.(get_evec(cutθϕ))
+    # Perform ϕ integration:
+    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
+    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
+    eθ = fftshift(eθ, 2)
+    eϕ = fftshift(eϕ, 2)
+    Nϕo2 = Nϕ ÷ 2
+
+    T = Float64
+    CT = complex(T)
+
+    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
+    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
+    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
+
+    Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
+    Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
+
+    cfactor = sqrt(T(BigFloat(π)))/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
+    mfactor = 1
+    if m > 0 && isodd(m)
+        mfactor = -1
+    end
+    negj = complex(0,-1)
+    negjⁿ = (negj)^n
+    negjⁿ⁺¹ = negjⁿ * negj
+    nfactor = inv(sqrt(T(n)*(n+1)))
+    cmn = cfactor * mfactor * nfactor
+    coefficient = quadgk(0.0, 180.0; atol=1e-12) do θ
+        sinθ, cosθ = sincosd(θ)
+        sin²θ = sinθ * sinθ
+        res = P̄nm(n, abs(m), Dual(cosθ, one(T)))
+        Eθᵢₘ = Eθfun(θ)
+        Eϕᵢₘ = Eϕfun(θ)
+        pnm = value(res)
+        mpnm = m*pnm
+        pnm′ = derivative(res)
+        if s == 1
+            f1factor = negjⁿ⁺¹ * cmn 
+            jf1factor = complex(-imag(f1factor), real(f1factor))
+            f1θconj = jf1factor * mpnm
+            f1ϕconj = f1factor * (sin²θ * pnm′)
+            q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
+            return q1
+        elseif s == 2
+            f2factor = negjⁿ * cmn 
+            jf2factor = complex(-imag(f2factor), real(f2factor))
+            f2θconj = f2factor * ((-sin²θ) * pnm′)
+            f2ϕconj = jf2factor * mpnm
+            q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
+            return q2
+        else
+            error("illegal value of s")
+        end
+    end
+    return coefficient
+end
