@@ -823,19 +823,18 @@ function sph2cut(swe::SWEQPartition;
     Enorm²max = 0.0
     ϕ_maxnorm = zero(eltype(ϕs))
 
-    for (iθ, θ) in enumerate(θs)
+    @inbounds for (iθ, θ) in enumerate(θs)
         θis0 = iszero(θ)
         θis180 = θ == 180
         sinθ, cosθ = sincosd(θ)
+        (θis0 || θis180) || P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
 
         for (iϕ, ϕ) in enumerate(ϕs)
             Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
             nsign = 1
             jⁿ = complex(0,1)
             jⁿ⁺¹ = jⁿ * complex(0,1)
-            (θis0 || θis180) || P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
-
-            for n in 1:nmax
+            @inbounds for n in 1:nmax
 
                 if θis0 || θis180
                     mPfactor = sqrt(n * (n+1) * (2n+1) / 8)
@@ -848,7 +847,7 @@ function sph2cut(swe::SWEQPartition;
 
                 nfactor = inv(sqrt(n*(n+1)))
 
-                for m in mrange
+                @inbounds for m in mrange
                     if (θis0 || θis180)
                         mP = sign(m) * mPfactor
                         dP = mPfactor
