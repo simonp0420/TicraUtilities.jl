@@ -771,8 +771,6 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
     return (qpwr, powerm, qsmn)
 end
 
-#@enum PolType MAXCO=0 θϕ=1 CP=2 L3=3 
-#const ThetaPhi = θϕ
 
 function sph2cut(swe::SWEQPartition; 
     θsin::AbstractRange=0.0:-1.0:1.0, 
@@ -842,7 +840,7 @@ function sph2cut(swe::SWEQPartition;
 end # function
 
 
-function _q2evec(qsmns, θs, ϕs)
+function _q2evec_gsl(qsmns, θs, ϕs)
     mabsmax = last(axes(qsmns, 2))
     nmax = last(axes(qsmns, 3))
 
@@ -938,6 +936,106 @@ function _q2evec(qsmns, θs, ϕs)
 
         put!(chnl, results)
         put!(chnl, dresults)
+
+    end # θ loop
+
+    return Es
+end # function
+
+
+function _q2evec(qsmns, θs, ϕs)
+    mabsmax = last(axes(qsmns, 2))
+    nmax = last(axes(qsmns, 3))
+
+    # Prepare Channel for multithreading
+    TD = typeof(Dual(1.0,1.0))
+    chnl = Channel{Matrix{TD}}(Threads.nthreads())
+    foreach(1:Threads.nthreads()) do _
+        put!(chnl, Matrix{TD}(undef, nmax+1, mabsmax+1))
+    end
+
+    Nθ = length(θs)
+    Nϕ = length(ϕs)
+
+    # Precompute complex exponentials for fast lookup
+    expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax+1)
+    expmjmϕs = OffsetArray(expmjmϕs_parent, 1:Nϕ, 0:mabsmax)
+    expmjmϕs[:,1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
+    for m in 2:mabsmax
+        for iϕ in axes(expmjmϕs,1)
+            expmjmϕs[iϕ, m] = expmjmϕs[iϕ, m-1] * expmjmϕs[iϕ, 1]
+        end
+    end
+
+    (θ̂, ϕ̂) = _pol_basis_vectors(0)[1] # θ̂ and ϕ̂ are independent of ϕ in (θ, ϕ) basis
+    Es = zeros(SVector{2, ComplexF64}, Nθ, Nϕ)
+    cfactor = 1/(2*sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
+
+    Threads.@threads for iθ in eachindex(θs) # 57.6 msec
+    #@inbounds for iθ in eachindex(θs) # 366.23 msec
+        result_parent = take!(chnl)
+        result = Origin(0)(result_parent)
+        θ = θs[iθ]
+        θis0 = iszero(θ)
+        θis180 = θ == 180
+        sinθ, cosθ = sincosd(θ)
+        (θis0 || θis180) || P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
+
+        @inbounds for iϕ in eachindex(ϕs)
+            Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
+            nsign = 1
+            jⁿ = complex(0,1)
+            jⁿ⁺¹ = jⁿ * complex(0,1)
+            @inbounds for n in 1:nmax
+
+                if θis0 || θis180
+                    mPfactor = sqrt(n * (n+1) * (2n+1) / 8)
+                    mrange = -1:2:1
+                else
+                    # General, non-endpoint θ
+                    mlim = min(mabsmax, n)
+                    mrange = -mlim:1:mlim
+                end # Limiting cases
+
+                nfactor = inv(sqrt(n*(n+1)))
+
+                for m in mrange
+                    mabs = abs(m)
+                    if (θis0 || θis180)
+                        mP = sign(m) * mPfactor
+                        dP = mPfactor
+                        if θis180
+                            mP *= nsign
+                            dP *= -nsign
+                        end
+                    else
+                        res = result[n,mabs]
+                        mP = m * value(res) / sinθ
+                        dP = -sinθ * derivative(res)
+                    end
+                    mfactor = (m > 0 && isodd(m)) ? -1 : 1
+                    cisfact = m ≥ 0 ? expmjmϕs[iϕ, m] : conj(expmjmϕs[iϕ, abs(m)])
+                    #cisfact = cis(-m * deg2rad(ϕ))
+                    cmn = (cfactor * mfactor * nfactor) * cisfact
+                    f1factor = -jⁿ⁺¹ * cmn 
+                    f2factor = jⁿ * cmn 
+                    f⃗₁ = f1factor * (im * mP * θ̂  +       dP * ϕ̂)
+                    f⃗₂ = f2factor * (dP * θ̂       -  im * mP * ϕ̂)
+                    Eθϕ += qsmns[1,m,n] * f⃗₁ + qsmns[2,m,n] * f⃗₂
+                end # m loop
+
+                # Update n loop variables
+                nsign = -nsign
+                jⁿ = jⁿ⁺¹
+                jⁿ⁺¹ *= 1im
+
+            end # n loop
+
+            Es[iθ, iϕ] = Eθϕ # Store result
+ 
+        end # ϕ loop
+
+        put!(chnl, result_parent)
 
     end # θ loop
 
