@@ -10,6 +10,7 @@ using QuadGK: quadgk, kronrod
 using FastGaussQuadrature: gausslegendre
 using Interpolations: cubic_spline_interpolation
 using Dates: now
+using GSL: sf_legendre_deriv_alt_array, sf_legendre_array_n, sf_legendre_array_index, GSL_SF_LEGENDRE_FULL, GSL
 
 
 """
@@ -789,8 +790,9 @@ function sph2cut(swe::SWEQPartition;
 
     mabsmax = last(axes(swe.qsmns, 2))
     nmax = last(axes(swe.qsmns, 3))
-    result_parent = Matrix{typeof(Dual(1.0,1.0))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
-    result = Origin(0)(result_parent)
+
+    gsl_result_length = sf_legendre_array_n(nmax)
+    results, dresults = (zeros(gsl_result_length) for _ in 1:2)
 
     if isempty(θs)
         Nθ = swe.nthe ÷ 2 + 1
@@ -827,7 +829,9 @@ function sph2cut(swe::SWEQPartition;
         θis0 = iszero(θ)
         θis180 = θ == 180
         sinθ, cosθ = sincosd(θ)
-        (θis0 || θis180) || P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
+        if !(θis0 || θis180) 
+            GSL.C.sf_legendre_deriv_alt_array(GSL_SF_LEGENDRE_FULL, nmax, cosθ, results, dresults)
+        end
 
         for (iϕ, ϕ) in enumerate(ϕs)
             Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
@@ -848,6 +852,7 @@ function sph2cut(swe::SWEQPartition;
                 nfactor = inv(sqrt(n*(n+1)))
 
                 @inbounds for m in mrange
+                    mabs = abs(m)
                     if (θis0 || θis180)
                         mP = sign(m) * mPfactor
                         dP = mPfactor
@@ -856,9 +861,10 @@ function sph2cut(swe::SWEQPartition;
                             dP *= -nsign
                         end
                     else
-                        res = result[n, abs(m)]
-                        mP = m * value(res) / sinθ
-                        dP = -sinθ * derivative(res)
+                        igsl = 1 + sf_legendre_array_index(n, mabs)
+                        mP = m * results[igsl] / sinθ
+                        #dP = -sinθ * dresults[igsl]
+                        dP = dresults[igsl]
                     end
                     mfactor = (m > 0 && isodd(m)) ? -1 : 1
                     cisfact = m ≥ 0 ? expmjmϕs[iϕ, m] : conj(expmjmϕs[iϕ, abs(m)])
