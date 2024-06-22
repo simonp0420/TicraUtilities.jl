@@ -69,7 +69,8 @@ function show(io::IO, swe::SWEQPartition)
     first(axes(swe.qsmns,1)), ":", last(axes(swe.qsmns,1)), ",",
     first(axes(swe.qsmns,2)), ":", last(axes(swe.qsmns,2)), ",",
     first(axes(swe.qsmns,3)), ":", last(axes(swe.qsmns,3)), ")"))
-
+    println(io, string("  powerms  OffsetArray{Float64}(",
+    first(axes(swe.powerms,1)), ":", last(axes(swe.powerms,1)), ")"))
     return nothing
 end
 
