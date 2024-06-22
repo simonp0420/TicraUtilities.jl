@@ -11,11 +11,11 @@ struct TicraExi
 end
 
 """
-  header(t::TicraExi)
+  get_header(t::TicraExi)
 
-Return the header strings.
+Return a vector of header strings.
 """
-header(t::TicraExi) = t.header
+get_header(t::TicraExi) = t.header
 
 """
   amplitude_db(t::TicraExi)
@@ -32,11 +32,11 @@ Return a vector of phases in degrees.
 phase_deg(t::TicraExi) = t.phsdeg
 
 """
-  ids(t::TicraExi)
+  get_ids(t::TicraExi)
 
 Return a vector of id strings.
 """
-ids(t::TicraExi) = t.id
+get_ids(t::TicraExi) = t.id
 
 
 import Base.complex
