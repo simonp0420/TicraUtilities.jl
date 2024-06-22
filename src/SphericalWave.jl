@@ -10,7 +10,6 @@ using QuadGK: quadgk, kronrod
 using FastGaussQuadrature: gausslegendre
 using Interpolations: cubic_spline_interpolation
 using Dates: now
-using GSL: sf_legendre_deriv_alt_array, sf_legendre_array_n, sf_legendre_array_index, GSL_SF_LEGENDRE_FULL, GSL
 
 
 """
@@ -773,29 +772,28 @@ end
 
 
 function sph2cut(swe::SWEQPartition; 
-    θsin::AbstractRange=0.0:-1.0:1.0, 
-    ϕsin::AbstractRange=0.0:-1.0:1.0,
+    theta::AbstractRange=0.0:-1.0:1.0, 
+    phi::AbstractRange=0.0:-1.0:1.0,
     ipol::Int = 0)
 
     (0 ≤ ipol ≤ 3) || Throw(ArgumentError("polarization must be either 0,1,2, or 3"))
 
-    if isempty(θsin)
+    if isempty(theta)
         Nθ = swe.nthe ÷ 2 + 1
         θs = range(0.0, 180.0, Nθ)
     else
-        Nθ = length(θsin)
-        θs = range(first(θsin), last(θsin), Nθ)
+        Nθ = length(theta)
+        θs = range(first(theta), last(theta), Nθ)
     end
-    if isempty(ϕsin)
+    if isempty(phi)
         Nϕ = swe.nphi
         ϕs = range(0.0, 360-360/Nϕ, Nϕ)
     else
-        Nϕ = length(ϕsin)
-        ϕs = range(first(ϕsin), last(ϕsin), Nϕ)
+        Nϕ = length(phi)
+        ϕs = range(first(phi), last(phi), Nϕ)
     end
 
     Es = _q2evec(swe.qsmns, θs, ϕs)
-
     
     if iszero(ipol)
         # Find the maximum norm E-field
@@ -837,109 +835,6 @@ function sph2cut(swe::SWEQPartition;
     cut = TicraCut(;ncomp, icut, icomp, text, theta, phi, evec)
 
     return cut
-end # function
-
-
-function _q2evec_gsl(qsmns, θs, ϕs)
-    mabsmax = last(axes(qsmns, 2))
-    nmax = last(axes(qsmns, 3))
-
-    # Prepare Channel for multithreading
-    gsl_result_length = sf_legendre_array_n(nmax)
-    chnl = Channel{Vector{Float64}}(2*Threads.nthreads())
-    foreach(1:2*Threads.nthreads()) do _
-        put!(chnl, zeros(gsl_result_length))
-    end
-
-    Nθ = length(θs)
-    Nϕ = length(ϕs)
-
-    # Precompute complex exponentials for fast lookup
-    expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax+1)
-    expmjmϕs = OffsetArray(expmjmϕs_parent, 1:Nϕ, 0:mabsmax)
-    expmjmϕs[:,1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
-    for m in 2:mabsmax
-        for iϕ in axes(expmjmϕs,1)
-            expmjmϕs[iϕ, m] = expmjmϕs[iϕ, m-1] * expmjmϕs[iϕ, 1]
-        end
-    end
-
-    (θ̂, ϕ̂) = _pol_basis_vectors(0)[1] # θ̂ and ϕ̂ are independent of ϕ in (θ, ϕ) basis
-    Es = zeros(SVector{2, ComplexF64}, Nθ, Nϕ)
-    cfactor = 1/(2*sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
-
-    Threads.@threads for iθ in eachindex(θs) # 57.6 msec
-    #@inbounds for iθ in eachindex(θs) # 366.23 msec
-        results = take!(chnl)
-        dresults = take!(chnl)
-        θ = θs[iθ]
-        θis0 = iszero(θ)
-        θis180 = θ == 180
-        sinθ, cosθ = sincosd(θ)
-        if !(θis0 || θis180) 
-            GSL.C.sf_legendre_deriv_alt_array(GSL_SF_LEGENDRE_FULL, nmax, cosθ, results, dresults)
-        end
-
-        for iϕ in eachindex(ϕs)
-            Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
-            nsign = 1
-            jⁿ = complex(0,1)
-            jⁿ⁺¹ = jⁿ * complex(0,1)
-            @inbounds for n in 1:nmax
-
-                if θis0 || θis180
-                    mPfactor = sqrt(n * (n+1) * (2n+1) / 8)
-                    mrange = -1:2:1
-                else
-                    # General, non-endpoint θ
-                    mlim = min(mabsmax, n)
-                    mrange = -mlim:1:mlim
-                end # Limiting cases
-
-                nfactor = inv(sqrt(n*(n+1)))
-
-                for m in mrange
-                    mabs = abs(m)
-                    if (θis0 || θis180)
-                        mP = sign(m) * mPfactor
-                        dP = mPfactor
-                        if θis180
-                            mP *= nsign
-                            dP *= -nsign
-                        end
-                    else
-                        igsl = 1 + sf_legendre_array_index(n, mabs)
-                        mP = m * results[igsl] / sinθ
-                        dP = dresults[igsl]
-                    end
-                    mfactor = (m > 0 && isodd(m)) ? -1 : 1
-                    cisfact = m ≥ 0 ? expmjmϕs[iϕ, m] : conj(expmjmϕs[iϕ, abs(m)])
-                    #cisfact = cis(-m * deg2rad(ϕ))
-                    cmn = (cfactor * mfactor * nfactor) * cisfact
-                    f1factor = -jⁿ⁺¹ * cmn 
-                    f2factor = jⁿ * cmn 
-                    f⃗₁ = f1factor * (im * mP * θ̂  +       dP * ϕ̂)
-                    f⃗₂ = f2factor * (dP * θ̂       -  im * mP * ϕ̂)
-                    Eθϕ += qsmns[1,m,n] * f⃗₁ + qsmns[2,m,n] * f⃗₂
-                end # m loop
-
-                # Update n loop variables
-                nsign = -nsign
-                jⁿ = jⁿ⁺¹
-                jⁿ⁺¹ *= 1im
-
-            end # n loop
-
-            Es[iθ, iϕ] = Eθϕ # Store result
- 
-        end # ϕ loop
-
-        put!(chnl, results)
-        put!(chnl, dresults)
-
-    end # θ loop
-
-    return Es
 end # function
 
 
