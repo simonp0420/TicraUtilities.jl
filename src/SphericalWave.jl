@@ -141,7 +141,8 @@ In the process of writing the data, the coefficients in the file (Q) are conjuga
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
 """
 function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
-    inormfactor = inv(sqrt(8π))
+    ipwrnormfactor = inv(8π)
+    inormfactor = sqrt(ipwrnormfactor)
     open(fname, "w") do io
         for sp in sps # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
@@ -157,7 +158,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
                 miszero = iszero(absm)
                 nmin = max(1, absm)
                 # Write Q coefficients for current value of absm
-                @printf(io, "%6i %23.17G\n", absm, powerms[absm])
+                @printf(io, "%6i %23.17G\n", absm, ipwrnormfactor*powerms[absm])
                 for n in nmin:nmax
                     q1r, q1i = inormfactor * qsmns[1, -absm, n] |> conj |> reim # s = 1
                     q2r, q2i = inormfactor * qsmns[2, -absm, n] |> conj |> reim # s = 2
