@@ -57,7 +57,7 @@ function show(io::IO, t::TicraCut)
     else
         println(io, "  phi  \tEmpty range")
     end
-    println(io, "  evec   \t$(summary(t.evec))")
+    println(io, "  evec \t$(summary(t.evec))")
     return nothing
 end
 
