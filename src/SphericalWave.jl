@@ -56,6 +56,26 @@ in the File Formats section of the Ticra official documentation.
     powerms::OffsetVector{Float64, Vector{Float64}}  = OffsetArray(zeros(mmax+1), 0:mmax)
 end
 
+import Base.show
+function show(io::IO, swe::SWEQPartition)
+    println(io, "SWEQPartition")
+    println(io, "  prgtag   $(swe.prgtag)")
+    println(io, "  idstrg   $(swe.idstrg)")
+    println(io, "  nthe     $(swe.nthe)")
+    println(io, "  nphi     $(swe.nphi)")
+    println(io, "  nmax     $(swe.nmax)")
+    println(io, "  mmax     $(swe.mmax)")
+    println(io, string("  qsmns    OffsetArray{ComplexF64}(",
+    first(axes(swe.qsmns,1)), ":", last(axes(swe.qsmns,1)), ",",
+    first(axes(swe.qsmns,2)), ":", last(axes(swe.qsmns,2)), ",",
+    first(axes(swe.qsmns,3)), ":", last(axes(swe.qsmns,3)), ")"))
+
+    return nothing
+end
+
+
+
+
 """
     read_sphfile(fname) -> Vector{SWEQPartition}
 
