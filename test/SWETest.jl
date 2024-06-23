@@ -23,3 +23,16 @@ using SafeTestsets
 
 end
 
+@safetestset "sph2cut" begin 
+    using TicraUtilities
+    using LinearAlgebra: norm
+    sphfile = joinpath(@__DIR__, "center_element_rhcp_excited_q.swe")
+    cut_test = sph2cut(sphfile; phi=0:5:355, theta=0:1:180, ipol=2)
+    cut_good = read_ticra_cut(joinpath(@__DIR__, "center_element_rhcp_excited_q.cut"))
+    Eθ_err =  maximum(norm, first.(cut_test.evec) - first.(cut_good.evec))
+    Eϕ_err =  maximum(norm, last.(cut_test.evec) - last.(cut_good.evec))
+
+    @test Eθ_err < 1e-9
+    @test Eϕ_err < 1e-9
+end
+
