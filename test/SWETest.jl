@@ -36,3 +36,11 @@ end
     @test Eϕ_err < 1e-9
 end
 
+@safetestset "Deltas" begin 
+    using TicraUtilities
+    @test TicraUtilities.Δⁿₙₘ(4,5) ≈ sqrt(10) / 32
+    @test TicraUtilities.Δⁿₙₘ(1,1) ≈ 0.5
+    @test TicraUtilities.Δⁿₙₘ(0,1) ≈ 1/√2
+    @test TicraUtilities.Δⁿₙₘ(0,5) ≈ 3√7/16
+end
+

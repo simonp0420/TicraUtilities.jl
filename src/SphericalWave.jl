@@ -680,6 +680,7 @@ function cut2sph_gauss_generic(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMM
     cfactor = sqrt(T(BigFloat(π)))/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
     @inbounds for i in 1:lnodes
         θ = T(90 * (θnodes[i] + 1))
+        wt = 90 * wts[i]
         #(θ < 1.e-5 || θ > 180 - 1.e-5) && continue # No contribution from endpoints
         sinθ, cosθ = sincosd(θ)
         sin²θ = sinθ * sinθ
@@ -713,7 +714,6 @@ function cut2sph_gauss_generic(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMM
                 q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
                 q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
                 # Compute Gaussian quadrature:
-                wt = 90 * wts[i]
                 qsmns[1,m,n] += wt * q1
                 qsmns[2,m,n] += wt * q2
             end
@@ -855,6 +855,7 @@ function sph2cut(swe::SWEQPartition;
         # Find the maximum norm E-field
         _, imaxnorm = findmax(_norm², Es)
         Eθϕ_maxnorm = Es[imaxnorm]
+        ϕ_maxnorm = ϕs[last(Tuple(imaxnorm))]
         # Check which polarization decomposition produces largest copol:
         Eθϕ = Eθϕ_maxnorm
         (θ̂,ϕ̂), (R̂,L̂), (ĥ,v̂) = _pol_basis_vectors(ϕ_maxnorm)
@@ -1061,3 +1062,6 @@ function compute_single_mode(cut::TicraCut, s::Int, m::Int, n::Int)
     end
     return coefficient
 end
+
+
+Δⁿₙₘ(m,n) = sqrt(prod((n-m+i)/2i for i in 1:(n+m)) / 2.0^(n-m)) # Hansen (4.95) after correction
