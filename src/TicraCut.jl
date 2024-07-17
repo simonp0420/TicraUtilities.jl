@@ -636,19 +636,19 @@ function convert_cut!(cut::TicraCut{Tc,N}, icomp::Integer) where {Tc,N}
     evec = get_evec(cut)
     @inbounds for (col, phi) in enumerate(get_phi(cut))        
         p̂s = _pol_basis_vectors(phi)
-        for row in 1:length(get_theta(cut))
-            p̂1in, p̂2in = p̂s[inpol]
-            p̂1out, p̂2out = p̂s[outpol]
-            if N == 2
-                mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
-                                (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
-            elseif N == 3
-                mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in) 0 
-                                (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in) 0
-                                     0              0          1]
-            else
-                error("Unknown type parameter $N")
-            end
+        p̂1in, p̂2in = p̂s[inpol]
+        p̂1out, p̂2out = p̂s[outpol]
+        if N == 2
+            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
+                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
+        elseif N == 3
+            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in) 0 
+                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in) 0
+                                 0              0          1]
+        else
+            error("Unknown type parameter $N")
+        end
+    for row in 1:length(get_theta(cut))
             evec[row,col] = mat * evec[row,col]
         end
     end
