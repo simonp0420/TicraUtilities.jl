@@ -1,10 +1,9 @@
-using OffsetArrays: OffsetArray, OffsetVector
+using OffsetArrays: OffsetArray, OffsetVector, Origin
 using Printf: @printf
 using AssociatedLegendrePolynomials: Plm!, LegendreNormCoeff, LegendreOrthoNorm, legendre, legendre!
 using ForwardDiff: Dual, value, partials
 derivative(x::Dual) = partials(x,1)
 using FFTW: fft!, bfft!, ifft!, fftshift
-using OffsetArrays: OffsetArray, Origin
 using LinearAlgebra: norm
 using QuadGK: quadgk, kronrod
 using FastGaussQuadrature: gausslegendre
@@ -1104,26 +1103,26 @@ Convert a `TicraCut` object to a `SWEQPartition` using recursive FFT/IFFT method
 Hansen 1988 book.
 
 ## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
+* `M=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
   The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
   for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
+* `N=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
   The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
   θ values included in each ϕ = constant polar cut.
 * `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes.
 """
-function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
+function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
+    get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
     cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
     θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = θs[2] - θs[1]
     iszero(first(θs)) || error("First θ value in cut must be zero")
+    180 == last(θs) || error("Last θ value in cut must be 180°") 
     360/Δθ ≈ round(Int, 360/Δθ) || error("Δθ must divide evenly into 360 in cut")
     ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs)
 
-    # Step 1
+    # Step 1: CP components using Eθ and Eϕ components
     W₊₁ₘ = [first(e) - im*last(e) for e in get_evec(cutθϕ)]
     W₋₁ₘ = [first(e) + im*last(e) for e in get_evec(cutθϕ)]
 
@@ -1132,29 +1131,25 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     fft!(W₋₁ₘ, 2); W₋₁ₘ .*= inv(Nϕ)
 
     # Create storage for extended samples in theta
-    nθs_e = round(Int, 360/Δθ)
-    vp1 = zeros(ComplexF64, nθs_e)  # For one column of w
-    vm1 = zeros(ComplexF64, nθs_e)  # For one column of w
-    b̃p1 = zeros(ComplexF64, 2*nθs_e)
-    b̃m1 = zeros(ComplexF64, 2*nθs_e)
+    Nθe = round(Int, 360/Δθ)
+    vp1 = zeros(ComplexF64, Nθe)  # For one column of w
+    vm1 = zeros(ComplexF64, Nθe)  # For one column of w
 
-
-    nmax = min(Nθ - 1, nmax) # Maximum modal n value
-    if nmax > NMMAX
-        @warn "Reducing nmax to NMMAX = $(NMMAX)."
-        nmax = NMMAX
-    end
+    N = min(Nθ - 1, N) # Maximum modal n value
     Nϕo2 = Nϕ ÷ 2
-    mmax = isodd(Nϕ) ? min(Nϕo2, mmax) : min(Nϕo2 - 1, mmax)
-    mmax > NMMAX && error("mmax is $(mmax) but may not exceed NMMAX = $(NMMAX).")
+    M = isodd(Nϕ) ? min(Nϕo2, M) : min(Nϕo2 - 1, M) # Max modal m value
 
-    # Step 12
-    Π̃ = [complex(Π(j > nθs_e ? j - 2nθs_e : j))  for j in 0:(2*nθs_e - 1)]
+    b̃p1 = zeros(ComplexF64, 4N) # Extended Fourier coefficients
+    b̃m1 = zeros(ComplexF64, 4N)
+
+    # Step 12: Periodic extension of the Pi function
+    Π̃ = [complex(Π(j > 2N ? j - 4N : j))  for j in 0:(4N - 1)]
     ftΠ̃ = bfft!(Π̃)
 
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2mmax+1, nmax)), 1:2, -mmax:mmax, 1:nmax)
+    qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
+    roots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
 
-    for mabs in 0:mmax
+    for mabs in 0:M
         for msign in (1,-1)
             iszero(mabs) && msign == -1 && continue
             m = msign * mabs
@@ -1165,48 +1160,49 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
             vm1 .= zero(ComplexF64)
             vp1[1:Nθ] .= @view W₊₁ₘ[:, column]
             vm1[1:Nθ] .= @view W₋₁ₘ[:, column]
-            for (i,ie) in enumerate(Nθ+1:nθs_e)
+            for (i,ie) in enumerate(Nθ+1:Nθe)
                 vp1[ie] = mμsign * W₊₁ₘ[Nθ-i, column]
                 vm1[ie] = mμsign * W₋₁ₘ[Nθ-i, column]
             end
     
             # Step 3, Eq. 4.128
-            bp1 = fft!(vp1); bp1 .*= inv(nθs_e)
-            bm1 = fft!(vm1); bm1 .*= inv(nθs_e) 
+            bp1 = fft!(vp1); bp1 .*= inv(Nθe)
+            bm1 = fft!(vm1); bm1 .*= inv(Nθe) 
             # Eq. 4.87:
             b̃p1 .= zero(ComplexF64)
             b̃m1 .= zero(ComplexF64)
-            lasti = nθs_e ÷ 2 + 1
-            b̃p1[1:lasti] .= @view bp1[1:lasti]
-            b̃m1[1:lasti] .= @view bm1[1:lasti]
-            b̃p1[(nθs_e+lasti+1):end] .= @view bp1[lasti+1:nθs_e]
-            b̃m1[(nθs_e+lasti+1):end] .= @view bm1[lasti+1:nθs_e]
+            b̃p1[1:N+1] .= @view bp1[1:N+1]
+            b̃m1[1:N+1] .= @view bm1[1:N+1]
+            Nm1 = N - 1
+            b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
+            b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
         
             # Step 4: Compute K sequences using convolution
             Kp1 = fft!(ftΠ̃ .* bfft!(b̃p1)); Kp1 .*= inv(length(b̃p1))
             Km1 = fft!(ftΠ̃ .* bfft!(b̃m1)); Km1 .*= inv(length(b̃m1))
-            for n in 1:nmax
+            for n in max(1,mabs):N
                 Δⁿiₐₘ, Δⁿip1ₐₘ = _Δⁿₙₘ(mabs,n), 0.0 # For (m', m) recursion (am subscript means |m|)
                 Δⁿi₁, Δⁿip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
                 sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
+                mprimefact = 1 # See Eq. (A2.32)
                 for i in n:-1:0 # i plays role of m′
-                    mprimefact = iseven(n+i) ? 1 : -1 # See Eq. (A2.32)
                     Δₘₚₘ = m ≥ 0 ? Δⁿiₐₘ : mprimefact * Δⁿiₐₘ # See Eq. (A2.32)
                     Δₘₚ₋₁ = mprimefact * Δⁿi₁ # μ=-1 via Eq. (A2.32)
                     sp1 += ϵₙ(i) * Δₘₚₘ * Δⁿi₁ * Kp1[i+1]
                     sm1 += ϵₙ(i) * Δₘₚₘ * Δₘₚ₋₁ * Km1[i+1]
                     # Recursion:
-                    root1 = sqrt((n+i+1)*(n-i))
-                    root2 = sqrt((n+i) * (n-i+1))
+                    root1 = roots[n+i+1] * roots[n-i]
+                    root2 = roots[n+i] * roots[n-i+1]
                     Δⁿim1ₐₘ = -(root1 * Δⁿip1ₐₘ + 2mabs * Δⁿiₐₘ) / root2
                     Δⁿip1ₐₘ, Δⁿiₐₘ = Δⁿiₐₘ, Δⁿim1ₐₘ
-                    Δⁿim1₁ = -(root1 * Δⁿip1₁ + 2mabs * Δⁿi₁) / root2
+                    Δⁿim1₁ = -(root1 * Δⁿip1₁ + 2 * Δⁿi₁) / root2
                     Δⁿip1₁, Δⁿi₁ = Δⁿi₁, Δⁿim1₁
+                    mprimefact = -mprimefact
                 end
                 factor = (2n+1)/2
-                factor *= -2 * sqrt(π/(2*(2n+1))) * (im)^n
-                wp1 = factor * (1.0im)^(1-m) * sp1
-                wm1 = factor * (1.0im)^(-1-m) * sm1
+                cfactor =  (factor * (-2 * sqrt(π/(2*(2n+1))))) * (im)^n
+                wp1 = cfactor * (1.0im)^(1-m) * sp1
+                wm1 = cfactor * (1.0im)^(-1-m) * sm1
                 qsmns[1,m,n] = conj(wp1 + wm1)
                 qsmns[2,m,n] = conj(wp1 - wm1)
             end
@@ -1223,11 +1219,11 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     funcname = nameof(var"#self#")
     prgtag = string(funcname, " ", date, " ", clock)
     idstrg = "Spherical Wave Q-Coefficients"
-    nthe = nθs_e
-    mmax = last(axes(qsmn, 2))
-    nmax = last(axes(qsmn, 3))
+    nthe = Nθe
+    M = last(axes(qsmn, 2))
+    N = last(axes(qsmn, 3))
     nphi = Nϕ
     t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
+    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
 end
 
