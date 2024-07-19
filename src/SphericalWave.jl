@@ -1072,8 +1072,12 @@ end
 
 Starting value of Δ iterations from Hansen Eq. (4.95), after correcting sign error in denominator
 """
-_Δⁿₙₘ(m::Integer,n::Integer) = sqrt(prod((n-m+i)/2i for i in 1:(n+m)) / 2.0^(n-m)) # Hansen (4.95) after correction
-
+function _Δⁿₙₘ(m::Integer,n::Integer)
+    n > 0 || throw(ArgumentError("n must be positive"))
+    mabs = abs(m)
+    mabs ≤ n ||  throw(ArgumentError("|m| must be less than or equal to n"))
+    return sqrt(prod((n-mabs+i)/2i for i in 1:(n+mabs)) / 2.0^(n-mabs)) # Hansen (4.95) after correction
+end
 
 """
     _Δⁿₘₚₘ(m′::Integer, m::Integer,n::Integer)
@@ -1082,7 +1086,7 @@ _Δⁿₙₘ(m::Integer,n::Integer) = sqrt(prod((n-m+i)/2i for i in 1:(n+m)) / 2
 """
 function _Δⁿₘₚₘ(m′::Integer, m::Integer, n::Integer)
     n > 0 || throw(ArgumentError("n must be positive"))
-    0 ≤ m ≤ n || throw(ArgumentError("m must be nonnegative and less than or equal to n"))
+    -n ≤ m ≤ n || throw(ArgumentError("|m| must be less than or equal to n"))
     0 ≤ m′ ≤ n || throw(ArgumentError("m′ must be nonnegative and less than or equal to n"))
     Δip1 = 0.0
     Δi = _Δⁿₙₘ(m, n)
@@ -1181,23 +1185,22 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
             Kp1 = fft!(ftΠ̃ .* bfft!(b̃p1)); Kp1 .*= inv(length(b̃p1))
             Km1 = fft!(ftΠ̃ .* bfft!(b̃m1)); Km1 .*= inv(length(b̃m1))
             for n in max(1,mabs):N
-                Δⁿiₐₘ, Δⁿip1ₐₘ = _Δⁿₙₘ(mabs,n), 0.0 # For (m', m) recursion (am subscript means |m|)
-                Δⁿi₁, Δⁿip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
+                Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
+                Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
                 sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
                 mprimefact = 1 # See Eq. (A2.32)
                 for i in n:-1:0 # i plays role of m′
                     ϵ = ϵₙ(i)
-                    Δₘₚₘ = m ≥ 0 ? Δⁿiₐₘ : mprimefact * Δⁿiₐₘ # See Eq. (A2.32)
-                    Δₘₚ₋₁ = mprimefact * Δⁿi₁ # μ=-1 via Eq. (A2.32)
-                    sp1 += ϵ * Δₘₚₘ * Δⁿi₁ * Kp1[i+1]
-                    sm1 += ϵ * Δₘₚₘ * Δₘₚ₋₁ * Km1[i+1]
+                    Δi₋₁ = mprimefact * Δi₁ # μ=-1 via Eq. (A2.32)
+                    sp1 += ϵ * Δiₘ * Δi₁ * Kp1[i+1]
+                    sm1 += ϵ * Δiₘ * Δi₋₁ * Km1[i+1]
                     # Recursion:
                     root1 = roots[n+i+1] * roots[n-i]
                     root2 = roots[n+i] * roots[n-i+1]
-                    Δⁿim1ₐₘ = -(root1 * Δⁿip1ₐₘ + 2mabs * Δⁿiₐₘ) / root2
-                    Δⁿip1ₐₘ, Δⁿiₐₘ = Δⁿiₐₘ, Δⁿim1ₐₘ
-                    Δⁿim1₁ = -(root1 * Δⁿip1₁ + 2 * Δⁿi₁) / root2
-                    Δⁿip1₁, Δⁿi₁ = Δⁿi₁, Δⁿim1₁
+                    Δim1ₘ = -(root1 * Δip1ₘ + 2m * Δiₘ) / root2
+                    Δip1ₘ, Δiₘ = Δiₘ, Δim1ₘ
+                    Δim1₁ = -(root1 * Δip1₁ + 2 * Δi₁) / root2
+                    Δip1₁, Δi₁ = Δi₁, Δim1₁
                     mprimefact = -mprimefact
                 end
                 factor = (2n+1)/2
