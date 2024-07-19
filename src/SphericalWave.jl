@@ -1097,8 +1097,7 @@ function _Δⁿₘₚₘ(m′::Integer, m::Integer, n::Integer)
     return Δi
 end
 
-ϵₙ(k::Integer) = 2 - iszero(k)
-Π(j) = isodd(j) ? 0.0 : 2.0 / (1 - j^2)
+Π(j) = isodd(j) ? 0.0 : 2.0 / (1 - j^2) # Eq. (4.84)
 
 """
     cut2sph_hansen(cut::TicraCut; keywords...) -> s::SWEQPartition
@@ -1189,11 +1188,10 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                 Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
                 sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
                 mprimefact = 1 # See Eq. (A2.32)
-                for i in n:-1:0 # i plays role of m′
-                    ϵ = ϵₙ(i)
+                for i in n:-1:1 # i plays role of m′
                     Δi₋₁ = mprimefact * Δi₁ # μ=-1 via Eq. (A2.32)
-                    sp1 += ϵ * Δiₘ * Δi₁ * Kp1[i+1]
-                    sm1 += ϵ * Δiₘ * Δi₋₁ * Km1[i+1]
+                    sp1 += Δiₘ * Δi₁ * Kp1[i+1]
+                    sm1 += Δiₘ * Δi₋₁ * Km1[i+1]
                     # Recursion:
                     root1 = roots[n+i+1] * roots[n-i]
                     root2 = roots[n+i] * roots[n-i+1]
@@ -1203,7 +1201,10 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                     Δip1₁, Δi₁ = Δi₁, Δim1₁
                     mprimefact = -mprimefact
                 end
-                factor = (2n+1)/2
+                Δi₋₁ = mprimefact * Δi₁
+                sp1 += 0.5 * Δiₘ * Δi₁ * Kp1[1]
+                sm1 += 0.5 * Δiₘ * Δi₋₁ * Km1[1]
+                factor = 2n + 1
                 cfactor =  (factor * (-2 * sqrt(π/(2*(2n+1))))) * (im)^n
                 wp1 = cfactor * (1.0im)^(1-m) * sp1
                 wm1 = cfactor * (1.0im)^(-1-m) * sm1
