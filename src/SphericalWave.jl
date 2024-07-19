@@ -1206,10 +1206,11 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                 sm1 += 0.5 * Δiₘ * Δi₋₁ * Km1[1]
                 factor = 2n + 1
                 cfactor =  (factor * (-2 * sqrt(π/(2*(2n+1))))) * (im)^n
-                wp1 = cfactor * (1.0im)^(1-m) * sp1
-                wm1 = cfactor * (1.0im)^(-1-m) * sm1
-                qsmns[1,m,n] = conj(wp1 + wm1)
-                qsmns[2,m,n] = conj(wp1 - wm1)
+                wp1 = cfactor * (1.0im)^(1+m) * sp1
+                wm1 = cfactor * (1.0im)^(-1+m) * sm1
+                nsign = iseven(n) ? 1 : -1
+                qsmns[1,-m,n] = -nsign * (wp1 + wm1)
+                qsmns[2,-m,n] = nsign * (wp1 - wm1)
             end
         end
     end
