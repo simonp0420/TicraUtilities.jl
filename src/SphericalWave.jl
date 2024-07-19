@@ -1186,10 +1186,11 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                 sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
                 mprimefact = 1 # See Eq. (A2.32)
                 for i in n:-1:0 # i plays role of m′
+                    ϵ = ϵₙ(i)
                     Δₘₚₘ = m ≥ 0 ? Δⁿiₐₘ : mprimefact * Δⁿiₐₘ # See Eq. (A2.32)
                     Δₘₚ₋₁ = mprimefact * Δⁿi₁ # μ=-1 via Eq. (A2.32)
-                    sp1 += ϵₙ(i) * Δₘₚₘ * Δⁿi₁ * Kp1[i+1]
-                    sm1 += ϵₙ(i) * Δₘₚₘ * Δₘₚ₋₁ * Km1[i+1]
+                    sp1 += ϵ * Δₘₚₘ * Δⁿi₁ * Kp1[i+1]
+                    sm1 += ϵ * Δₘₚₘ * Δₘₚ₋₁ * Km1[i+1]
                     # Recursion:
                     root1 = roots[n+i+1] * roots[n-i]
                     root2 = roots[n+i] * roots[n-i+1]
