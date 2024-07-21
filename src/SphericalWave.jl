@@ -1146,16 +1146,19 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
     b̃m1 = zeros(ComplexF64, 4N)
 
     # Step 12: Periodic extension of the Pi function
-    Π̃ = [complex(Π(j > 2N ? j - 4N : j))  for j in 0:(4N - 1)]
+    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j)  for j in 0:(4N - 1)]
     ftΠ̃ = bfft!(Π̃)
 
     qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
-    roots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
+    sqroots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
+    cfactors = [-sqrt((4n+2)*π) * (im)^n for n in 1:N]
 
     for mabs in 0:M
         for msign in (1,-1)
             iszero(mabs) && msign == -1 && continue
             m = msign * mabs
+            mfactorp1 = (1.0im)^(1+m)
+            mfactorm1 = (1.0im)^(-1+m)
             # Fill extended vectors
             mμsign = iseven(1 - m) ? 1 : -1
             column = m ≥ 0 ? m + 1 : Nϕ + m + 1
@@ -1181,8 +1184,10 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
             b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
         
             # Step 4: Compute K sequences using convolution
-            Kp1 = fft!(ftΠ̃ .* bfft!(b̃p1)); Kp1 .*= inv(length(b̃p1))
-            Km1 = fft!(ftΠ̃ .* bfft!(b̃m1)); Km1 .*= inv(length(b̃m1))
+            bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
+            bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
+            Kp1 = fft!(b̃p1); Kp1 .*= inv(length(Kp1))
+            Km1 = fft!(b̃m1); Km1 .*= inv(length(Kp1))
             for n in max(1,mabs):N
                 Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
                 Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
@@ -1193,8 +1198,8 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                     sp1 += Δiₘ * Δi₁ * Kp1[i+1]
                     sm1 += Δiₘ * Δi₋₁ * Km1[i+1]
                     # Recursion:
-                    root1 = roots[n+i+1] * roots[n-i]
-                    root2 = roots[n+i] * roots[n-i+1]
+                    root1 = sqroots[n+i+1] * sqroots[n-i]
+                    root2 = sqroots[n+i] * sqroots[n-i+1]
                     Δim1ₘ = -(root1 * Δip1ₘ + 2m * Δiₘ) / root2
                     Δip1ₘ, Δiₘ = Δiₘ, Δim1ₘ
                     Δim1₁ = -(root1 * Δip1₁ + 2 * Δi₁) / root2
@@ -1204,10 +1209,9 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
                 Δi₋₁ = mprimefact * Δi₁
                 sp1 += 0.5 * Δiₘ * Δi₁ * Kp1[1]
                 sm1 += 0.5 * Δiₘ * Δi₋₁ * Km1[1]
-                factor = 2n + 1
-                cfactor =  (factor * (-2 * sqrt(π/(2*(2n+1))))) * (im)^n
-                wp1 = cfactor * (1.0im)^(1+m) * sp1
-                wm1 = cfactor * (1.0im)^(-1+m) * sm1
+                cfactor = cfactors[n]
+                wp1 = cfactor * mfactorp1 * sp1
+                wm1 = cfactor * mfactorm1 * sm1
                 nsign = iseven(n) ? 1 : -1
                 qsmns[1,-m,n] = -nsign * (wp1 + wm1)
                 qsmns[2,-m,n] = nsign * (wp1 - wm1)
