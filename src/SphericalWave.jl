@@ -1106,23 +1106,23 @@ Convert a `TicraCut` object to a `SWEQPartition` using recursive FFT/IFFT method
 Hansen 1988 book.
 
 ## Keyword Arguments (and their default values)
-* `M=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
+* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
   The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
   for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `N=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
+* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
   The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
   θ values included in each ϕ = constant polar cut.
 * `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes.
 """
-function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
+function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
     cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
     θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = θs[2] - θs[1]
     iszero(first(θs)) || error("First θ value in cut must be zero")
     180 == last(θs) || error("Last θ value in cut must be 180°") 
-    360/Δθ ≈ round(Int, 360/Δθ) || error("Δθ must divide evenly into 360 in cut")
+    180/Δθ ≈ round(Int, 180/Δθ) || error("Δθ must divide evenly into 180 in cut")
     ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs)
 
     # Step 1: CP components using Eθ and Eϕ components
@@ -1138,9 +1138,9 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
     vp1 = zeros(ComplexF64, Nθe)  # For one column of w
     vm1 = zeros(ComplexF64, Nθe)  # For one column of w
 
-    N = min(Nθ - 1, N) # Maximum modal n value
+    N = min(Nθ - 1, nmax) # Maximum modal n value
     Nϕo2 = Nϕ ÷ 2
-    M = isodd(Nϕ) ? min(Nϕo2, M) : min(Nϕo2 - 1, M) # Max modal m value
+    M = isodd(Nϕ) ? min(Nϕo2, mmax) : min(Nϕo2 - 1, mmax) # Max modal m value
 
     b̃p1 = zeros(ComplexF64, 4N) # Extended Fourier coefficients
     b̃m1 = zeros(ComplexF64, 4N)
@@ -1151,71 +1151,66 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, M=NMMAX, N=NMMAX)
 
     qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
     sqroots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
-    cfactors = [-sqrt((4n+2)*π) * (im)^n for n in 1:N]
+    cfactors = [-sqrt((n+0.5)*π) * (im)^n for n in 1:N]
+    for m in -M:M
+        mfactorp1 = (1.0im)^(1+m)
+        mfactorm1 = (1.0im)^(-1+m)
+        # Fill extended vectors
+        mμsign = iseven(1 - m) ? 1 : -1
+        column = m ≥ 0 ? m + 1 : Nϕ + m + 1
+        vp1 .= zero(ComplexF64)
+        vm1 .= zero(ComplexF64)
+        vp1[1:Nθ] .= @view W₊₁ₘ[:, column]
+        vm1[1:Nθ] .= @view W₋₁ₘ[:, column]
+        for (i,ie) in enumerate(Nθ+1:Nθe)
+            vp1[ie] = mμsign * W₊₁ₘ[Nθ-i, column]
+            vm1[ie] = mμsign * W₋₁ₘ[Nθ-i, column]
+        end
 
-    for mabs in 0:M
-        for msign in (1,-1)
-            iszero(mabs) && msign == -1 && continue
-            m = msign * mabs
-            mfactorp1 = (1.0im)^(1+m)
-            mfactorm1 = (1.0im)^(-1+m)
-            # Fill extended vectors
-            mμsign = iseven(1 - m) ? 1 : -1
-            column = m ≥ 0 ? m + 1 : Nϕ + m + 1
-            vp1 .= zero(ComplexF64)
-            vm1 .= zero(ComplexF64)
-            vp1[1:Nθ] .= @view W₊₁ₘ[:, column]
-            vm1[1:Nθ] .= @view W₋₁ₘ[:, column]
-            for (i,ie) in enumerate(Nθ+1:Nθe)
-                vp1[ie] = mμsign * W₊₁ₘ[Nθ-i, column]
-                vm1[ie] = mμsign * W₋₁ₘ[Nθ-i, column]
-            end
-    
-            # Step 3, Eq. 4.128
-            bp1 = fft!(vp1); bp1 .*= inv(Nθe)
-            bm1 = fft!(vm1); bm1 .*= inv(Nθe) 
-            # Eq. 4.87:
-            b̃p1 .= zero(ComplexF64)
-            b̃m1 .= zero(ComplexF64)
-            b̃p1[1:N+1] .= @view bp1[1:N+1]
-            b̃m1[1:N+1] .= @view bm1[1:N+1]
-            Nm1 = N - 1
-            b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
-            b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
+        # Step 3, Eq. 4.128
+        bp1 = fft!(vp1); bp1 .*= inv(Nθe)
+        bm1 = fft!(vm1); bm1 .*= inv(Nθe) 
+        # Eq. 4.87:
+        b̃p1 .= zero(ComplexF64)
+        b̃m1 .= zero(ComplexF64)
+        b̃p1[1:N+1] .= @view bp1[1:N+1]
+        b̃m1[1:N+1] .= @view bm1[1:N+1]
+        Nm1 = N - 1
+        b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
+        b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
         
-            # Step 4: Compute K sequences using convolution
-            bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
-            bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
-            Kp1 = fft!(b̃p1); Kp1 .*= inv(length(Kp1))
-            Km1 = fft!(b̃m1); Km1 .*= inv(length(Kp1))
-            for n in max(1,mabs):N
-                Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
-                Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
-                sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
-                mprimefact = 1 # See Eq. (A2.32)
-                for i in n:-1:1 # i plays role of m′
-                    Δi₋₁ = mprimefact * Δi₁ # μ=-1 via Eq. (A2.32)
-                    sp1 += Δiₘ * Δi₁ * Kp1[i+1]
-                    sm1 += Δiₘ * Δi₋₁ * Km1[i+1]
-                    # Recursion:
-                    root1 = sqroots[n+i+1] * sqroots[n-i]
-                    root2 = sqroots[n+i] * sqroots[n-i+1]
-                    Δim1ₘ = -(root1 * Δip1ₘ + 2m * Δiₘ) / root2
-                    Δip1ₘ, Δiₘ = Δiₘ, Δim1ₘ
-                    Δim1₁ = -(root1 * Δip1₁ + 2 * Δi₁) / root2
-                    Δip1₁, Δi₁ = Δi₁, Δim1₁
-                    mprimefact = -mprimefact
-                end
-                Δi₋₁ = mprimefact * Δi₁
-                sp1 += 0.5 * Δiₘ * Δi₁ * Kp1[1]
-                sm1 += 0.5 * Δiₘ * Δi₋₁ * Km1[1]
-                cfactor = cfactors[n]
-                wp1 = cfactor * mfactorp1 * sp1
-                wm1 = cfactor * mfactorm1 * sm1
-                nsign = iseven(n) ? 1 : -1
-                qsmns[1,-m,n] = -nsign * (wp1 + wm1)
-                qsmns[2,-m,n] = nsign * (wp1 - wm1)
+        # Step 4: Compute K sequences using convolution
+        bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
+        bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
+        Kp1 = fft!(b̃p1); Kp1 .*= inv(length(Kp1))
+        Km1 = fft!(b̃m1); Km1 .*= inv(length(Km1))
+        for n in max(1, abs(m)):N
+            Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
+            Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
+            sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
+            mprimefact = 1 # See Eq. (A2.32)
+            for i in n:-1:1 # i plays role of m′
+                Δi₋₁ = mprimefact * Δi₁ # μ=-1 via Eq. (A2.32)
+                sp1 += Δiₘ * Δi₁ * Kp1[i+1]
+                sm1 += Δiₘ * Δi₋₁ * Km1[i+1]
+                # Recursion:
+                root1 = sqroots[n+i+1] * sqroots[n-i]
+                root2 = sqroots[n+i] * sqroots[n-i+1]
+                Δim1ₘ = -(root1 * Δip1ₘ + 2m * Δiₘ) / root2
+                Δip1ₘ, Δiₘ = Δiₘ, Δim1ₘ
+                Δim1₁ = -(root1 * Δip1₁ + 2 * Δi₁) / root2
+                Δip1₁, Δi₁ = Δi₁, Δim1₁
+                mprimefact = -mprimefact
             end
+            Δi₋₁ = mprimefact * Δi₁
+            sp1 = Δiₘ * Δi₁ * Kp1[1] + 2 * sp1
+            sm1 = Δiₘ * Δi₋₁ * Km1[1] + 2 * sm1
+            cfactor = cfactors[n]
+            wp1 = cfactor * mfactorp1 * sp1
+            wm1 = cfactor * mfactorm1 * sm1
+            nsign = iseven(n) ? 1 : -1
+            qsmns[1,-m,n] = -nsign * (wp1 + wm1)
+            qsmns[2,-m,n] = nsign * (wp1 - wm1)
         end
     end
     
