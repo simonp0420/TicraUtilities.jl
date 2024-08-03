@@ -1154,7 +1154,6 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     cfactors = [-sqrt((n+0.5)*π) * (im)^n for n in 1:N]
     for m in -M:M
         mfactorp1 = (1.0im)^(1+m)
-        mfactorm1 = (1.0im)^(-1+m)
         # Fill extended vectors
         mμsign = iseven(1 - m) ? 1 : -1
         column = m ≥ 0 ? m + 1 : Nϕ + m + 1
@@ -1173,12 +1172,12 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
         # Eq. 4.87:
         b̃p1 .= zero(ComplexF64)
         b̃m1 .= zero(ComplexF64)
-        b̃p1[1:N+1] .= @view bp1[1:N+1]
-        b̃m1[1:N+1] .= @view bm1[1:N+1]
+        Np1 = N + 1
+        b̃p1[1:Np1] .= @view bp1[1:Np1]
+        b̃m1[1:Np1] .= @view bm1[1:Np1]
         Nm1 = N - 1
         b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
         b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
-        
         # Step 4: Compute K sequences using convolution
         bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
         bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
@@ -1202,21 +1201,21 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
                 Δip1₁, Δi₁ = Δi₁, Δim1₁
                 mprimefact = -mprimefact
             end
+            # Do m′ = 0:
             Δi₋₁ = mprimefact * Δi₁
             sp1 = Δiₘ * Δi₁ * Kp1[1] + 2 * sp1
             sm1 = Δiₘ * Δi₋₁ * Km1[1] + 2 * sm1
-            cfactor = cfactors[n]
-            wp1 = cfactor * mfactorp1 * sp1
-            wm1 = cfactor * mfactorm1 * sm1
+
             nsign = iseven(n) ? 1 : -1
-            qsmns[1,-m,n] = -nsign * (wp1 + wm1)
-            qsmns[2,-m,n] = nsign * (wp1 - wm1)
+            cfactor = nsign * cfactors[n] * mfactorp1
+            qsmns[1,-m,n] = cfactor * (sm1 - sp1)
+            qsmns[2,-m,n] = cfactor * (sp1 + sm1)
         end
     end
     
 
     # Eliminate modes with negligible power
-    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
+    (qpwr, powerms, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
     
 
     # Create output SWEQPartition
@@ -1229,6 +1228,6 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     N = last(axes(qsmn, 3))
     nphi = Nϕ
     t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
+    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
 end
 
