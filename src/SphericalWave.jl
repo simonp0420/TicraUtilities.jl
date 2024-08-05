@@ -1135,6 +1135,7 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
 
     # Create storage for extended samples in theta
     Nθe = round(Int, 360/Δθ)
+    Nθe == 2(Nθ - 1) || error("Nθe = $Nθe is not equal to 2(Nθ-1) = $(2(Nθ-1))")
     vp1 = zeros(ComplexF64, Nθe)  # For one column of w
     vm1 = zeros(ComplexF64, Nθe)  # For one column of w
 
