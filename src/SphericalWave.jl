@@ -1147,7 +1147,7 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     b̃m1 = zeros(ComplexF64, 4N)
 
     # Step 12: Periodic extension of the Pi function
-    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j)  for j in 0:(4N - 1)]
+    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j)  for j in 0:(4N-1)]
     ftΠ̃ = bfft!(Π̃)
 
     qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
@@ -1175,15 +1175,20 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
         b̃m1 .= zero(ComplexF64)
         Np1 = N + 1
         b̃p1[1:Np1] .= @view bp1[1:Np1]
+        b̃p1[Np1] *= 0.5
         b̃m1[1:Np1] .= @view bm1[1:Np1]
+        b̃m1[Np1] *= 0.5
         Nm1 = N - 1
         b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
+        b̃p1[end-Nm1] *= 0.5
         b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
+        b̃m1[end-Nm1] *= 0.5
         # Step 4: Compute K sequences using convolution
         bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
         bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
         Kp1 = fft!(b̃p1); Kp1 .*= inv(length(Kp1))
         Km1 = fft!(b̃m1); Km1 .*= inv(length(Km1))
+        # Check each entry of Kp1
         for n in max(1, abs(m)):N
             Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
             Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
