@@ -233,569 +233,9 @@ end
 
 
 """
-    cut2sph_adaptive(cut::TicraCut; keywords...) -> s::SWEQPartition
+    sph2cut(swefile::AbstractString; theta, phi, ipol) -> cut::TicraCut
 
-Convert a `TicraCut` object to a `SWEQPartition` using a very accurate
-but slower adaptive Gauss-Kronrod quadrature for the θ integrals.
-
-## Keyword Arguments (and their default values)
-* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
-  modes' power is less than `pwrtol` times the total modal power. A zero or negative value
-  precludes removal of any modes.
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
-  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
-  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
-  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
-  θ values included in each ϕ = constant polar cut.
-"""
-function cut2sph_adaptive(cut::TicraCut; mmax=NMMAX, nmax=NMMAX, pwrtol=1.e-10, gkorder=25)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling and include leading "2"
-    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling and include leading "2"
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-    nmax = min(Nθ - 1, nmax)
-    nrange = 1:nmax
-    if isodd(Nϕ)
-        mabsmax = min(Nϕo2, mmax)
-        Eθmat = OffsetArray(eθ, 1:Nθ, -Nϕo2:Nϕo2)
-        Eϕmat = OffsetArray(eϕ, 1:Nθ, -Nϕo2:Nϕo2)
-    else
-        mabsmax = min(Nϕo2 - 1, mmax)
-        Eθmat = OffsetArray(eθ, 1:Nθ, -Nϕo2:(Nϕo2-1))
-        Eϕmat = OffsetArray(eϕ, 1:Nθ, -Nϕo2:(Nϕo2-1))
-    end
-    mrange = -mabsmax:mabsmax
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    cfactor = sqrt(π)/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
-
-    for m in mrange
-        Eθfun = cubic_spline_interpolation(θs, view(Eθmat, :, m))
-        Eϕfun = cubic_spline_interpolation(θs, view(Eϕmat, :, m))
-        mabs = abs(m)
-        mfactor = 1
-        (m > 0 && isodd(m)) && (mfactor = -1)
-        negjⁿ⁺¹ = negjⁿ = negj = complex(0,-1)
-        for n in nrange
-            negjⁿ = negjⁿ⁺¹
-            negjⁿ⁺¹ = negjⁿ * negj
-            n < mabs && continue
-            nfactor = inv(sqrt(n*(n+1)))
-            cmn = cfactor * mfactor * nfactor
-            f1factor = negjⁿ⁺¹ * cmn 
-            f2factor = negjⁿ * cmn 
-            int, errest = quadgk(0.0, 180.0; atol=1e-10, order=gkorder) do θ
-                (θ < θs[1] || θ > θs[end]) && return @SVector[0.0,0.0]
-                sin²θ = sind(θ)^2
-                result = P̄nm(n, mabs, Dual(cosd(θ), 1.0))
-                pnm = value(result)
-                pnm′ = derivative(result)
-                f1θc = f1factor * (-negj) * (m * pnm)
-                f1ϕc = f1factor * (sin²θ * pnm′)
-                f2θc = f2factor * ((-sin²θ) * pnm′)
-                f2ϕc = f2factor * (-negj) * (m * pnm)
-                Eθ = Eθfun(θ)
-                Eϕ = Eϕfun(θ)
-                integrand = @SVector[f1θc * Eθ + f1ϕc * Eϕ, f2θc * Eθ + f2ϕc * Eϕ]
-                return integrand
-            end
-            qsmns[1,m,n], qsmns[2,m,n] = int
-        end
-    end
-
-    # The Q coefficients have now been calculated.
-    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
-
-    # Create output SWEQPartition
-    date, clock = split(string(now()), 'T')
-    funcname = nameof(var"#self#")
-    prgtag = string(funcname, " ", date, " ", clock)
-    idstrg = "Spherical Wave Q-Coefficients"
-    mmax = last(axes(qsmn, 2))
-    nmax = last(axes(qsmn, 3))
-    #nthe = (Nθ - 1) * 2
-    nthe = max(2*nmax, 6)
-    #nphi = Nϕ
-    nphi = max(2(mmax + 1), 4)
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
-end
-
-const GKORDER = 500  # Default value for nonadaptive GK quadrature
-const gkdefaults = kronrod(GKORDER, 0, 180)
-
-
-"""
-    cut2sph(cut::TicraCut; keywords...) -> s::SWEQPartition
-
-Convert a `TicraCut` object to a `SWEQPartition` using a fixed-order Gauss-Kronrod
-quadrature scheme for the θ integrals.
-
-## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
-  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
-  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
-  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
-  θ values included in each ϕ = constant polar cut.
-* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
-  modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
-  precludes removal of any modes.
-* `gkorder=$(GKORDER)`: The order of Gauss-Kronrod quadrature to use for the θ integrals.  a
-  warning will be printed if the order is not large enough for accurate calculation of
-  all requested modal Q coefficients.  Note: Decreasing `gkorder` from its default value
-  will not speed up the calculations--it will slow them down.  This is because the GK
-  nodes and weights are precomputed for the default value, but must be computed on the 
-  fly for any other value.
-"""
-function cut2sph(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gkorder=GKORDER)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
-    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-    nmax = min(Nθ - 1, nmax)
-    if nmax > NMMAX
-        @warn "Reducing nmax to NMMAX = $(NMMAX)."
-        nmax = NMMAX
-    end
-    if gkorder == GKORDER
-        θnodes, wts, gwts = gkdefaults
-    else
-        θnodes, wts, gwts = kronrod(gkorder, 0, 180)
-    end
-    lnodes = length(θnodes)
-
-    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
-    mabsmax = min(last(erange), mmax)
-    mabsmax > NMMAX && error("mabsmax is $(mabsmax) but may not exceed NMMAX = $(NMMAX).")
-    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
-    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
-    Eθ, Eϕ = (OffsetArray(zeros(ComplexF64, lnodes, Nϕ), 1:lnodes, erange) for _ in 1:2)
-
-    mrange = -mabsmax:mabsmax
-    for m in mrange
-        Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
-        Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
-        @inbounds for i in 1:lnodes
-            Eθ[i,m] = Eθfun(θnodes[i])
-            Eϕ[i,m] = Eϕfun(θnodes[i])
-        end
-    end
-    result_parent = Matrix{typeof(Dual(1.0,1.0))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
-    result = Origin(0)(result_parent)
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    qsmns_low = OffsetArray(zeros(ComplexF64, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    cfactor = sqrt(π)/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
-    @inbounds for i in 1:lnodes
-        θ = θnodes[i]
-        (θ < 1.e-5 || θ > 180 - 1.e-5) && continue # No contribution from endpoints
-        sinθ, cosθ = sincosd(θ)
-        sin²θ = sinθ * sinθ
-        P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
-        for m in mrange
-            mabs = abs(m)
-            mfactor =  (m > 0 && isodd(m)) ? -1 : 1
-            Eθᵢₘ = Eθ[i, m]
-            Eϕᵢₘ = Eϕ[i, m]
-            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
-            for n in 1:nmax
-                negjⁿ = negjⁿ⁺¹
-                negjⁿ⁺¹ = negjⁿ * negj
-                n < mabs && continue
-                nfactor = inv(sqrt(n*(n+1)))
-                cmn = cfactor * mfactor * nfactor
-                pnm = value(result[n,mabs])
-                mpnm = m*pnm
-                pnm′ = derivative(result[n,mabs])
-                f1factor = negjⁿ⁺¹ * cmn 
-                jf1factor = complex(-imag(f1factor), real(f1factor))
-                f1θconj = jf1factor * mpnm
-                sin²θpnm′ = sin²θ * pnm′
-                f1ϕconj = f1factor * sin²θpnm′
-                f2factor = negjⁿ * cmn 
-                jf2factor = complex(-imag(f2factor), real(f2factor))
-                f2θconj = f2factor * (-sin²θpnm′)
-                f2ϕconj = jf2factor * mpnm
-                q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
-                q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
-                # Compute full-order Gaussian-Kronrod quadrature:
-                qsmns[1,m,n] += wts[i] * q1
-                qsmns[2,m,n] += wts[i] * q2
-                if iseven(i)
-                    # Compute lower-order Gaussian quadrature:
-                    ii = i÷2
-                    qsmns_low[1,m,n] += gwts[ii] * q1
-                    qsmns_low[2,m,n] += gwts[ii] * q2
-                end
-            end
-        end
-    end
-
-    # The Q coefficients have now been calculated. Check GK convergence:
-    gkabserrtol = 1e-8
-    gkabserr = maximum(abs(q - qlow) for (q,qlow) in zip(qsmns,qsmns_low))
-    if gkabserr > gkabserrtol
-        @warn """Quadrature Nonconvergence
-                 Max Gauss-Kronrod error = $(round(gkabserr; sigdigits=4)) > tolerance = $(gkabserrtol). 
-                 Recommendation: Increase gkorder or reduce nmax
-        """
-    end
-
-    # Eliminate modes with negligible power
-    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
-
-    # Create output SWEQPartition
-    date, clock = split(string(now()), 'T')
-    funcname = nameof(var"#self#")
-    prgtag = string(funcname, " ", date, " ", clock)
-    idstrg = "Spherical Wave Q-Coefficients"
-    mmax = last(axes(qsmn, 2))
-    nmax = last(axes(qsmn, 3))
-    #nthe = (Nθ - 1) * 2
-    nthe = max(2*nmax, 6)
-    #nphi = Nϕ
-    nphi = max(2(mmax + 1), 4)
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
-end
-
-
-"""
-    cut2sph_gauss(cut::TicraCut; keywords...) -> s::SWEQPartition
-
-Convert a `TicraCut` object to a `SWEQPartition` using a fixed-order Gauss-Kronrod
-quadrature scheme for the θ integrals.
-
-## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
-  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
-  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
-  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
-  θ values included in each ϕ = constant polar cut.
-* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
-  modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
-  precludes removal of any modes.
-* `gaussorder=1200: The order of Gauss-Legendre quadrature to use for the θ integrals.
-  There is no test performed to determine if this value is large enough for accurate calculation of
-  all requested modal Q coefficients.  However the default value is sufficient for accurate results
-  in most circumstances.
-"""
-function cut2sph_gauss(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaussorder=1200)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
-    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-    nmax = min(Nθ - 1, nmax)
-    if nmax > NMMAX
-        @warn "Reducing nmax to NMMAX = $(NMMAX)."
-        nmax = NMMAX
-    end
-
-    θnodes, wts  = gausslegendre(gaussorder)
-    lnodes = length(θnodes)
-
-    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
-    mabsmax = min(last(erange), mmax)
-    mabsmax > NMMAX && error("mabsmax is $(mabsmax) but may not exceed NMMAX = $(NMMAX).")
-    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
-    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
-    Eθ, Eϕ = (OffsetArray(zeros(ComplexF64, lnodes, Nϕ), 1:lnodes, erange) for _ in 1:2)
-
-    mrange = -mabsmax:mabsmax
-    for m in mrange
-        Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
-        Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
-        @inbounds for i in 1:lnodes
-            θ = 90 * (θnodes[i] + 1)
-            Eθ[i,m] = Eθfun(θ)
-            Eϕ[i,m] = Eϕfun(θ)
-        end
-    end
-    result_parent = Matrix{typeof(Dual(1.0,1.0))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
-    result = Origin(0)(result_parent)
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    cfactor = sqrt(π)/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
-    @inbounds for i in 1:lnodes
-        θ = 90 * (θnodes[i] + 1)
-        #(θ < 1.e-5 || θ > 180 - 1.e-5) && continue # No contribution from endpoints
-        sinθ, cosθ = sincosd(θ)
-        sin²θ = sinθ * sinθ
-        P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
-        for m in mrange
-            mabs = abs(m)
-            mfactor = 1
-            if m > 0 && isodd(m)
-                mfactor = -1
-            end
-            Eθᵢₘ = Eθ[i, m]
-            Eϕᵢₘ = Eϕ[i, m]
-            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
-            for n in 1:nmax
-                negjⁿ = negjⁿ⁺¹
-                negjⁿ⁺¹ = negjⁿ * negj
-                n < mabs && continue
-                nfactor = inv(sqrt(n*(n+1)))
-                cmn = cfactor * mfactor * nfactor
-                pnm = value(result[n,mabs])
-                mpnm = m*pnm
-                pnm′ = derivative(result[n,mabs])
-                f1factor = negjⁿ⁺¹ * cmn 
-                jf1factor = complex(-imag(f1factor), real(f1factor))
-                f1θconj = jf1factor * mpnm
-                f1ϕconj = f1factor * (sin²θ * pnm′)
-                f2factor = negjⁿ * cmn 
-                jf2factor = complex(-imag(f2factor), real(f2factor))
-                f2θconj = f2factor * ((-sin²θ) * pnm′)
-                f2ϕconj = jf2factor * mpnm
-                q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
-                q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
-                # Compute Gaussian quadrature:
-                wt = 90 * wts[i]
-                qsmns[1,m,n] += wt * q1
-                qsmns[2,m,n] += wt * q2
-            end
-        end
-    end
-
-    # Eliminate modes with negligible power
-    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
-
-    # Create output SWEQPartition
-    date, clock = split(string(now()), 'T')
-    funcname = nameof(var"#self#")
-    prgtag = string(funcname, " ", date, " ", clock)
-    idstrg = "Spherical Wave Q-Coefficients"
-    nthe = (Nθ - 1) * 2
-    mmax = last(axes(qsmn, 2))
-    nmax = last(axes(qsmn, 3))
-    nphi = Nϕ
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
-end
-
-
-"""
-    cut2sph_gauss_generic(cut::TicraCut; keywords...) -> s::SWEQPartition
-
-Convert a `TicraCut` object to a `SWEQPartition` using a fixed-order Gauss-Kronrod
-quadrature scheme for the θ integrals.
-
-## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
-  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
-  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
-  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
-  θ values included in each ϕ = constant polar cut.
-* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
-  modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
-  precludes removal of any modes.
-* `gaussorder=1200: The order of Gauss-Legendre quadrature to use for the θ integrals.
-  There is no test performed to determine if this value is large enough for accurate calculation of
-  all requested modal Q coefficients.  However the default value is sufficient for accurate results
-  in most circumstances.
-"""
-function cut2sph_gauss_generic(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX, gaussorder=1200)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
-    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-    nmax = min(Nθ - 1, nmax)
-    if nmax > NMMAX
-        @warn "Reducing nmax to NMMAX = $(NMMAX)."
-        nmax = NMMAX
-    end
-
-    T = typeof(float(pwrtol))
-    CT = complex(T)
-
-    θnodes_orig, wts_orig  = gausslegendre(gaussorder)
-    θnodes, wts  = (θnodes_orig), (wts_orig)
-
-    lnodes = length(θnodes)
-
-    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
-    mabsmax = min(last(erange), mmax)
-    mabsmax > NMMAX && error("mabsmax is $(mabsmax) but may not exceed NMMAX = $(NMMAX).")
-    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
-    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
-    Eθ, Eϕ = (OffsetArray(zeros(CT, lnodes, Nϕ), 1:lnodes, erange) for _ in 1:2)
-
-    mrange = -mabsmax:mabsmax
-    for m in mrange
-        Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
-        Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
-        #Eθfun = scale(interpolate(view(eθoffset, :, m), BSpline(Quadratic())), θs)
-        #Eϕfun = scale(interpolate(view(eϕoffset, :, m), BSpline(Quadratic())), θs)
-        #Eθfun = pchip(θs, view(eθoffset, :, m))
-        #Eϕfun = pchip(θs, view(eϕoffset, :, m))
-        @inbounds for i in 1:lnodes
-            θ = 90 * (θnodes[i] + 1)
-            Eθ[i,m] = Eθfun(θ)
-            Eϕ[i,m] = Eϕfun(θ)
-        end
-    end
-    result_parent = Matrix{typeof(Dual(T(1.0),T(1.0)))}(undef, nmax+1, mabsmax+1) # storage for legendre functions
-    result = Origin(0)(result_parent)
-    qsmns = OffsetArray(zeros(CT, (2, 2mabsmax+1, nmax)), 1:2, -mabsmax:mabsmax, 1:nmax)
-    cfactor = sqrt(T(BigFloat(π)))/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
-    @inbounds for i in 1:lnodes
-        θ = T(90 * (θnodes[i] + 1))
-        wt = 90 * wts[i]
-        #(θ < 1.e-5 || θ > 180 - 1.e-5) && continue # No contribution from endpoints
-        sinθ, cosθ = sincosd(θ)
-        sin²θ = sinθ * sinθ
-        P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, one(T)))
-        for m in mrange
-            mabs = abs(m)
-            mfactor = 1
-            if m > 0 && isodd(m)
-                mfactor = -1
-            end
-            Eθᵢₘ = Eθ[i, m]
-            Eϕᵢₘ = Eϕ[i, m]
-            negj = negjⁿ = negjⁿ⁺¹ = complex(0,-1)
-            for n in 1:nmax
-                negjⁿ = negjⁿ⁺¹
-                negjⁿ⁺¹ = negjⁿ * negj
-                n < mabs && continue
-                nfactor = inv(sqrt(T(n)*(n+1)))
-                cmn = cfactor * mfactor * nfactor
-                pnm = value(result[n,mabs])
-                mpnm = m*pnm
-                pnm′ = derivative(result[n,mabs])
-                f1factor = negjⁿ⁺¹ * cmn 
-                jf1factor = complex(-imag(f1factor), real(f1factor))
-                f1θconj = jf1factor * mpnm
-                f1ϕconj = f1factor * (sin²θ * pnm′)
-                f2factor = negjⁿ * cmn 
-                jf2factor = complex(-imag(f2factor), real(f2factor))
-                f2θconj = f2factor * ((-sin²θ) * pnm′)
-                f2ϕconj = jf2factor * mpnm
-                q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
-                q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
-                # Compute Gaussian quadrature:
-                qsmns[1,m,n] += wt * q1
-                qsmns[2,m,n] += wt * q2
-            end
-        end
-    end
-
-    # Eliminate modes with negligible power
-    (qpwr, powerm, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
-
-    # Create output SWEQPartition
-    date, clock = split(string(now()), 'T')
-    funcname = nameof(var"#self#")
-    prgtag = string(funcname, " ", date, " ", clock)
-    idstrg = "Spherical Wave Q-Coefficients"
-    nthe = (Nθ - 1) * 2
-    mmax = last(axes(qsmn, 2))
-    nmax = last(axes(qsmn, 3))
-    nphi = Nϕ
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, qsmns=qsmn, powerms=powerm)
-end
-
-
-function _filter_qmodes_by_power(qsmns, pwrtol)
-    srange, mrange, nrange = axes(qsmns)
-    mabsmax = last(mrange)
-    nmax = last(nrange)
-    powerms = Origin(0)(zeros(mabsmax+1))
-    powerms[0] = 0.5 * sum(abs2, (qsmns[s,0,n] for s in srange for n in nrange))
-    for mabs in 1:mabsmax
-        powerms[mabs] = 0.5 * sum(abs2, (qsmns[s,m,n] for s in 1:2 for m in (-mabs,mabs) for n in nrange))
-    end
-    qpwr = sum(powerms)
-    pwrtol ≤ 0 && return (qpwr, powerms, qsmns)
-
-    # Retain only m modes with nonneglible power
-    mretain = mabsmax
-    if pwrtol > 0
-        for mtest in 0:mabsmax
-            mretain = mtest
-            qpwr - sum(powerms[m] for m in 0:mretain) < pwrtol && break
-        end
-        qpwr = sum(powerms[m] for m in 1:mretain)
-    end
-
-    # Retain only n modes with nonnegligible power
-    nretain = nmax
-    if pwrtol > 0
-        for ntest in 1:nmax
-            nretain = ntest
-            qsretained = (qsmns[s,m,n] for s in 1:2 for m in -mretain:mretain for n in 1:nretain)
-            qpwr - 0.5*sum(abs2, qsretained) < pwrtol && break
-        end
-    end
-
-    mretain = min(mretain, nretain)
-
-    if (mabsmax ≠ mretain) || (nmax ≠ nretain)
-        mabsmax = mretain
-        nmax = nretain
-        qsmn = OffsetArray(zeros(ComplexF64, 2, 2mabsmax + 1, nmax), 1:2, -mabsmax:mabsmax, 1:nmax)
-        @inbounds for n in 1:nmax, m in -mabsmax:mabsmax, s in 1:2
-            qsmn[s,m,n] = qsmns[s,m,n]
-        end
-        powerm = Origin(0)(zeros(mabsmax+1))
-        powerm[0] = 0.5 * sum(abs2, qsmn[s,0,n] for s in 1:2, n in 1:nmax)
-        for mabs in 1:mabsmax
-            powerm[mabs] = 0.5 * sum(abs2, qsmn[s,m,n] for s in 1:2, m in (-mabs,mabs), n in 1:nmax)
-        end
-        qpwr = sum(powerm)
-    else
-        powerm = powerms
-        qsmn = qsmns
-    end                
-
-    return (qpwr, powerm, qsmn)
-end
-
-
-"""
-    sph2cut(swefile; theta, phi, ipol) -> cut::TicraCut
-
-    sph2cut(swe; theta, phi, ipol) -> cut::TicraCut
+    sph2cut(swe:SWEQPartition; theta, phi, ipol) -> cut::TicraCut
 
 Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
 values, returned as a `TicraCut` object. 
@@ -922,8 +362,7 @@ function _q2evec(qsmns, θs, ϕs)
     Es = zeros(SVector{2, ComplexF64}, Nθ, Nϕ)
     cfactor = 1/(2*sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
 
-    Threads.@threads for iθ in eachindex(θs) # 57.6 msec
-    #@inbounds for iθ in eachindex(θs) # 366.23 msec
+    Threads.@threads for iθ in eachindex(θs)
         result_parent = take!(chnl)
         result = Origin(0)(result_parent)
         θ = θs[iθ]
@@ -995,76 +434,9 @@ end # function
 
 
 
-
-function compute_single_mode(cut::TicraCut, s::Int, m::Int, n::Int)
-    get_ncomp(cut) == 2 || error("Must have only 2 polarization components")
-    cutpwr = power(cut)
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = deg2rad(θs[2] - θs[1])
-    (first(θs) == 0 && last(θs) == 180) || error("bad theta limits")
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs); Δϕ = deg2rad(ϕs[2] - ϕs[1])
-    eθ = first.(get_evec(cutθϕ))
-    eϕ = last.(get_evec(cutθϕ))
-    # Perform ϕ integration:
-    ifft!(eθ, 2);  eθ .*= 2Δϕ * Nϕ # undo scaling
-    ifft!(eϕ, 2);  eϕ .*= 2Δϕ * Nϕ # undo scaling
-    eθ = fftshift(eθ, 2)
-    eϕ = fftshift(eϕ, 2)
-    Nϕo2 = Nϕ ÷ 2
-
-    T = Float64
-    #CT = complex(T)
-
-    erange = isodd(Nϕ) ? (-Nϕo2:Nϕo2) : (-Nϕo2:(Nϕo2-1))
-    eθoffset = OffsetArray(eθ, 1:Nθ, erange)
-    eϕoffset = OffsetArray(eϕ, 1:Nθ, erange)
-
-    Eθfun = cubic_spline_interpolation(θs, view(eθoffset, :, m))
-    Eϕfun = cubic_spline_interpolation(θs, view(eϕoffset, :, m))
-
-    cfactor = sqrt(T(BigFloat(π)))/360 # Includes 1/sqrt(2) needed for f1 and f2, and π/180 for dθ in degrees
-    mfactor = 1
-    if m > 0 && isodd(m)
-        mfactor = -1
-    end
-    negj = complex(0,-1)
-    negjⁿ = (negj)^n
-    negjⁿ⁺¹ = negjⁿ * negj
-    nfactor = inv(sqrt(T(n)*(n+1)))
-    cmn = cfactor * mfactor * nfactor
-    coefficient = quadgk(0.0, 180.0; atol=1e-12) do θ
-        sinθ, cosθ = sincosd(θ)
-        sin²θ = sinθ * sinθ
-        res = P̄nm(n, abs(m), Dual(cosθ, one(T)))
-        Eθᵢₘ = Eθfun(θ)
-        Eϕᵢₘ = Eϕfun(θ)
-        pnm = value(res)
-        mpnm = m*pnm
-        pnm′ = derivative(res)
-        if s == 1
-            f1factor = negjⁿ⁺¹ * cmn 
-            jf1factor = complex(-imag(f1factor), real(f1factor))
-            f1θconj = jf1factor * mpnm
-            f1ϕconj = f1factor * (sin²θ * pnm′)
-            q1 = f1θconj * Eθᵢₘ + f1ϕconj * Eϕᵢₘ
-            return q1
-        elseif s == 2
-            f2factor = negjⁿ * cmn 
-            jf2factor = complex(-imag(f2factor), real(f2factor))
-            f2θconj = f2factor * ((-sin²θ) * pnm′)
-            f2ϕconj = jf2factor * mpnm
-            q2 = f2θconj * Eθᵢₘ + f2ϕconj * Eϕᵢₘ
-            return q2
-        else
-            error("illegal value of s")
-        end
-    end
-    return coefficient
-end
-
-
 # 
-# Beginning of implementation of algorithms from Hansen, 1988: "Spherical Near-Field Antenna Measurements"
+# Beginning of implementation of algorithms from Hansen, 1988: "Spherical Near-Field Antenna Measurements".
+# Equation numbers referenced below refer to those of this book.
 #
 
 """
@@ -1100,38 +472,60 @@ end
 Π(j) = isodd(j) ? 0.0 : 2.0 / (1 - j^2) # Eq. (4.84)
 
 """
-    cut2sph_hansen(cut::TicraCut; keywords...) -> s::SWEQPartition
+    cut2sph(cut::TicraCut; keywords...) -> s::SWEQPartition
+    cut2sph(cutfile::AbstractString; kwargs...) -> s::SWEQPartition
 
 Convert a `TicraCut` object to a `SWEQPartition` using recursive FFT/IFFT methods from
-Hansen 1988 book.
+the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
+
+The single positional input argument can be either a string containing the name 
+of a Ticra-compatible, polar cut file, or the returned value of type `TicraCut` that 
+results from reading such a file with `read_cutfile`.  The output of this function
+can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
+spherical wave coefficients.
+
+If the input cuts extend in θ only to θ₀ < 180°, then it will be assumed that
+the fields are identically zero for θ₀ < θ ≤ 180°.
 
 ## Keyword Arguments (and their default values)
-* `mmax=$(NMMAX)`: An upper limit for the `m` (azimuthal) mode index to be included.
+* `mmax=1000`: An upper limit for the `m` (azimuthal) mode index to be included.
   The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
   for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
-* `nmax=$(NMMAX)`: An upper limit for the `n` (polar) mode index to be included.
+* `nmax=1000`: An upper limit for the `n` (polar) mode index to be included.
   The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
   θ values included in each ϕ = constant polar cut.
-* `pwrtol=1e-10`: The power tolerance.  Spherical modes are included until the excluded
+* `pwrtol=0.0`: The power tolerance.  Spherical modes are included until the excluded
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes.
 """
-function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
+function cut2sph(cutfile::AbstractString; kwargs...)
+    cut = read_cutfile(cutfile)
+    cut2sph(swe; kwargs...)
+end
+
+
+function cut2sph(cut::TicraCut; pwrtol=0.0, mmax=1000, nmax=1000)
     get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
     cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
     θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = θs[2] - θs[1]
     iszero(first(θs)) || error("First θ value in cut must be zero")
-    180 == last(θs) || error("Last θ value in cut must be 180°") 
     180/Δθ ≈ round(Int, 180/Δθ) || error("Δθ must divide evenly into 180 in cut")
     ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs)
+    if 180 ≠ last(θs)
+        # Extend cut to θ = 180 with zeros
+        newθs = (last(θs) + Δθ):Δθ:180
+        newzeros = zeros(eltype(cut.evec), length(newθs), Nϕ)
+        cutθϕ.evec = vcat(cutθϕ.evec, newzeros)
+        cut.theta = first(θs):Δθ:180
+    end
 
     # Step 1: CP components using Eθ and Eϕ components
-    W₊₁ₘ = [first(e) - im*last(e) for e in get_evec(cutθϕ)]
-    W₋₁ₘ = [first(e) + im*last(e) for e in get_evec(cutθϕ)]
+    W₊₁ₘ = [first(e) + im*last(e) for e in get_evec(cutθϕ)]
+    W₋₁ₘ = [first(e) - im*last(e) for e in get_evec(cutθϕ)]
 
     # Step 2: ϕ integration. Eq. (4.127):
-    fft!(W₊₁ₘ, 2); W₊₁ₘ .*= inv(Nϕ)
-    fft!(W₋₁ₘ, 2); W₋₁ₘ .*= inv(Nϕ)
+    ifft!(W₊₁ₘ, 2)
+    ifft!(W₋₁ₘ, 2)
 
     # Create storage for extended samples in theta
     Nθe = round(Int, 360/Δθ)
@@ -1148,7 +542,7 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
 
     # Step 12: Periodic extension of the Pi function
     Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j)  for j in 0:(4N-1)]
-    ftΠ̃ = bfft!(Π̃)
+    ftΠ̃ = fft!(Π̃)
 
     qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
     sqroots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
@@ -1168,8 +562,8 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
         end
 
         # Step 3, Eq. 4.128
-        bp1 = fft!(vp1); bp1 .*= inv(Nθe)
-        bm1 = fft!(vm1); bm1 .*= inv(Nθe) 
+        bp1 = ifft!(vp1)
+        bm1 = ifft!(vm1)
         # Eq. 4.87:
         b̃p1 .= zero(ComplexF64)
         b̃m1 .= zero(ComplexF64)
@@ -1184,13 +578,12 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
         b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
         b̃m1[end-Nm1] *= 0.5
         # Step 4: Compute K sequences using convolution
-        bfft!(b̃p1); b̃p1 .*= ftΠ̃ 
-        bfft!(b̃m1); b̃m1 .*= ftΠ̃ 
-        Kp1 = fft!(b̃p1); Kp1 .*= inv(length(Kp1))
-        Km1 = fft!(b̃m1); Km1 .*= inv(length(Km1))
-        # Check each entry of Kp1
+        fft!(b̃p1); b̃p1 .*= ftΠ̃ 
+        fft!(b̃m1); b̃m1 .*= ftΠ̃ 
+        Kp1 = ifft!(b̃p1)
+        Km1 = ifft!(b̃m1)
         for n in max(1, abs(m)):N
-            Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion (am subscript means |m|)
+            Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion
             Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
             sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
             mprimefact = 1 # See Eq. (A2.32)
@@ -1212,10 +605,10 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
             sp1 = Δiₘ * Δi₁ * Kp1[1] + 2 * sp1
             sm1 = Δiₘ * Δi₋₁ * Km1[1] + 2 * sm1
 
-            nsign = iseven(n) ? 1 : -1
+            nsign = iseven(n) ? -1 : 1
             cfactor = nsign * cfactors[n] * mfactorp1
-            qsmns[1,-m,n] = cfactor * (sm1 - sp1)
-            qsmns[2,-m,n] = cfactor * (sp1 + sm1)
+            qsmns[1,m,n] = cfactor * (sp1 - sm1)
+            qsmns[2,m,n] = cfactor * (sp1 + sm1)
         end
     end
     
@@ -1235,5 +628,60 @@ function cut2sph_hansen(cut::TicraCut; pwrtol=1e-10, mmax=NMMAX, nmax=NMMAX)
     nphi = Nϕ
     t4 = t5 = t6 = t7 = "Dummy Text"
     return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
+end
+
+function _filter_qmodes_by_power(qsmns, pwrtol)
+    srange, mrange, nrange = axes(qsmns)
+    mabsmax = last(mrange)
+    nmax = last(nrange)
+    powerms = Origin(0)(zeros(mabsmax+1))
+    powerms[0] = 0.5 * sum(abs2, (qsmns[s,0,n] for s in srange for n in nrange))
+    for mabs in 1:mabsmax
+        powerms[mabs] = 0.5 * sum(abs2, (qsmns[s,m,n] for s in 1:2 for m in (-mabs,mabs) for n in nrange))
+    end
+    qpwr = sum(powerms)
+    pwrtol ≤ 0 && return (qpwr, powerms, qsmns)
+
+    # Retain only m modes with nonneglible power
+    mretain = mabsmax
+    if pwrtol > 0
+        for mtest in 0:mabsmax
+            mretain = mtest
+            qpwr - sum(powerms[m] for m in 0:mretain) < pwrtol && break
+        end
+        qpwr = sum(powerms[m] for m in 1:mretain)
+    end
+
+    # Retain only n modes with nonnegligible power
+    nretain = nmax
+    if pwrtol > 0
+        for ntest in 1:nmax
+            nretain = ntest
+            qsretained = (qsmns[s,m,n] for s in 1:2 for m in -mretain:mretain for n in 1:nretain)
+            qpwr - 0.5*sum(abs2, qsretained) < pwrtol && break
+        end
+    end
+
+    mretain = min(mretain, nretain)
+
+    if (mabsmax ≠ mretain) || (nmax ≠ nretain)
+        mabsmax = mretain
+        nmax = nretain
+        qsmn = OffsetArray(zeros(ComplexF64, 2, 2mabsmax + 1, nmax), 1:2, -mabsmax:mabsmax, 1:nmax)
+        @inbounds for n in 1:nmax, m in -mabsmax:mabsmax, s in 1:2
+            qsmn[s,m,n] = qsmns[s,m,n]
+        end
+        powerm = Origin(0)(zeros(mabsmax+1))
+        powerm[0] = 0.5 * sum(abs2, qsmn[s,0,n] for s in 1:2, n in 1:nmax)
+        for mabs in 1:mabsmax
+            powerm[mabs] = 0.5 * sum(abs2, qsmn[s,m,n] for s in 1:2, m in (-mabs,mabs), n in 1:nmax)
+        end
+        qpwr = sum(powerm)
+    else
+        powerm = powerms
+        qsmn = qsmns
+    end                
+
+    return (qpwr, powerm, qsmn)
 end
 
