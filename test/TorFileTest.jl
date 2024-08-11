@@ -9,7 +9,7 @@ using SafeTestsets
     @test t[1].propname == 
         ["file_name", "unit", "number_of_points", "translation", "polar_origin"]
     @test t[1].propval ==
-        ["harris_9m_scalloped_rim.xyz", "in", "112", "struct(x: 0.0 in, y: 0.0 in)",
+        ["h_9m_scalloped_rim.xyz", "in", "112", "struct(x: 0.0 in, y: 0.0 in)",
         "struct(status: automatic, x: 0.0 in, y: 0.0 in)"]
     @test t[2].name == "extsub_sw.rim"
     @test t[2].objtype == "tabulated_rim_xy"
