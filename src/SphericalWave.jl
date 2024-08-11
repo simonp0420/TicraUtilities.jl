@@ -5,9 +5,6 @@ using ForwardDiff: Dual, value, partials
 derivative(x::Dual) = partials(x,1)
 using FFTW: fft!, bfft!, ifft!, fftshift
 using LinearAlgebra: norm
-using QuadGK: quadgk, kronrod
-using FastGaussQuadrature: gausslegendre
-using Interpolations: cubic_spline_interpolation
 using Dates: now
 
 
@@ -233,12 +230,12 @@ end
 
 
 """
-    sph2cut(swefile::AbstractString; theta, phi, ipol) -> cut::TicraCut
+    sph2cut(swefile::AbstractString; theta, phi, ipol) -> cut::Cut
 
-    sph2cut(swe:SWEQPartition; theta, phi, ipol) -> cut::TicraCut
+    sph2cut(swe:SWEQPartition; theta, phi, ipol) -> cut::Cut
 
 Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
-values, returned as a `TicraCut` object. 
+values, returned as a `Cut` object. 
 
 The single positional input argument can be either a string containing the name 
 of a Ticra-compatible Q-type spherical wave file, or the returned value from reading 
@@ -320,7 +317,7 @@ function sph2cut(swe::SWEQPartition;
 
     date, clock = split(string(now()), 'T')
     funcname = nameof(var"#self#")
-    # Create the TicraCut object:
+    # Create the Cut object:
     ncomp = 2
     icut = 1
     icomp = icomp
@@ -328,7 +325,7 @@ function sph2cut(swe::SWEQPartition;
     theta = θs
     phi = ϕs
     evec = Es
-    cut = TicraCut(;ncomp, icut, icomp, text, theta, phi, evec)
+    cut = Cut(;ncomp, icut, icomp, text, theta, phi, evec)
 
     return cut
 end # function
@@ -472,15 +469,15 @@ end
 Π(j) = isodd(j) ? 0.0 : 2.0 / (1 - j^2) # Eq. (4.84)
 
 """
-    cut2sph(cut::TicraCut; keywords...) -> s::SWEQPartition
+    cut2sph(cut::Cut; keywords...) -> s::SWEQPartition
     cut2sph(cutfile::AbstractString; kwargs...) -> s::SWEQPartition
 
-Convert a `TicraCut` object to a `SWEQPartition` using recursive FFT/IFFT methods from
+Convert a `Cut` object to a `SWEQPartition` using recursive FFT/IFFT methods from
 the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 
 The single positional input argument can be either a string containing the name 
-of a Ticra-compatible, polar cut file, or the returned value of type `TicraCut` that 
-results from reading such a file with `read_cutfile`.  The output of this function
+of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
+that results from reading such a file with `read_cutfile`.  The output of this function
 can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
 spherical wave coefficients.
 
@@ -500,11 +497,11 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
 """
 function cut2sph(cutfile::AbstractString; kwargs...)
     cut = read_cutfile(cutfile)
-    cut2sph(swe; kwargs...)
+    cut2sph(cut; kwargs...)
 end
 
 
-function cut2sph(cut::TicraCut; pwrtol=0.0, mmax=1000, nmax=1000)
+function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
     cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
     θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = θs[2] - θs[1]
@@ -516,7 +513,9 @@ function cut2sph(cut::TicraCut; pwrtol=0.0, mmax=1000, nmax=1000)
         newθs = (last(θs) + Δθ):Δθ:180
         newzeros = zeros(eltype(cut.evec), length(newθs), Nϕ)
         cutθϕ.evec = vcat(cutθϕ.evec, newzeros)
-        cut.theta = first(θs):Δθ:180
+        cutθϕ.theta = first(θs):Δθ:180
+        θs = get_theta(cutθϕ)
+        Nθ = length(θs)
     end
 
     # Step 1: CP components using Eθ and Eϕ components

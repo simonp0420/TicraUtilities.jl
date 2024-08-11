@@ -1,6 +1,6 @@
 using SafeTestsets
 
-@safetestset "TicraExi" begin 
+@safetestset "Exi" begin 
     using TicraUtilities
     t = read_exi(joinpath(@__DIR__, "beam_A14R.exi"))
     @test length(get_header(t)) == 1

@@ -2,11 +2,11 @@ using Printf: @printf
 
 
 """
-    TicraStation 
+    Station 
 
 Contains the data for a single partition of a Ticra station file.
 """
-struct TicraStation
+struct Station
     "`npoint`: The number of stations in the partition."
     npoint::Int 
 
@@ -76,24 +76,24 @@ struct TicraStation
     area_weight::Vector{Float64} # Used by SHSPO only
 end
 
-TicraStation() = TicraStation(0,Float64[],Float64[],Float64[],Float64[],Int[],Float64[],Float64[],
+Station() = Station(0,Float64[],Float64[],Float64[],Float64[],Int[],Float64[],Float64[],
     String[],Bool[],Bool[],Bool[],Float64[])
 
 # Define a constructor that doesn't require the `SHSPO`-specific fields:
-TicraStation(n::Int, u::AbstractVector{Float64}, v::AbstractVector{Float64}, g::AbstractVector{Float64},
+Station(n::Int, u::AbstractVector{Float64}, v::AbstractVector{Float64}, g::AbstractVector{Float64},
     w::Vector{Float64}, ipol::AbstractVector{Int}, rot::AbstractVector{Float64},
     att::AbstractVector{Float64}, ID::AbstractVector{String}) = 
-    TicraStation(n, u, v, g, w, ipol, rot, att, ID, Bool[],Bool[],Bool[],Float64[])
+    Station(n, u, v, g, w, ipol, rot, att, ID, Bool[],Bool[],Bool[],Float64[])
 
 
 """
-    write_station(stationfile::AbstractString, stdat::TicraStation)
-    write_station(stationfile::AbstractString, stdat::AbstractVector{TicraStation})
+    write_station(stationfile::AbstractString, stdat::Station)
+    write_station(stationfile::AbstractString, stdat::AbstractVector{Station})
     
 Write a Ticra POS4-compatible optimization station file.  Here, when `stdat` is a vector,
 its elements are the partitions in the station file. 
 """
-function write_station(stationfile::AbstractString, stadat::AbstractVector{TicraStation})
+function write_station(stationfile::AbstractString, stadat::AbstractVector{Station})
     open(stationfile, "w") do fid
         for (kpart, d) in enumerate(stadat)
             @printf(fid, "%d\n", d.npoint)
@@ -108,11 +108,11 @@ function write_station(stationfile::AbstractString, stadat::AbstractVector{Ticra
     return
 end
 
-write_station(stafile::AbstractString, stadat::TicraStation) = write_station(stafile, TicraStation[stadat])
+write_station(stafile::AbstractString, stadat::Station) = write_station(stafile, Station[stadat])
 
 
 """
-    read_station(stationfile) -> Vector{TicraStation}
+    read_station(stationfile) -> Vector{Station}
     
 Read the contents of a Ticra optimization station file. The returned value
 a vector of length `npart`, where `npart` is the number of partitions in the file.
@@ -120,7 +120,7 @@ a vector of length `npart`, where `npart` is the number of partitions in the fil
 function read_station(stafile)
     stadat = open(stafile, "r") do fid
         kpart = 0;  # Partition counter
-        stadat = TicraStation[]
+        stadat = Station[]
         
         # Read number of points in next partition.
         tline = split(readline(fid))
@@ -130,7 +130,7 @@ function read_station(stafile)
         while npoint > 0
             kpart += 1  # Bump number of partitions
             # Preallocate a structure:
-            d = TicraStation(npoint,
+            d = Station(npoint,
                 zeros(npoint),
                 zeros(npoint),
                 zeros(npoint),

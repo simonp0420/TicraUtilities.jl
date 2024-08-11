@@ -4,7 +4,7 @@ using SafeTestsets
     using TicraUtilities
     t = parse_tor_file(joinpath(@__DIR__, "tabulated_rim_tor_file.tor"))
     @test length(t) == 2
-    @test t[1].name == "east_harris_9m_rim"
+    @test t[1].name == "east_9m_rim"
     @test t[1].objtype == "tabulated_rim_xy"
     @test t[1].propname == 
         ["file_name", "unit", "number_of_points", "translation", "polar_origin"]

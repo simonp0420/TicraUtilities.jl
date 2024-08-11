@@ -2,14 +2,14 @@ using StaticArrays
 using Dierckx: Spline1D
 using DSP: unwrap
 
-abstract type TicraGeom end
+abstract type Geom end
 
 function _check_legal_length_units(unit::AbstractString)
     u = lowercase(unit)
     @assert u == "mm" || u == "cm" || u == "m" || u == "km" || u == "in"  "Illegal length unit"
 end
 
-abstract type Rim <: TicraGeom end
+abstract type Rim <: Geom end
 
 struct EllipticalRim <: Rim
     centre::      SVector{2, Float64}
@@ -336,7 +336,7 @@ function read_tabulatedrimxyold(fname::AbstractString, unit::AbstractString, npo
 end
 
 
-abstract type CoordinateSystem <: TicraGeom end
+abstract type CoordinateSystem <: Geom end
 
 struct CoorSys <: CoordinateSystem
     name::         String

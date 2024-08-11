@@ -1,8 +1,8 @@
 using SafeTestsets
 
-include("TicraCutTest.jl")
+include("CutTest.jl")
 include("SWETest.jl")
-include("TicraStationTest.jl")
+include("StationTest.jl")
 include("TfileTest.jl")
-include("TicraExiTest.jl")
+include("ExiTest.jl")
 include("TorFileTest.jl")

@@ -28,7 +28,7 @@ end
     using LinearAlgebra: norm
     sphfile = joinpath(@__DIR__, "center_element_rhcp_excited_q.swe")
     cut_test = sph2cut(sphfile; phi=0:5:355, theta=0:1:180, ipol=2)
-    cut_good = read_ticra_cut(joinpath(@__DIR__, "center_element_rhcp_excited_q.cut"))
+    cut_good = read_cutfile(joinpath(@__DIR__, "center_element_rhcp_excited_q.cut"))
     Eθ_err =  maximum(norm, first.(cut_test.evec) - first.(cut_good.evec))
     Eϕ_err =  maximum(norm, last.(cut_test.evec) - last.(cut_good.evec))
 
@@ -66,3 +66,19 @@ end
     @test TicraUtilities._Δⁿₘₚₘ(0,5,5) ≈ -3*√7/16
 end
 
+@safetestset "Cut Reconstruction" begin 
+    using TicraUtilities: read_cutfile, cut2sph, sph2cut
+    using LinearAlgebra: norm
+    cutfile = joinpath(@__DIR__, "center_element_rhcp_excited.cut")
+    cut1 = read_cutfile(cutfile)
+    swe1 = cut2sph(cutfile)
+    cut2 = sph2cut(swe1)
+    maxerr = maximum(norm, cut1.evec - cut2.evec)
+    @test maxerr < 0.0008
+
+    cut1.evec = cut1.evec[1:91,:]
+    cut1.theta = 0:90
+    swe2 = cut2sph(cut1)
+    maxerr2 = maximum(abs, swe2.qsmns - swe1.qsmns)
+    @test maxerr2 < 1e-15
+end

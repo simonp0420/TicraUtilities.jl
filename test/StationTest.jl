@@ -1,6 +1,6 @@
 using SafeTestsets
 
-@safetestset "TicraStation" begin 
+@safetestset "Station" begin 
     using TicraUtilities
 
     stadat = read_station("scenario2_coverage.sta")

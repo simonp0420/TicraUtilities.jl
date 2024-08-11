@@ -18,11 +18,11 @@ export
     read_station,
     read_tabulatedrimxyold,
     read_tfile,
-    read_ticra_cut,
-    read_ticra_cuts,
+    read_cutfile,
+    read_cutfiles,
     SuperEllipticalRim,
     TabulatedRimXYold,
-    TicraStation,
+    Station,
     TorObj,
     write_exi,
     write_station,
@@ -50,12 +50,12 @@ export
 include("eval_horn_primary_champ.jl")
 =##
 
-include("TicraCut.jl")
-include("TicraStation.jl")
+include("Cut.jl")
+include("Station.jl")
 include("Tfile.jl")
-include("TicraExi.jl")
+include("Exi.jl")
 include("TorFile.jl")
-include("TicraGeom.jl")
+include("Geom.jl")
 
 #==
 include("TicraSfc.jl")

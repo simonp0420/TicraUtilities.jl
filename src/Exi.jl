@@ -1,9 +1,9 @@
 """
-  TicraExi
+  Exi
 
 Data from a Ticra excitation file.
 """
-struct TicraExi
+struct Exi
   header::Vector{String}
   ampdb::Vector{Float64}
   phsdeg:: Vector{Float64}
@@ -11,48 +11,48 @@ struct TicraExi
 end
 
 """
-  get_header(t::TicraExi)
+  get_header(t::Exi)
 
 Return a vector of header strings.
 """
-get_header(t::TicraExi) = t.header
+get_header(t::Exi) = t.header
 
 """
-  amplitude_db(t::TicraExi)
+  amplitude_db(t::Exi)
 
 Return a vector of amplitudes in dB
 """
-amplitude_db(t::TicraExi) = t.ampdb
+amplitude_db(t::Exi) = t.ampdb
 
 """
-  phase_deg(t::TicraExi)
+  phase_deg(t::Exi)
 
 Return a vector of phases in degrees.
 """
-phase_deg(t::TicraExi) = t.phsdeg
+phase_deg(t::Exi) = t.phsdeg
 
 """
-  get_ids(t::TicraExi)
+  get_ids(t::Exi)
 
 Return a vector of id strings.
 """
-get_ids(t::TicraExi) = t.id
+get_ids(t::Exi) = t.id
 
 
 import Base.complex
 
 """
-  complex(t::TicraExi)
+  complex(t::Exi)
 
 Return a vector complex excitation amplitudes.
 """
-complex(exi::TicraExi) = [10^(ampdb/20) * cis(deg2rad(phs))  for (ampdb,phs) in zip(exi.ampdb,exi.phsdeg)]
+complex(exi::Exi) = [10^(ampdb/20) * cis(deg2rad(phs))  for (ampdb,phs) in zip(exi.ampdb,exi.phsdeg)]
 
 
 """
   read_exi(filename::AbstractString)
   
-Reads contents of a Ticra-compatible excitation file and returns a `TicraExi` object.
+Reads contents of a Ticra-compatible excitation file and returns a `Exi` object.
 """
 function read_exi(filename::AbstractString)
     open(filename,"r") do fid
@@ -72,17 +72,17 @@ function read_exi(filename::AbstractString)
                 push!(phsdeg, parse(Float64,p))
             end
         end
-        return TicraExi(header,ampdb,phsdeg,id)
+        return Exi(header,ampdb,phsdeg,id)
     end
 end
 
 using Printf: @printf
 """
-  write_exi(filename::AbstractString, t::TicraExi)
+  write_exi(filename::AbstractString, t::Exi)
   
-Create a Ticra-compatible excitation file from a `TicraExi` object.
+Create a Ticra-compatible excitation file from a `Exi` object.
 """
-function write_exi(filename::AbstractString, t::TicraExi)
+function write_exi(filename::AbstractString, t::Exi)
     open(filename, "w") do fid
         for line in t.header
             println(fid, rstrip(line))

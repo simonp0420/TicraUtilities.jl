@@ -6,8 +6,8 @@ using LinearAlgebra: ⋅, norm
 
 
 """
-`TicraCut` Holds data for a Ticra "Tabulated Pattern Data" object.
-Note that a single `TicraCut` instance contains all of the cuts for a single frequency.
+`Cut` Holds data for a Ticra "Tabulated Pattern Data" object.
+Note that a single `Cut` instance contains all of the cuts for a single frequency.
 
 ### Fields
 
@@ -19,7 +19,7 @@ Note that a single `TicraCut` instance contains all of the cuts for a single fre
 * `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
 * `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
-@kwdef mutable struct TicraCut{T <: AbstractRange, N}
+@kwdef mutable struct Cut{T <: AbstractRange, N}
     ncomp::Int
     icut::Int
     icomp::Int
@@ -31,8 +31,8 @@ end
 
 
 import Base.show
-function show(io::IO, t::TicraCut)
-    println(io, "TicraCut")
+function show(io::IO, t::Cut)
+    println(io, "Cut")
     println(io, "  ncomp\t$(t.ncomp)")
     println(io, "  icut \t$(t.icut)")
     println(io, "  icomp\t$(t.icomp)")
@@ -62,58 +62,58 @@ function show(io::IO, t::TicraCut)
 end
 
 """
-    get_theta(c::TicraCut)
+    get_theta(c::Cut)
 
 Return the theta values (in degrees) stored in the cut
 """
-get_theta(c::TicraCut) = c.theta
+get_theta(c::Cut) = c.theta
 
 """
-    get_phi(c::TicraCut)
+    get_phi(c::Cut)
 
 Return the phi values (degrees) stored in the cut.
 """
-get_phi(c::TicraCut) = c.phi
+get_phi(c::Cut) = c.phi
 
 """
-    get_evec(c::TicraCut)
+    get_evec(c::Cut)
 
 Return the ntheta × nphi matrix of complex field vectors stored in the cut.
 """
-get_evec(c::TicraCut) = c.evec
+get_evec(c::Cut) = c.evec
 
 """
-    get_ncomp(c::TicraCut)
+    get_ncomp(c::Cut)
 
 Return ncomp, the number of polarization components stored in the cut.
 """
-get_ncomp(c::TicraCut) = c.ncomp
+get_ncomp(c::Cut) = c.ncomp
 
 """
-    get_icut(c::TicraCut)
+    get_icut(c::Cut)
 
 Return icut, the control parameter of the cut. 1 for a polar cut, 2 for a conical cut.
 """
-get_icut(c::TicraCut) = c.icut
+get_icut(c::Cut) = c.icut
 
 """
-    get_icomp(c::TicraCut)
+    get_icomp(c::Cut)
 
 Return icomp, polarization parameter. 1 for Eθ and Eφ, 2 for RHCP and LHCP, 3 for Co and Cx (Ludwig 3).
 """
-get_icomp(c::TicraCut) = c.icomp
+get_icomp(c::Cut) = c.icomp
 
 
 """
-    get_text(c::TicraCut)
+    get_text(c::Cut)
 
 Return a vector of strings containing the cut identification text.
 """
-get_text(c::TicraCut) = c.text
+get_text(c::Cut) = c.text
 
 """
-    amplitude_db(c::TicraCut, ipol::Int)
-    amplitude_db(c::TicraCut, polstr::String = "copol")
+    amplitude_db(c::Cut, ipol::Int)
+    amplitude_db(c::Cut, polstr::String = "copol")
 
 Return a matrix of amplitudes in dB for some choice of polarization in the cut.
 Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
@@ -121,9 +121,9 @@ Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
 """
 function amplitude_db end
 
-amplitude_db(c::TicraCut, ipol::Integer) = 10 * log10.(abs2.(getindex.(get_evec(c), ipol)))
+amplitude_db(c::Cut, ipol::Integer) = 10 * log10.(abs2.(getindex.(get_evec(c), ipol)))
 
-function amplitude_db(c::TicraCut, polstr::String = "copol")
+function amplitude_db(c::Cut, polstr::String = "copol")
     polstr = lowercase(strip(polstr))
     minflag = maxflag = false
     if isequal(polstr, "copol")
@@ -148,8 +148,8 @@ end
 
 
 """
-    phase_deg(c::TicraCut, ipol::Int)
-    phase_deg(c::TicraCut, polstr::String = "copol")
+    phase_deg(c::Cut, ipol::Int)
+    phase_deg(c::Cut, polstr::String = "copol")
 
 Return a matrix of phases in degrees for some choice of polarization in the cut.
 Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
@@ -157,9 +157,9 @@ Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
 """
 function phase_deg end
 
-phase_deg(c::TicraCut, ipol::Int) = rad2deg.(angle.(getindex.(get_evec(c), ipol)))
+phase_deg(c::Cut, ipol::Int) = rad2deg.(angle.(getindex.(get_evec(c), ipol)))
 
-function phase_deg(c::TicraCut, polstr::String = "copol")
+function phase_deg(c::Cut, polstr::String = "copol")
     polstr = lowercase(polstr)
     minflag = maxflag = false
     if isequal(polstr, "copol")
@@ -183,12 +183,12 @@ end
 
 
 """
-    power(cut::TicraCut)::Float64
+    power(cut::Cut)::Float64
     
-Compute the total radiated power in a TicraCut object. 
+Compute the total radiated power in a Cut object. 
 If only a single phi value is included in the cut, then assume no azimuthal variation.
 """
-function power(cut::TicraCut)::Float64
+function power(cut::Cut)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
     # cubic spline interpolant in the theta direction.
     get_ncomp(cut) == 3 && error("Cut has 3 field components.  Only 2 allowed.")
@@ -215,29 +215,29 @@ end
 
 
 """
-    read_ticra_cut(fname, warnflag=true)::TicraCut
+    read_cutfile(fname, warnflag=true)::Cut
 
 Read the first frequency's data from a Ticra-compatible cut file.  
 `warnflag`, if `true`, causes this function to issue a warning
 if more than one frequency is detected in the file.
 """
-function read_ticra_cut(fname::AbstractString, warnflag::Bool = true)
+function read_cutfile(fname::AbstractString, warnflag::Bool = true)
     # Read a single frequency from a (possibly multi-frequency) cut file.
     # warnflag, if true, instructs this routine to issue a warning
     # if more than one frequency is present in the file.
-    t = read_ticra_cuts(fname)
+    t = read_cutfiles(fname)
     n = length(t)
     n > 1 && warnflag && @warn "$n frequencies found in $fname.  Returning only 1st..."
     return t[1]
 end
 
 """
-    read_ticra_cuts(fname)::Vector{TicraCut}  
+    read_cutfiles(fname)::Vector{Cut}  
 
 Read data from a possibly multi-frequency Ticra-compatible cut file.  
-Return a vector of one or more `TicraCut` structs.
+Return a vector of one or more `Cut` structs.
 """
-function read_ticra_cuts(fname::AbstractString)
+function read_cutfiles(fname::AbstractString)
     cuts = open(fname, "r") do fid
         cutphi = Float64[]
         header = String[]
@@ -255,7 +255,7 @@ function read_ticra_cuts(fname::AbstractString)
                 if kf ≠ 0 # Finish off old frequency
                     cut = cuts[end]
                     evec = reshape(evecallphi, length(cut.theta), length(cut.phi))
-                    cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
+                    cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
                 else
                     if ncomp == 2
                         evecnext = [@SVector[0.0+0.0im, 0.0+0.0im] for _ in 1:nth]
@@ -269,7 +269,7 @@ function read_ticra_cuts(fname::AbstractString)
                 theta = range(start = ths, step = dth, length = nth)
                 evecallphi = ncomp == 2 ? Array{SVector{2,ComplexF64},1}(undef,0) : Array{SVector{3,ComplexF64},1}(undef,0) 
                 evec = ncomp == 2 ? Array{SVector{2,ComplexF64},2}(undef,0,0) : Array{SVector{3,ComplexF64},2}(undef,0,0) 
-                cut = TicraCut(ncomp, icut, icomp, header, theta, cutphi, evec)
+                cut = Cut(ncomp, icut, icomp, header, theta, cutphi, evec)
                 if firstcut
                     cuts = [cut]
                     firstcut = false
@@ -281,7 +281,7 @@ function read_ticra_cuts(fname::AbstractString)
                 cut = cuts[end]
                 cutphi = first(cut.phi):(phi-last(cut.phi)):phi
                 push!(cut.text, textline)
-                cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cutphi, cut.evec)
+                cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cutphi, cut.evec)
             end
             # Check consistency
             cut = cuts[end]
@@ -308,7 +308,7 @@ function read_ticra_cuts(fname::AbstractString)
         nth = length(cut.theta)
         evec = reshape(evecallphi, nth, nphi)
         cut = cuts[end]
-        cuts[end] = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
+        cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
 
         return cuts
     end # function
@@ -316,15 +316,15 @@ function read_ticra_cuts(fname::AbstractString)
 end
 
 """
-    write_ticra_cut(fname::AbstractString, cut::TicraCut, title::AbstractString="Cut file created by write_ticra_cut")
+    write_ticra_cut(fname::AbstractString, cut::Cut, title::AbstractString="Cut file created by write_ticra_cut")
 
-    write_ticra_cut(fname::AbstractString, cuts::AbstractVector{TicraCut}, title::AbstractString="Cut file created by write_ticra_cut")
+    write_ticra_cut(fname::AbstractString, cuts::AbstractVector{Cut}, title::AbstractString="Cut file created by write_ticra_cut")
 
-Write `TicraCut` cut data to a Ticra-compatible cut file.
+Write `Cut` cut data to a Ticra-compatible cut file.
 """
 function write_ticra_cut(
     fname::AbstractString,
-    cut::TicraCut{T,N},
+    cut::Cut{T,N},
     title::String = "Cut file created by write_ticra_cut"
 ) where {T,N}
     open(fname, "w") do fid
@@ -355,7 +355,7 @@ end
 
 function write_ticra_cut(
     fname::AbstractString,
-    cuts::AbstractVector{TicraCut{T,N}},
+    cuts::AbstractVector{Cut{T,N}},
     title::String = "Cut file created by write_ticra_cut",
     ) where {T,N}
     open(fname, "w") do fid
@@ -389,9 +389,9 @@ end
 """
     (x,y,z0,z90) = phscen(cutfile::AbstractString, fghz=11.802852677165355; min_dropoff=-10)
 
-    (x,y,z0,z90) = phscen(cut::TicraCut, fghz=11.802852677165355; min_dropoff=-10)
+    (x,y,z0,z90) = phscen(cut::Cut, fghz=11.802852677165355; min_dropoff=-10)
     
-Estimate phase center for a cut file or `TicraCut` object using NSI least-squares 
+Estimate phase center for a cut file or `Cut` object using NSI least-squares 
 algorithm.
 
 The three outputs are estimates of the location of the phase center relative to
@@ -404,7 +404,7 @@ in dB greater than `min_dropoff` relative to the peak field are considered.
 """
 function phscen end
 
-function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
+function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
     # Determine which pol slot has main polarization:
     p1max, p2max = (maximum(x -> abs2(x[i]), get_evec(cut)) for i in 1:2)
     p = p1max > p2max ? 1 : 2
@@ -476,7 +476,7 @@ function phscen(cut::TicraCut, fghz = 11.802852677165355; min_dropoff = -10.0)
 end
 
 function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff = -10)
-    cut = read_ticra_cut(cutfile)
+    cut = read_cutfile(cutfile)
     phscen(cut, fghz; min_dropoff)
 end
 
@@ -491,18 +491,18 @@ function _find_phase_center(theta::Vector{Float64}, phase::Vector{Float64})
     return (krho, kz)
 end
 
-eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_ticra_cut(cutfile), fghz, thetamax)
+eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_cutfile(cutfile), fghz, thetamax)
 
 """
     (c, xn, sp, slh, et, pc, xpd) = eval_cut(cutfile, fghz, thetamax)
 
-Determine primary pattern performance metrics for a `TicraCut` object or 
+Determine primary pattern performance metrics for a `Cut` object or 
 Ticra cut file.
 
 ## Arguments:
 
 - `cutfile`:   A string containing the name of the cut file to evaluate,
-  or a `TicraCut` structure as returned by `read_ticra_cut`.
+  or a `Cut` structure as returned by `read_cutfile`.
 - `fghz`: The frequency in GHz.
 - `thetamax`:  The maximum theta angle in degrees for which the pattern is
   to be evaluated.
@@ -527,7 +527,7 @@ Ticra cut file.
 - `xpd`: An array containing xpd (crosspol discrimination) values in db evaluated at points
   0 <= |theta| ≤ `thetamax`.  xpd = copol gain in dbi - crosspol gain in dBi
 """
-function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
+function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
     pwr_tot = power(cut)  # Total power in the cut
 
     pol1db = 20 * log10.(norm.(getindex.(get_evec(cut), 1)))
@@ -595,7 +595,7 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
     # Zero out the power in the cone theta <= thetamax:
     cut2theta = range(cut.theta[1], cut.theta[indm], length=length(ind))  # Truncate to the thetamax cone
     evec = get_evec(cut)[ind, :]
-    cut2 = TicraCut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut2theta, cut.phi, evec)
+    cut2 = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut2theta, cut.phi, evec)
     pwr_beam = power(cut2)
     sp = 10 * log10(pwr_tot / pwr_beam)
 
@@ -605,12 +605,12 @@ function eval_cut(cut::TicraCut, fghz::Real, thetamax::Real)
 end
 
 """
-    normalize2dir!(cut::TicraCut)
+    normalize2dir!(cut::Cut)
 
-Normalize a TicraCut object so it's total power is 4π.  This results
+Normalize a Cut object so it's total power is 4π.  This results
 in field magnitude squared being directivity.
 """
-function normalize2dir!(cut::TicraCut)
+function normalize2dir!(cut::Cut)
     pwr = power(cut)
     c = sqrt(4π/pwr)
     @inbounds for i in eachindex(cut.evec)
@@ -620,7 +620,7 @@ function normalize2dir!(cut::TicraCut)
 end
 
 """
-    convert_cut!(cut::TicraCut, icomp::Integer)
+    convert_cut!(cut::Cut, icomp::Integer)
 
 Convert `cut` to a new polarization basis determined by `icomp`.  Legal values 
 for `icomp` and their meanings:
@@ -628,7 +628,7 @@ for `icomp` and their meanings:
 *  2 => ERHCP and ELHCP
 *  3 => Eh and Ev (Ludwig 3 co and cx)
 """
-function convert_cut!(cut::TicraCut{Tc,N}, icomp::Integer) where {Tc,N}
+function convert_cut!(cut::Cut{Tc,N}, icomp::Integer) where {Tc,N}
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
     outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
@@ -678,13 +678,13 @@ function _pol_basis_vectors(ϕ::Real)
     return ((θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂))
 end
 
-function _add_3rd_component(cut::TicraCut)
+function _add_3rd_component(cut::Cut)
     ncomp_old = get_ncomp(cut)
     ncomp_old == 1 && error("Can't handle one-component cut")
     ncomp_old == 3 && return deepcopy(cut)
     evec_old = get_evec(cut)
     evec = [@SVector[t[1], t[2], rand(ComplexF64)] for t in evec_old]
-    cut_new = TicraCut(3, get_icut(cut), get_icomp(cut), get_text(cut), 
+    cut_new = Cut(3, get_icut(cut), get_icomp(cut), get_text(cut), 
                        get_theta(cut), get_phi(cut), evec)
     return cut_new
 end
