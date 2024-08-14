@@ -1,6 +1,8 @@
 using Printf: @printf
 using DSP: unwrap
 using Dierckx: Spline1D, integrate
+using DataInterpolations: CubicSpline
+using QuadGK: quadgk
 using StaticArrays: @SVector, @SMatrix, SVector
 using LinearAlgebra: ⋅, norm
 
@@ -184,11 +186,13 @@ end
 
 """
     power(cut::Cut)::Float64
+    power(cut::Cut, θmax=180)
     
 Compute the total radiated power in a Cut object. 
 If only a single phi value is included in the cut, then assume no azimuthal variation.
+The integration in the θ direction will be computed over the limits from 0 to `min(θmax, last(get_theta(cut)))`.
 """
-function power(cut::Cut)::Float64
+function power(cut::Cut, θmax=180)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
     # cubic spline interpolant in the theta direction.
     get_ncomp(cut) == 3 && error("Cut has 3 field components.  Only 2 allowed.")
@@ -209,7 +213,7 @@ function power(cut::Cut)::Float64
     theta = deg2rad.(get_theta(cut))
     p = p .* abs.(sin.(theta)) # sintheta weighting
     spl = Spline1D(theta, p)
-    pwr = phimult * integrate(spl, theta[1], theta[end])
+    pwr = phimult * integrate(spl, theta[1], min(theta[end], deg2rad(θmax)))
     return pwr
 end
 
@@ -690,3 +694,186 @@ function _add_3rd_component(cut::Cut)
 end
 
 _norm²(E::SVector{N,T}) where {N,T} = sum(abs2, E[n] for n in 1:N)
+
+"""
+    sor_efficiency(cut; F, D, Oc, pol=:matched, dz=0.0) -> (ηₛ, ηᵢₗ, ηₚ, ηₓ)
+
+Compute boresight directivity efficiency of a parabolic single-offset reflector using the feed pattern
+specified by `cut`.
+
+## Positional input arguments:
+* `cut`: Either a string containing the name of a Ticra-compatible, spherical,
+  polar, asymmetric cut file, or a `Cut` object as returned by the `read_cutfile`
+  function.
+
+## Keyword input arguments:
+* `F`, `D`, and `Oc`:  The single-offset reflector focal length, aperture diameter, and
+  center offset, respectively.  These may be expressed in any convenient length units, so 
+  long as they are consistent. 
+* `pol`: A `Symbol` having one of the values `:L3h`, `:L3v`, `:RHCP`, `:LHCP`, or :matched
+  (any variations in terms of capitalization are acceptable).  The first two denote Ludwig 3 
+  horizontal (x) and vertical (y) polarizations, the second two denote the two senses of 
+  circular polarization, and `:max` (the default) uses the polarization among the 4 previously
+  listed that that has the maximum field amplitude.  Polarization efficiency of the boresight 
+  secondary pattern will be computed relative to the polarization specified by this argument.
+* `dz`: This is a signed distance along the zfeed direction, measured in wavelengths. It allows for
+  repositioning the feed in an attempt to locate the feed phase center at the reflector focal
+  point. Suppose that the feed's phase center is located 0.42 wavelengths inside the horn aperture. The
+  horn origin should ideally be positioned closer to the reflector, so a positive value `dz = 0.42` would
+  be specified to indicate that the horn has been repositioned in this manner.  
+
+## Return values:
+* `ηₛ`: Spillover efficiency (a real number between 0 and 1).
+* `ηᵢₗ`: Illumination (amplitude taper) efficiency (a real number between 0 and 1).
+* `ηₚ`:  Phase error efficiency (a real number between 0 and 1).
+* `ηₓ`: Polarization efficiency (a real number between 0 and 1).
+"""
+sor_efficiency(cut::String; kwargs...) = sor_efficiency(read_cutfile(cut); kwargs...)
+
+function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Number, dz::Real=0.0)
+    iszero(first(get_theta(cut))) || error("Only asymmetric cut files are supported")
+    pol = Symbol(lowercase(string(pol)))
+    pol in (:lhcp, :rhcp, :l3h, :l3v, :max) || error("Illegal pol value: $pol")
+    cut = deepcopy(cut) # Avoid modifying input object
+    # Compute β (feed tilt angle) and θe (edge ray angle):
+    xm = Oc + D/2  # Upper edge
+    zm = xm^2 / 4F
+    θU = atan(xm / (F - zm))  # Upper edge angle
+    xm = Oc - D/2  # Lower edge
+    zm = xm^2 / 4F
+    θL = atan(xm / (F-zm))  # Lower edge angle
+    β = 0.5 * (θU + θL)  # Bisector angle (radians)
+    sβ, cβ = sincos(β)
+    θe = 0.5 * (θU - θL)  # Edge angle (radians)
+    
+    pwr = power(cut) # Total radiated power
+    θmax = θe
+    θmaxdeg = rad2deg(θmax)
+    θmaxdeg > last(get_theta(cut)) && error("Cut does not extend to edges of reflector!")
+    pwr_cone = power(cut, θmaxdeg)
+
+
+    ηₛ = pwr_cone / pwr # Spillover efficiency
+
+    # Normalize the fields to 4*pi:
+    factor = sqrt(4π / pwr)
+    cut.evec .*= factor
+
+    # Get needed trig functions
+    scθ = sincosd.(get_theta(cut))
+    scϕ = sincosd.(get_phi(cut))
+
+    # Adjust phase to account for translation of dz along z-feed axis:
+    if !iszero(dz)
+        cfactor = @. cis(2π * dz * last(scθ))
+        cut.evec .*= cfactor
+    end
+
+
+    # Convert fields to θ/ϕ components:
+    convert_cut!(cut, 1)
+    evec = get_evec(cut) # Save actual fields
+
+    if pol == :max
+        # Find the maximum norm E-field
+        _, imaxnorm = findmax(_norm², evec)
+        Eθϕ_maxnorm = evec[imaxnorm]
+        ϕ_maxnorm = get_phi(cut)[last(Tuple(imaxnorm))]
+        # Check which polarization decomposition produces largest copol:
+        Eθϕ = Eθϕ_maxnorm
+        (θ̂,ϕ̂), (R̂,L̂), (ĥ,v̂) = _pol_basis_vectors(ϕ_maxnorm)
+        ERL = @SMatrix[R̂ ⋅ θ̂   R̂ ⋅ ϕ̂; L̂ ⋅ θ̂   L̂ ⋅ ϕ̂] * Eθϕ
+        Ehv = @SMatrix[ĥ ⋅ θ̂   ĥ ⋅ ϕ̂; v̂ ⋅ θ̂   v̂ ⋅ ϕ̂] * Eθϕ
+        icompm1 = argmax(maximum(abs2.(x)) for x in (ERL, Ehv))
+        Emaxsq12 = abs2.((ERL, Ehv)[icompm1])
+        if icompm1 == 1
+            # CP components: Sense will reverse for secondary pattern!
+            if Emaxsq12[1] > Emaxsq12[2] 
+                pol = :lhcp     
+            else
+                pol = :rhcp
+            end
+        else 
+            # Ludwig 3 components
+            if Emaxsq12[1] > Emaxsq12[2] 
+                pol = :l3h
+            else
+                pol = :l3v
+            end
+        end
+        @show pol
+    end
+
+    # Compute theta and phi components due to zero phase error copol and crosspol:
+    evec0 = copy(evec) # Copy far-field vectors
+    cut.evec = evec0
+    if pol in (:lhcp, :rhcp)
+        convert_cut!(cut, 2) # CP components
+    elseif pol in (:l3h, :l3v)
+        convert_cut!(cut, 3) # Ludwig 3 components
+    end
+    for i in eachindex(evec0)
+        evec0[i] = abs.(evec0[i])
+    end
+    convert_cut!(cut, 1) # Back to theta, phi components
+    cut.evec = evec # Restore actual fields
+
+    # Storage for ϕ integrals at each θ location
+    integrand, integrand0 = (zeros(SVector{2,ComplexF64}, length(get_theta(cut))) for _ in 1:2)
+    
+    # Compute ϕ integrals:
+    for (iθ, θ) in pairs(get_theta(cut))
+        sθ, cθ = scθ[iθ]
+        θ == 180 && ((sθ, cθ)  = (0.0001, -0.9999)) # Avoid irrelevant singularity at 180°
+        for (iϕ, ϕ) in pairs(get_phi(cut))
+            eθ, eϕ = evec[iθ, iϕ]
+            e0θ, e0ϕ = evec0[iθ, iϕ]
+            sϕ, cϕ = scϕ[iϕ]
+            common = sθ / (1 + cθ*cβ - sθ*cϕ*sβ)^2
+            f1 = cϕ * (1 + cβ*cθ) - sβ*sθ
+            f2 = -sϕ * (cβ + cθ)
+            integrand[iθ] += common * @SVector [f1 * eθ  + f2 * eϕ, f2 * eθ  -  f1 * eϕ]
+            integrand0[iθ] +=  common * @SVector [f1 * e0θ + f2 * e0ϕ, f2 * e0θ - f1 * e0ϕ]
+        end
+    end
+    phi = get_phi(cut)
+    dphi = deg2rad(phi[2] - phi[1])
+    integrand .*= dphi
+    integrand0 .*= dphi
+
+    # Perform integration over theta:
+    thetarad = deg2rad.(get_theta(cut))
+    spl = CubicSpline(integrand, thetarad; assume_linear_t=true)
+    Ivec, errest1 = quadgk(spl, 0, θmax; rtol=1e-10)
+    spl0 = CubicSpline(integrand0, thetarad; assume_linear_t=true)
+    I0vec, errest2 = quadgk(spl0, 0, θmax; rtol=1e-10)
+
+    # Compute efficiency vectors:
+    factor = 2/π * F/D 
+    Ivec *= factor
+    I0vec *= factor # Spillover-Illum only efficiency vector
+    ηₛηᵢₗ = _norm²(I0vec)  # Product of spillover and illumination effics
+    ηᵢₗ = ηₛηᵢₗ / ηₛ
+
+    # Compute polarization unitary vector:
+    if pol == :l3h
+        uhat = @SVector [one(ComplexF64), zero(ComplexF64)]
+    elseif pol == :l3v
+        uhat = @SVector [zero(ComplexF64), one(ComplexF64)]
+    elseif pol == :lhcp
+        uhat = @SVector [iroot2, im*iroot2]
+    elseif pol == :rhcp
+        uhat = @SVector [iroot2, -im*iroot2]
+    else
+        error("Illegal pol value: $pol")
+    end 
+
+    # Polarization efficiency:
+    ηₓ = abs2(uhat ⋅  Ivec) / _norm²(Ivec)
+
+    # Phase error efficiency:
+    ηₚ = _norm²(Ivec) / ηₛηᵢₗ
+
+    return (;ηₛ, ηᵢₗ, ηₚ, ηₓ)
+end
+
