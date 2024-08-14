@@ -28,6 +28,7 @@ export
     read_tfile,
     read_cutfile,
     read_cutfiles,
+    sor_efficiency,
     sph2cut,
     write_exi,
     write_sphfile,
