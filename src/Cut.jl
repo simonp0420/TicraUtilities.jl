@@ -5,7 +5,7 @@ using DataInterpolations: CubicSpline
 using QuadGK: quadgk
 using StaticArrays: @SVector, @SMatrix, SVector
 using LinearAlgebra: ⋅, norm
-
+using RecipesBase: @recipe, @series
 
 """
 `Cut` Holds data for a Ticra "Tabulated Pattern Data" object.
@@ -876,3 +876,82 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
     return (;ηₛ, ηᵢₗ, ηₚ, ηₓ)
 end
 
+
+
+
+"Plot recipe for Cut"
+@recipe function f(cut::Cut; 
+    phi = get_phi(cut), 
+    theta_min = minimum(get_theta(cut)),
+    theta_max = maximum(get_theta(cut)),
+    delta_theta = only(diff(get_theta(cut)[1:2])),
+    pol = :both, # or :copol or :xpol or 1 or 2
+    quantity = :db, # or :power or :linear or :phase
+    normalization::Union{Float64,Symbol} = 0.0 # or :peak
+    )
+
+    quantity = Symbol(lowercase(string(quantity)))
+    pol isa Symbol || pol isa AbstractString && 
+           (pol = Symbol(lowercase(string(pol))))
+
+    # set a default value for an attribute with `-->`.  Force it with `:=`.
+    xguide --> "θ (deg)"
+    yguide --> (quantity == :db ? "Amplitude (dB)" :
+                quantity == :linear ? "Field Amplitude" :
+                quantity == :power ? "Power Amplitude" :
+                quantity == :phase ? "Phase (deg)" :
+                error("Illegal value for quantity: $quantity")) 
+
+    icomp = get_icomp(cut)
+    pol_labels = (("E_θ", "E_ϕ"), ("E_R", "E_L"), ("E_h", "E_v"))[icomp]
+    thetas = theta_min:delta_theta:theta_max
+    evec = get_evec(cut)
+    _, imaxnorm = findmax(_norm², evec)
+    Evecmax = evec[imaxnorm]
+    icopol = abs2(Evecmax[1]) > abs2(Evecmax[2]) ? 1 : 2
+    if isequal(normalization, :peak)
+        Emax = maximum(abs, Evecmax)
+        Esqmax = Emax*Emax
+        normdb = 10*log10(Esqmax)
+    else
+        Emax = Esqmax = normdb = normalization
+    end
+    # Select polarizations to plot
+    if isequal(pol, :both)
+        ipols = (icopol, 3 - icopol)
+    elseif isequal(pol, :copol)
+        ipols = (icopol,)
+    elseif isequal(pol, :xpol)
+        ipols = (3-icopol,)
+    elseif isequal(pol, 1)
+        ipols = (1,)
+    elseif isequal(pol,2)
+        ipols = (2,)
+    else
+        error("illegal value for pol: $(pol)")
+    end
+
+    # Add a series for each phi cut and each selected polarization
+    for ϕ in phi
+        iϕ = findfirst(≈(ϕ), phi)
+        isnothing(iϕ) && continue
+        spl = CubicSpline((@view evec[:,iϕ]), get_theta(cut))
+        efield = spl(thetas)
+        for (ii,ipol) in enumerate(ipols)
+            if quantity == :db
+                y = [10*log10(abs2(e[ipol])) - normdb for e in efield]
+            elseif quantity == :power
+                y = [abs2(e[ipol]) / Esqmax for e in efield]
+            elseif quantity == :LinearIndices
+                y = [abs2(e[ipol])  / Emax for e in efield]
+            else
+                y = [rad2deg(angle(e[ipol])) - normalization for e in efield]
+            end
+            @series begin
+                linestyle --> (:solid, :dash)[ii]
+                label --> "$(pol_labels[ipol]), ϕ = $ϕ"
+                thetas, y
+            end
+        end
+    end
+end
