@@ -21,18 +21,20 @@ export
     phase_deg,  
     phscen,
     power,
+    read_cut,
+    read_cuts,
     read_exi,
     read_sphfile,
     read_station,
+    read_surface,
     read_tabulatedrimxyold,
     read_tfile,
-    read_cutfile,
-    read_cutfiles,
     sor_efficiency,
     sph2cut,
     write_exi,
     write_sphfile,
     write_station,
+    write_surface,
     write_ticra_cut,
     write_tor_object
     #==
@@ -64,6 +66,7 @@ include("Exi.jl")
 include("TorFile.jl")
 include("Geom.jl")
 include("SphericalWave.jl")
+include("Surface.jl")
 
 #==
 include("TicraSfc.jl")
