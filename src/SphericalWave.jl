@@ -1,6 +1,6 @@
 using OffsetArrays: OffsetArray, OffsetVector, Origin
 using Printf: @printf
-using AssociatedLegendrePolynomials: Plm!, LegendreNormCoeff, LegendreOrthoNorm, legendre, legendre!
+using AssociatedLegendrePolynomials: Plm!, LegendreNormCoeff, LegendreOrthoNorm, legendre, legendre!, LegendreOrthoCoeff
 using ForwardDiff: Dual, value, partials
 derivative(x::Dual) = partials(x,1)
 using FFTW: fft!, bfft!, ifft!, fftshift
@@ -178,8 +178,18 @@ write_sphfile(fname::AbstractString, qs::SWEQPartition) = write_sphfile(fname, [
 
 # Functions for associated Legendre functions, both normalized and unnormalized.
 # See documentation of AssociatedLegendrePolynomials.jl for calling details.
-const NMMAX = 500
-const Qcoef = LegendreNormCoeff{LegendreOrthoNorm,Float64}(NMMAX)
+NMMAX::Int = 500
+Qcoef::LegendreOrthoCoeff{Float64} = LegendreNormCoeff{LegendreOrthoNorm,Float64}(NMMAX)
+
+function _checkmn(m, n)
+    global NMMAX, Qcoef
+    nmmax = max(maximum(abs.(m)), maximum(n))
+    if nmmax > NMMAX
+        NMMAX = nmmax
+        Qcoef = LegendreNormCoeff{LegendreOrthoNorm,Float64}(NMMAX)
+    end
+    return
+end
 
 """
     P̄nm(n, m, x)
@@ -188,6 +198,7 @@ Normalized associated Legendre function following Ticra definition.
 See documentation for `AssociatedLegendrePolynomials.Plm` for calling conventions.
 """
 @inline function P̄nm(n::Int, m::Int, x::Number)
+    _checkmn(m, n)
     m < 0 && throw(ArgumentError("m must be nonnegative"))
     p = legendre(Qcoef, n, m, x)
     # Remove Condon–Shortley phase factor
@@ -196,6 +207,7 @@ end
 
 @inline function P̄nm(n::UnitRange, m::UnitRange, x::Number)
     any(<(0),m) && throw(ArgumentError("all m values must be nonnegative"))
+    _checkmn(m, n)
     p = legendre(Qcoef, n, m, x)
     # Remove Condon–Shortley phase factor
     for mp1 in axes(p,2) 
@@ -214,6 +226,7 @@ Normalized associated Legendre function following Ticra definition.
 See documentation for `AssociatedLegendrePolynomials.Plm!` for calling conventions.
 """
 function P̄nm!(Λ::Matrix, n::Int, m::Int, x::Number)
+    _checkmn(m, n)
     legendre!(Qcoef, Λ, n, m, x)
     # Remove Condon–Shortley phase factor
     for mp1 in axes(Λ, 2)
@@ -334,6 +347,7 @@ end # function
 function _q2evec(qsmns, θs, ϕs)
     mabsmax = last(axes(qsmns, 2))
     nmax = last(axes(qsmns, 3))
+    _checkmn(mabsmax, nmax)
 
     # Prepare Channel for multithreading
     TD = typeof(Dual(1.0,1.0))
@@ -477,7 +491,7 @@ the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 
 The single positional input argument can be either a string containing the name 
 of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
-that results from reading such a file with `read_cutfile`.  The output of this function
+that results from reading such a file with `read_cut`.  The output of this function
 can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
 spherical wave coefficients.
 
@@ -496,7 +510,7 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
   precludes removal of any modes.
 """
 function cut2sph(cutfile::AbstractString; kwargs...)
-    cut = read_cutfile(cutfile)
+    cut = read_cut(cutfile)
     cut2sph(cut; kwargs...)
 end
 
