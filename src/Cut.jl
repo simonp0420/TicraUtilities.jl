@@ -547,9 +547,7 @@ function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
 
     clamp!(cxpol, -500.0, Inf) # Eliminate negative infinities
 
-    # Check that cut is asymmetric:
-    0.0 ∈ cut.theta || error("This cut does not contain theta = 0!")
-    first(cut.theta) == 0.0 || error("eval_cut requires an asymmetric cut")
+    cut = sym2asym(cut) # Ensure that cut is asymmetric:
     thetamax > maximum(cut.theta) && error("thetamax is too large")
 
     c = copol[begin, begin] # Boresight copol
