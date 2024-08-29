@@ -963,17 +963,29 @@ end
 "Plot recipe for Cut"
 @recipe function f(cut::Cut; 
     phi = get_phi(cut), 
-    theta_min = minimum(get_theta(cut)),
-    theta_max = maximum(get_theta(cut)),
-    delta_theta = only(diff(get_theta(cut)[1:2])),
+    theta = get_theta(cut),
     pol = :both, # or :copol or :xpol or 1 or 2
     quantity = :db, # or :power or :linear or :phase
-    normalization = 0.0 # or :peak
+    normalization = NaN # A number or :peak
     )
 
+    all(x -> x in get_theta(cut), extrema(theta)) || error("some requested theta are outside those of cut") 
     quantity = Symbol(lowercase(string(quantity)))
-    pol isa Symbol || pol isa AbstractString && 
-           (pol = Symbol(lowercase(string(pol))))
+    pol isa Symbol || pol isa AbstractString && (pol = Symbol(lowercase(string(pol))))
+    if normalization isa Symbol
+        normalization == :peak || error("Illegal value for Normalization")
+    elseif normalization isa Number
+        if isnan(normalization)
+            # Set appropriate default depending on quantity to be plotted
+            if quantity in (:db, :phase)
+                normalization = 0.0
+            elseif quantity in (:linear, :power)
+                normalization = 1.0
+            end
+        end
+        else
+        error("Illegal type for normalization")
+    end
 
     # set a default value for an attribute with `-->`.  Force it with `:=`.
     xguide --> "θ (deg)"
@@ -982,17 +994,16 @@ end
                 quantity == :power ? "Power Amplitude" :
                 quantity == :phase ? "Phase (deg)" :
                 error("Illegal value for quantity: $quantity")) 
-
     icomp = get_icomp(cut)
     pol_labels = (("E_θ", "E_ϕ"), ("E_R", "E_L"), ("E_h", "E_v"))[icomp]
-    thetas = theta_min:delta_theta:theta_max
     evec = get_evec(cut)
     _, imaxnorm = findmax(_norm², evec)
     Evecmax = evec[imaxnorm]
     icopol = abs2(Evecmax[1]) > abs2(Evecmax[2]) ? 1 : 2
     if isequal(normalization, :peak)
-        Emax = maximum(abs, Evecmax)
-        Esqmax = Emax*Emax
+        isequal(quantity, :phase) && error(":peak normalization may not be requested for :phase plot")
+        Esqmax = maximum(abs2, Evecmax)
+        Emax = sqrt(Esqmax)
         normdb = 10*log10(Esqmax)
     else
         Emax = Esqmax = normdb = normalization
@@ -1017,7 +1028,7 @@ end
         iϕ = findfirst(≈(ϕ), phi)
         isnothing(iϕ) && continue
         spl = CubicSpline((@view evec[:,iϕ]), get_theta(cut))
-        efield = spl(thetas)
+        efield = spl(theta)
         for (ii,ipol) in enumerate(ipols)
             if quantity == :db
                 y = [10*log10(abs2(e[ipol])) - normdb for e in efield]
@@ -1031,7 +1042,7 @@ end
             @series begin
                 linestyle --> (:solid, :dash)[ii]
                 label --> "$(pol_labels[ipol]), ϕ = $ϕ"
-                thetas, y
+                theta, y
             end
         end
     end
