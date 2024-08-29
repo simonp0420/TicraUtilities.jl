@@ -63,6 +63,24 @@ function show(io::IO, t::Cut)
     return nothing
 end
 
+
+function Base.isapprox(c1::Cut, c2::Cut; kwds...)
+    c1.ncomp == c2.ncomp || return false
+    c1.icut == c2.icut || return false
+    c1.icomp == c2.icomp || return false
+    c1.theta == c2.theta || return false
+    c1.phi == c2.phi || return false
+    c2.text == c2.text || return false
+    return isapprox(c1.evec, c2.evec; kwds...)
+end
+
+"""
+    maximum(cut::Cut) -> maxE
+
+Return the maximum amplitude for any polarization component stored in the `Cut` object.
+"""
+Base.maximum(cut::Cut) = maximum(x -> maximum(abs,x), cut.evec)
+
 """
     get_theta(c::Cut)
 
@@ -931,6 +949,8 @@ function sym2asym(cut::Cut)
     0 in theta || error("cut does not include θ=0")
     dphi = phi[2] - phi[1]
     last(phi) + dphi ≈ first(phi) + 180 || error("cut phi values not properly distributed")
+    np1 = length(phi)
+    nt1 = length(theta)
 
     cut = deepcopy(cut) # Avoid mutating the input argument
     dtheta = theta[2] - theta[1]
@@ -942,19 +962,74 @@ function sym2asym(cut::Cut)
     
     # Set up the new cut2, also in θ/ϕ components
     phi2 = first(phi):dphi:(360-dphi)
+    np2 = length(phi2)
     theta2 = 0:dtheta:last(theta)
-    evec2 = Array{SVector{2, ComplexF64}}(undef,  length(theta2), length(phi2))
-    icomp2 = get_icomp(cut)
+    nt2 = length(theta2)
+    evec2 = Array{SVector{2, ComplexF64}}(undef,  nt2, np2)
     text2 = ["phi = $p" for p in phi2]
-    for ip in 1:length(phi)
-        ip2 = length(phi) + ip
-        for (it2, it) in enumerate(it0:length(theta))
-            ev = cut.evec[it, ip]
-            evec2[it2, ip] = ev
-            evec2[it2, ip2] = -ev
+    for ip1 in 1:np1
+        ip2 = ip1 + np1
+        for (it2, it) in enumerate(it0:nt1)
+            evec2[it2, ip1] = cut.evec[it, ip1]
+            evec2[it2, ip2] = -cut.evec[it0-it2+1, ip1]
         end
     end
-    cut2 = Cut(ncomp, icut, icomp2, text2, theta2, phi2, evec2)
+    cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
+    convert_cut!(cut2, icomp) # Restore polarization basis
+    return cut2
+end
+
+"""
+    asym2sym(cut::Cut) -> cut2
+
+Convert an asymmetrical (in θ) `Cut` to a new symmetrical `Cut`.  An asymmetrical cut
+begins at θ = 0, while a symmetrical cut covers equal extents of negative and 
+positive angles.  If the input `cut` is already symmetrical, then return a copy of 
+this input as the output.
+"""
+function asym2sym(cut::Cut)
+    # Check validity of input cut
+    phi = get_phi(cut)
+    theta = get_theta(cut)
+    (first(theta) == -last(theta)) && return deepcopy(cut) 
+    iszero(first(theta)) || error("cut does begin at θ=0")
+    iseven(length(phi)) || error("Number of ϕ cuts is not even")
+    for ϕ in phi
+        found = false
+        for ϕ′ in ϕ
+            if iszero(mod(ϕ - ϕ′, 360))
+                found = true
+                break
+            end
+        end
+        !found && error("cut contains $ϕ but not $(ϕ±180)")
+    end
+
+    cut = deepcopy(cut) # Avoid mutating the input argument
+    dtheta = theta[2] - theta[1]
+    icomp = get_icomp(cut)
+    icut = get_icut(cut)
+    ncomp = get_ncomp(cut)
+    convert_cut!(cut, 1) # Convert to θ/ϕ components
+    it0 = findfirst(iszero, theta)
+    nt1 = length(theta)
+    np1 = length(phi)
+    np1o2 = length(phi)÷2
+    
+    # Set up the new cut2, also in θ/ϕ components
+    phi2 = phi[1:np1÷2]
+    np2 = length(phi2)
+    theta2 = -last(theta):dtheta:last(theta)
+    nt2 = length(theta2)
+    evec2 = Array{SVector{2, ComplexF64}}(undef, nt2, np2)
+    text2 = ["phi = $p" for p in phi2]
+    for ip2 in 1:np2
+        for i in 1:nt1
+            evec2[end - i + 1, ip2] = cut.evec[end - i + 1, ip2]
+            evec2[i, ip2] = -cut.evec[end - i + 1, ip2 + np2]
+        end
+    end
+    cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
     convert_cut!(cut2, icomp) # Restore polarization basis
     return cut2
 end

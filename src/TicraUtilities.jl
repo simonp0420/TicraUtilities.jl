@@ -2,6 +2,7 @@ module TicraUtilities
 
 export
     amplitude_db, 
+    asym2sym,
     convert_cut!,
     cut2sph, 
     cut2sph_adaptive, 
@@ -31,6 +32,7 @@ export
     read_tfile,
     sor_efficiency,
     sph2cut,
+    sym2asym,
     write_exi,
     write_sphfile,
     write_station,
