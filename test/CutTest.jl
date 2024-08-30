@@ -40,8 +40,10 @@ end
     t = read_cut(joinpath(@__DIR__, "test.cut"))
     @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,1)[10,10]
     @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,2)[10,10]
+    @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,:copol)[10,10]
+    @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,:xpol)[10,10]
     @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,"copol")[10,10]
-    @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,"crosspol")[10,10]
+    @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,"xpol")[10,10]
 end
 
 @safetestset "Cut phase_deg" begin 
@@ -49,14 +51,17 @@ end
     t = read_cut(joinpath(@__DIR__, "test.cut"))
     @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,1)[10,10]
     @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,2)[10,10]
+    @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,:copol)[10,10]
+    @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,:xpol)[10,10]
     @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,"copol")[10,10]
-    @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,"crosspol")[10,10]
+    @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,"xpol")[10,10]
 end
 
 @safetestset "Cut power" begin 
     using TicraUtilities
     t = read_cut(joinpath(@__DIR__, "test.cut"))
     @test abs(power(t) - 4π) ≤ 1.e-5
+    @test maxdb(t) ≈ 12.246790349581193
     ts = read_cuts(joinpath(@__DIR__, "test2.cut"))
     for t1 in ts
         @test abs(power(t1) - 4π) ≤ 1.e-5
@@ -128,8 +133,8 @@ end
     (x,y,z0,z90) = phscen(joinpath(@__DIR__, "test.cut"))
     @test x ≈ -6.740495718988637e-5
     @test y ≈ 0.0002328819050067705
-    @test z0 ≈ 0.07914423679589953
-    @test z90 ≈ 0.06397213096541265
+    @test z0 ≈ 0.07932537034841126
+    @test z90 ≈ 0.06417366223154171
 end
 
 
@@ -144,7 +149,7 @@ end
     @test slh == 0.0
     @test length(et) == 72
     @test all((et[begin],et[end]) .≈ (1.4331621843858997, 1.4238487987626876))
-    @test pc ≈ -0.010691508997658557
+    @test pc ≈ -0.011224035005254658
     @test length(xpd) == 2232
     @test all((xpd[begin], xpd[end], sum(xpd)/length(xpd)) .≈ 
               (27.70884584330901, 26.590458769432246, 30.348100641028992))

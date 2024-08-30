@@ -63,15 +63,22 @@ function show(io::IO, t::Cut)
     return nothing
 end
 
+"""
+    isapprox(c1::Cut, c2::Cut; kwargs...) -> tf::Bool
 
-function Base.isapprox(c1::Cut, c2::Cut; kwds...)
+Compare two `Cut` objects for approximate equality.
+
+Compares most fields for perfect equality except `text` and `evec`.
+The `text` fields are not compared at all, and the `evec` fields 
+(`Matrix` types) are compared for approximate equality using `isapprox`.
+"""
+function Base.isapprox(c1::Cut, c2::Cut; kwargs...)
     c1.ncomp == c2.ncomp || return false
     c1.icut == c2.icut || return false
     c1.icomp == c2.icomp || return false
     c1.theta == c2.theta || return false
     c1.phi == c2.phi || return false
-    c2.text == c2.text || return false
-    return isapprox(c1.evec, c2.evec; kwds...)
+    return isapprox(c1.evec, c2.evec; kwargs...)
 end
 
 """
@@ -80,6 +87,15 @@ end
 Return the maximum amplitude for any polarization component stored in the `Cut` object.
 """
 Base.maximum(cut::Cut) = maximum(x -> maximum(abs,x), cut.evec)
+
+
+"""
+    maxdb(cut::Cut)
+
+Return the maximum amplitude in dB for any polarization component stored in the `Cut` object.
+"""
+maxdb(cut::Cut) = 20*log10(maximum(cut))
+
 
 """
     get_theta(c::Cut)
@@ -133,22 +149,27 @@ get_text(c::Cut) = c.text
 
 """
     amplitude_db(c::Cut, ipol::Int)
+    amplitude_db(c::Cut, polsymb::Symbol)
     amplitude_db(c::Cut, polstr::String = "copol")
 
 Return a matrix of amplitudes in dB for some choice of polarization in the cut.
 Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
-"copol" (the default) and "crosspol".
+"copol" (the default) and "xpol".  Capitalization is not significant. Legal
+values for `polsymb` are `:copol` and `:xpol`.  Again, capitalization is not
+significant.
 """
 function amplitude_db end
 
 amplitude_db(c::Cut, ipol::Integer) = 10 * log10.(abs2.(getindex.(get_evec(c), ipol)))
+
+amplitude_db(c::Cut, polsymb::Symbol) = amplitude_db(c, lowercase(string(polsymb)))
 
 function amplitude_db(c::Cut, polstr::String = "copol")
     polstr = lowercase(strip(polstr))
     minflag = maxflag = false
     if isequal(polstr, "copol")
         maxflag = true
-    elseif isequal(polstr, "crosspol")
+    elseif isequal(polstr, "xpol")
         minflag = true
     else
         throw(ArgumentError("Unknown string \"$polstr\""))
@@ -169,22 +190,29 @@ end
 
 """
     phase_deg(c::Cut, ipol::Int)
+    phase_deg(c::Cut, polsymb::Symbol)
     phase_deg(c::Cut, polstr::String = "copol")
 
 Return a matrix of phases in degrees for some choice of polarization in the cut.
 Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
-"copol" (the default) and "crosspol".
+"copol" (the default) and "xpol" (capitalization is not significant).  Legal
+values of `polsymb` are `:copol` and `:xpol`.  Again, capitalization is not significant.
+The returned value is a `Matrix{Float64}` with `length(get_theta(cut))` rows and
+`length(get_phi(cut))` columns.
 """
 function phase_deg end
 
 phase_deg(c::Cut, ipol::Int) = rad2deg.(angle.(getindex.(get_evec(c), ipol)))
+
+phase_deg(c::Cut, polsymb::Symbol) = phase_deg(c, lowercase(string(polsymb)))
+
 
 function phase_deg(c::Cut, polstr::String = "copol")
     polstr = lowercase(polstr)
     minflag = maxflag = false
     if isequal(polstr, "copol")
         maxflag = true
-    elseif isequal(polstr, "crosspol")
+    elseif isequal(polstr, "xpol")
         minflag = true
     else
         throw(ArgumentError("Unknown string \"$polstr\""))
@@ -203,12 +231,12 @@ end
 
 
 """
-    power(cut::Cut)::Float64
     power(cut::Cut, θmax=180)
     
 Compute the total radiated power in a Cut object. 
 If only a single phi value is included in the cut, then assume no azimuthal variation.
 The integration in the θ direction will be computed over the limits from 0 to `min(θmax, last(get_theta(cut)))`.
+`θmax` should be specified in degrees.
 """
 function power(cut::Cut, θmax=180)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
@@ -409,14 +437,13 @@ end
 
 
 """
-    (x,y,z0,z90) = phscen(cutfile::AbstractString, fghz=11.802852677165355; min_dropoff=-10)
+    (x,y,z0,z90) = phscen(cutfile, fghz=11.80285268; min_dropoff=-10) -> (x0, y0, z0, z90)
 
-    (x,y,z0,z90) = phscen(cut::Cut, fghz=11.802852677165355; min_dropoff=-10)
+    (x,y,z0,z90) = phscen(cut::Cut, fghz=11.80285268; min_dropoff=-10) -> (x0, y0, z0, z90)
     
-Estimate phase center for a cut file or `Cut` object using NSI least-squares 
-algorithm.
+Estimate phase center for a cut file or `Cut` object using NSI least-squares algorithm.
 
-The three outputs are estimates of the location of the phase center relative to
+The four outputs are estimates of the location of the phase center relative to
 the origin used in recording the data in the cut.  If `fghz` is passed in as 
 an argument, the values will be expressed in units of inches.  Otherwise the 
 lengths will be normalized to wavelengths. Note that `z0` and `z90` are the 
@@ -427,23 +454,21 @@ in dB greater than `min_dropoff` relative to the peak field are considered.
 function phscen end
 
 function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
+    cut = asym2sym(cut)  # Ensure cut is symmetric
     # Determine which pol slot has main polarization:
     p1max, p2max = (maximum(x -> abs2(x[i]), get_evec(cut)) for i in 1:2)
     p = p1max > p2max ? 1 : 2
     E = getindex.(get_evec(cut), p)
 
-    thetamin = minimum(get_theta(cut))
     x = deg2rad.(cut.theta)
-    if thetamin ≥ 0.0
-        x = vcat(-reverse(x), x)  # Also cover negative theta angles
-    end
 
     # Boresight electric field:
-    thetamin, index = findmin(abs, get_theta(cut))
+    thetamin = 0.0
+    index = findfirst(iszero, get_theta(cut))
+    kk = index
     Ebore = E[index, begin]
-    # Normalize to boresight (including phase):
-    E = E ./ Ebore
-    Edb = 10 * log10.(abs2.(E))
+    E .*= inv(Ebore) # Normalize to boresight (including phase)
+    Edb = 10 .* log10.(abs2.(E))
     phase = angle.(E)
 
     if length(cut.phi) == 1
@@ -458,30 +483,11 @@ function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
         isempty(index) && error("Unable to find cut phi = $(ph)!")
         length(index) > 1 && error("Too many cuts with phi = $(ph)!")
         y = phase[:, index[1]]
-        cutdb = Edb[:, index]
-        if thetamin ≥ 0
-            index = findall(==(180 + ph), get_phi(cut))
-            if isempty(index)
-                index = findall(==(-180 + ph), get_phi(cut))
-            end
-            if isempty(index)
-                if length(cut.phi) == 1
-                    index = [1]
-                else
-                    error("Unable to find cut opposite phi = $(ph)!")
-                end
-            end
-            y = vcat(reverse(phase[:, index[1]]), y)  # Add phases for (theta, phi+180),
-            # which are the same as those for (-theta, phi).
-            cutdb = vcat(reverse(Edb[:, index[1]]), cutdb)
-        end
-
         y = unwrap(y)
-        (_, kk) = findmin(abs, x)
         y .-= y[kk] # Normalize to theta = 0 value
+        cutdb = Edb[:, index]
         big_enough = findall(≥(min_dropoff), cutdb)
         (krho[k], kz[k]) = _find_phase_center(x[big_enough], y[big_enough])
-
     end
 
     wl = 11.802852677165355 / fghz  # wavelength in inches
@@ -501,7 +507,6 @@ function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff 
     cut = read_cut(cutfile)
     phscen(cut, fghz; min_dropoff)
 end
-
 
 function _find_phase_center(theta::Vector{Float64}, phase::Vector{Float64})
     # theta and phase in radians. phase should be unwrapped.
@@ -524,7 +529,7 @@ Ticra cut file.
 ## Arguments:
 
 - `cutfile`:   A string containing the name of the cut file to evaluate,
-  or a `Cut` structure as returned by `read_cut`.
+  or a `Cut` object as returned by `read_cut`.
 - `fghz`: The frequency in GHz.
 - `thetamax`:  The maximum theta angle in degrees for which the pattern is
   to be evaluated.
@@ -550,10 +555,11 @@ Ticra cut file.
   0 <= |theta| ≤ `thetamax`.  xpd = copol gain in dbi - crosspol gain in dBi
 """
 function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
+    cut = sym2asym(cut) # Ensure that cut is asymmetric
     pwr_tot = power(cut)  # Total power in the cut
 
-    pol1db = 20 * log10.(norm.(getindex.(get_evec(cut), 1)))
-    pol2db = 20 * log10.(norm.(getindex.(get_evec(cut), 2)))
+    pol1db = 10 .* log10.(abs2.(getindex.(get_evec(cut), 1)))
+    pol2db = 10 .* log10.(abs2.(getindex.(get_evec(cut), 2)))
 
     if maximum(pol1db) > maximum(pol2db)
         copol = pol1db
@@ -565,7 +571,6 @@ function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
 
     clamp!(cxpol, -500.0, Inf) # Eliminate negative infinities
 
-    cut = sym2asym(cut) # Ensure that cut is asymmetric:
     thetamax > maximum(cut.theta) && error("thetamax is too large")
 
     c = copol[begin, begin] # Boresight copol
@@ -612,7 +617,7 @@ function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
 
     xpd = vec(copol[ind, :] - cxpol[ind, :])
 
-    # Zero out the power in the cone theta <= thetamax:
+    # Zero out the power in the cone theta >= thetamax:
     cut2theta = range(cut.theta[1], cut.theta[indm], length=length(ind))  # Truncate to the thetamax cone
     evec = get_evec(cut)[ind, :]
     cut2 = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut2theta, cut.phi, evec)
@@ -1039,7 +1044,7 @@ end
 @recipe function f(cut::Cut; 
     phi = get_phi(cut), 
     theta = get_theta(cut),
-    pol = :both, # or :copol or :xpol or 1 or 2
+    pol = :both, # or :copol or :xpol or 1 or 2, or "both" or "copol" or "xpol"
     quantity = :db, # or :power or :linear or :phase
     normalization = NaN # A number or :peak
     )

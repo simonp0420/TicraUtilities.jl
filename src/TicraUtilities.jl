@@ -17,6 +17,7 @@ export
     get_phi,
     get_text,
     get_theta, 
+    maxdb,
     normalize2dir!,
     parse_tor_file,
     phase_deg,  
