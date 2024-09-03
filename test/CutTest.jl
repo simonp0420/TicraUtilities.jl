@@ -155,16 +155,16 @@ end
               (27.70884584330901, 26.590458769432246, 30.348100641028992))
 end
 
-@safetestset "convert_cut!" begin 
+@safetestset "convert_cut" begin 
     using TicraUtilities
     cutfile = joinpath(@__DIR__, "test.cut")
     cut2 = read_cut(cutfile)
-    cut12 = deepcopy(cut2); convert_cut!(cut12, 1)
-    cut21 = deepcopy(cut12); convert_cut!(cut21, 2)
-    cut32 = deepcopy(cut2); convert_cut!(cut32, 3)
+    cut12 = convert_cut(cut2, 1)
+    cut21 = convert_cut(cut12, 2)
+    cut32 = convert_cut(cut2, 3)
     cut31 = deepcopy(cut12); convert_cut!(cut31, 3)
-    cut13 = deepcopy(cut32); convert_cut!(cut13, 1)
-    cut23 = deepcopy(cut31); convert_cut!(cut23, 2)
+    cut13 = convert_cut(cut32, 1)
+    cut23 = convert_cut(cut31, 2)
     @test cut32.evec ≈ cut31.evec
     @test cut13.evec ≈ cut12.evec
     @test cut23.evec ≈ cut2.evec

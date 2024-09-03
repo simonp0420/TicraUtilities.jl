@@ -3,6 +3,7 @@ module TicraUtilities
 export
     amplitude_db, 
     asym2sym,
+    convert_cut,
     convert_cut!,
     cut2sph, 
     get_evec,

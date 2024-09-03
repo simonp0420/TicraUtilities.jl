@@ -241,6 +241,7 @@ The integration in the θ direction will be computed over the limits from 0 to `
 function power(cut::Cut, θmax=180)::Float64
     # This version uses the trapezoidal rule in phi and integration of a
     # cubic spline interpolant in the theta direction.
+    get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     get_ncomp(cut) == 3 && error("Cut has 3 field components.  Only 2 allowed.")
     sym = get_theta(cut)[begin] < 0  # Symmetrical cut
     phifullmax = sym ? 180.0 : 360.0
@@ -515,17 +516,16 @@ function _find_phase_center(theta::Vector{Float64}, phase::Vector{Float64})
     return (krho, kz)
 end
 
-eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_cut(cutfile), fghz, thetamax)
 
 """
-    (c, xn, sp, slh, et, pc, xpd) = eval_cut(cutfile, fghz, thetamax)
+    (c, xn, sp, slh, et, pc, xpd) = eval_cut(cut, fghz, thetamax)
 
 Determine primary pattern performance metrics for a `Cut` object or 
 Ticra cut file.
 
 ## Arguments:
 
-- `cutfile`:   A string containing the name of the cut file to evaluate,
+- `cut`:   A string containing the name of the cut file to evaluate,
   or a `Cut` object as returned by `read_cut`.
 - `fghz`: The frequency in GHz.
 - `thetamax`:  The maximum theta angle in degrees for which the pattern is
@@ -551,6 +551,10 @@ Ticra cut file.
 - `xpd`: An array containing xpd (crosspol discrimination) values in db evaluated at points
   0 <= |theta| ≤ `thetamax`.  xpd = copol gain in dbi - crosspol gain in dBi
 """
+function eval_cut end
+
+eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_cut(cutfile), fghz, thetamax)
+
 function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
     cut = sym2asym(cut) # Ensure that cut is asymmetric
     pwr_tot = power(cut)  # Total power in the cut
@@ -630,7 +634,7 @@ end
     normalize2dir!(cut::Cut)
 
 Normalize a Cut object so it's total power is 4π.  This results
-in field magnitude squared being directivity.
+in field magnitude squared being numerically equal to directivity.
 """
 function normalize2dir!(cut::Cut)
     pwr = power(cut)
@@ -640,6 +644,18 @@ function normalize2dir!(cut::Cut)
     end
     return cut
 end
+
+"""
+    cut2 = convert_cut(cut::Cut, icomp::Integer)
+
+Make a copy of `cut` and convert it to a new polarization basis determined by `icomp`.  Legal values 
+for `icomp` and their meanings:
+*  1 => Eθ and Eϕ
+*  2 => ERHCP and ELHCP
+*  3 => Eh and Ev (Ludwig 3 co and cx)
+"""
+convert_cut(cut::Cut{Tc,N}, icomp) where {Tc,N} = convert_cut!(deepcopy(cut), icomp)
+
 
 """
     convert_cut!(cut::Cut, icomp::Integer)
@@ -675,7 +691,7 @@ function convert_cut!(cut::Cut{Tc,N}, icomp::Integer) where {Tc,N}
         end
     end
     cut.icomp = outpol
-    return
+    return cut
 end
 
 const iroot2 = inv(sqrt(2))
@@ -944,6 +960,7 @@ this input as the output.
 """
 function sym2asym(cut::Cut)
     # Check validity of input cut
+    get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     phi = get_phi(cut)
     theta = get_theta(cut)
     iszero(first(theta)) && return deepcopy(cut) 
@@ -991,6 +1008,7 @@ this input as the output.
 """
 function asym2sym(cut::Cut)
     # Check validity of input cut
+    get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     phi = get_phi(cut)
     theta = get_theta(cut)
     (first(theta) == -last(theta)) && return deepcopy(cut) 
