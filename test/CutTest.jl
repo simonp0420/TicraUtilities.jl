@@ -140,7 +140,7 @@ end
 
 @safetestset "eval_cut" begin 
     using TicraUtilities
-    (c, xn, sp, slh, et, pc, xpd) = eval_cut(joinpath(@__DIR__, "test.cut"), 11.80285, 15.0)
+    (c, xn, sp, slh, et, pc, xpd) = TicraUtilities.eval_cut(joinpath(@__DIR__, "test.cut"), 11.80285, 15.0)
     @test c ≈ 12.246790349581193
     @test length(xn) == 2232
     @test all(xn[1:10] .≈ [27.70884584330901, 27.719167304847517, 27.77196806190906, 27.867909509973337, 28.004986266580865,

@@ -5,9 +5,6 @@ export
     asym2sym,
     convert_cut!,
     cut2sph, 
-    cut2sph_adaptive, 
-    cut2sph_gauss, 
-    eval_cut,
     get_evec,
     get_header,
     get_icomp,
@@ -17,6 +14,9 @@ export
     get_phi,
     get_text,
     get_theta, 
+    get_x,
+    get_y,
+    get_z,
     maxdb,
     normalize2dir!,
     parse_tor_file,
@@ -57,8 +57,6 @@ export
        swefile,
        TicraSfc, 
        write_feed_file,
-       write_ticra_sfc,
-
 include("eval_horn_primary_champ.jl")
 =##
 
@@ -71,16 +69,43 @@ include("Geom.jl")
 include("SphericalWave.jl")
 include("Surface.jl")
 
-#==
-include("TicraSfc.jl")
-include("readfieldcut.jl")
-include("readfeeddiam.jl")
-include("field_rl_scan.jl")
-include("newfeedfrequency.jl")
-include("plotcut.jl")
-include("Champ.jl")
-include("make_cut_from_eh.jl")
-==#
+
+using PrecompileTools: @setup_workload, @compile_workload
+@compile_workload begin
+    cutfile = joinpath(@__DIR__, "..", "test", "test.cut")
+    cut = read_cut(cutfile)
+    adb = amplitude_db(cut)
+    scut = asym2sym(cut)
+    cut1 = convert_cut!(cut,1)    
+    cut2 = convert_cut!(cut,2)
+    swe_julia = cut2sph(cutfile)
+    evec = get_evec(cut)
+    icomp = get_icomp(cut)
+    icut = get_icut(cut)
+    ncomp = get_ncomp(cut)
+    phi = get_phi(cut)
+    text = get_text(cut)
+    theta = get_theta(cut)
+    mdb = maxdb(cut)
+    normalize2dir!(cut)
+    torfile = joinpath(@__DIR__, "..", "test", "tabulated_rim_tor_file.tor")
+    torparsed = parse_tor_file(torfile)
+    pdeg = phase_deg(cut, 1)
+    pcen = phscen(cutfile)
+    p = power(scut)
+    cuts = read_cuts(cutfile)
+    exifile = joinpath(@__DIR__, "..", "test", "beam_A14R.exi")
+    exi = read_exi(exifile)
+    sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.swe")
+    swe = read_sphfile(sphfile)
+    stafile = joinpath(@__DIR__, "..", "test", "scenario2_coverage.sta")
+    stations = read_station(stafile)
+    sfcfile = joinpath(@__DIR__, "..", "test", "parent_parabola.sfc")
+    sfc = read_surface(sfcfile)
+
+    t1 = sor_efficiency(cutfile; F=40.0, D=18.0, Oc=0.4, pol=:l3h, dz=0.0)
+end
+# include("make_cut_from_eh.jl")
 
 
 end # module

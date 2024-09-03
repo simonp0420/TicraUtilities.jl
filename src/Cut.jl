@@ -437,10 +437,7 @@ end
 
 
 """
-    (x,y,z0,z90) = phscen(cutfile, fghz=11.80285268; min_dropoff=-10) -> (x0, y0, z0, z90)
-
-    (x,y,z0,z90) = phscen(cut::Cut, fghz=11.80285268; min_dropoff=-10) -> (x0, y0, z0, z90)
-    
+    (x,y,z0,z90) = phscen(cut, fghz=11.80285268; min_dropoff=-10)
 Estimate phase center for a cut file or `Cut` object using NSI least-squares algorithm.
 
 The four outputs are estimates of the location of the phase center relative to
