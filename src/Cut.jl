@@ -367,16 +367,16 @@ function read_cuts(fname::AbstractString)
 end
 
 """
-    write_ticra_cut(fname::AbstractString, cut::Cut, title::AbstractString="Cut file created by write_ticra_cut")
+    write_cutfile(fname::AbstractString, cut::Cut, title::AbstractString="Cut file created by write_cutfile")
 
-    write_ticra_cut(fname::AbstractString, cuts::AbstractVector{Cut}, title::AbstractString="Cut file created by write_ticra_cut")
+    write_cutfile(fname::AbstractString, cuts::AbstractVector{Cut}, title::AbstractString="Cut file created by write_cutfile")
 
 Write `Cut` cut data to a Ticra-compatible cut file.
 """
-function write_ticra_cut(
+function write_cutfile(
     fname::AbstractString,
     cut::Cut{T,N},
-    title::String = "Cut file created by write_ticra_cut"
+    title::String = "Cut file created by write_cutfile"
 ) where {T,N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
@@ -404,10 +404,10 @@ function write_ticra_cut(
     end
 end
 
-function write_ticra_cut(
+function write_cutfile(
     fname::AbstractString,
     cuts::AbstractVector{Cut{T,N}},
-    title::String = "Cut file created by write_ticra_cut",
+    title::String = "Cut file created by write_cutfile",
     ) where {T,N}
     open(fname, "w") do fid
         for cut in cuts

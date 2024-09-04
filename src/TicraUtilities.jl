@@ -39,7 +39,7 @@ export
     write_sphfile,
     write_station,
     write_surface,
-    write_ticra_cut,
+    write_cutfile,
     write_tor_object
     #==
        CorrList,

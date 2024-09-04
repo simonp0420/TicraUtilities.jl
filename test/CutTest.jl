@@ -68,12 +68,12 @@ end
     end
 end
 
-@safetestset "write_ticra_cut" begin 
+@safetestset "write_cutfile" begin 
     using TicraUtilities
 
     cut1 = read_cut(joinpath(@__DIR__, "test.cut"))
     tfile = joinpath(tempdir(), "temp.cut")
-    write_ticra_cut(tfile, cut1, "Cut file normalized to directivity")
+    write_cutfile(tfile, cut1, "Cut file normalized to directivity")
     cut2 = read_cut(tfile)
     for fn in fieldnames(TicraUtilities.Cut)
         @test getfield(cut1, fn) == getfield(cut2, fn)
@@ -81,7 +81,7 @@ end
 
     cut1_3components = TicraUtilities._add_3rd_component(cut1)
     tfile = joinpath(tempdir(), "temp.cut")
-    write_ticra_cut(tfile, cut1_3components, "Cut file normalized to directivity")
+    write_cutfile(tfile, cut1_3components, "Cut file normalized to directivity")
     cut2_3components = read_cut(tfile)
     for fn in fieldnames(TicraUtilities.Cut)
         if fn == :evec
@@ -93,7 +93,7 @@ end
 
     cuts1 = read_cuts(joinpath(@__DIR__, "test2.cut"))
     tfile = joinpath(tempdir(),"temp.cut")
-    write_ticra_cut(tfile, cuts1, "Cut file normalized to directivity")
+    write_cutfile(tfile, cuts1, "Cut file normalized to directivity")
     cuts2 = read_cuts(tfile)
     for (i,(cut1, cut2)) in enumerate(zip(cuts1, cuts2))
         for fn in fieldnames(TicraUtilities.Cut)
@@ -108,7 +108,7 @@ end
 
     cuts1_3components = [TicraUtilities._add_3rd_component(cut) for cut in cuts1]
     tfile = joinpath(tempdir(),"temp.cut")
-    write_ticra_cut(tfile, cuts1_3components, "Cut file normalized to directivity")
+    write_cutfile(tfile, cuts1_3components, "Cut file normalized to directivity")
     cuts2_3components = read_cuts(tfile)
     for (i,(cut1, cut2)) in enumerate(zip(cuts1_3components, cuts2_3components))
         for fn in fieldnames(TicraUtilities.Cut)
