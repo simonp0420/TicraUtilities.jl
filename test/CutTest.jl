@@ -61,7 +61,7 @@ end
     using TicraUtilities
     t = read_cutfile(joinpath(@__DIR__, "test.cut"))
     @test abs(power(t) - 4π) ≤ 1.e-5
-    @test maxdb(t) ≈ 12.246790349581193
+    @test maximum_db(t) ≈ 12.246790349581193
     ts = read_cutfile(joinpath(@__DIR__, "test2.cut"))
     for t1 in ts
         @test abs(power(t1) - 4π) ≤ 1.e-5
