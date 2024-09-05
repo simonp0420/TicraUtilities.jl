@@ -3,7 +3,7 @@ Utilities in the Julia programming language for reading and writing Ticra-compat
 performing spherical wave expansion calculations, and more.
 
 This package is still under development.  To do:
-* Add more functionality
+* ~~Add more functionality~~
 * Improve docstrings
 * Formal documentation
  
