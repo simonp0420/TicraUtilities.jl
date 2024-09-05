@@ -84,7 +84,7 @@ end
 
 using Printf: @printf
 """
-  write_exifile(filename::AbstractString, t::Exi)
+    write_exifile(filename::AbstractString, t::Exi)
   
 Create a Ticra-compatible excitation file from a `Exi` object.
 """
