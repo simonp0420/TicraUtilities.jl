@@ -10,10 +10,10 @@ Contains data from a Ticra excitation file.
 * `id::Vector{String}`: Excitation ID strings.
 """
 struct Exi
-  header::Vector{String}
-  ampdb::Vector{Float64}
-  phsdeg:: Vector{Float64}
-  id::Vector{String}
+    header::Vector{String}
+    ampdb::Vector{Float64}
+    phsdeg::Vector{Float64}
+    id::Vector{String}
 end
 
 """
@@ -52,7 +52,7 @@ import Base.complex
 
 Return a vector complex excitation amplitudes.
 """
-complex(exi::Exi) = [10^(ampdb/20) * cis(deg2rad(phs))  for (ampdb,phs) in zip(exi.ampdb,exi.phsdeg)]
+complex(exi::Exi) = [10^(ampdb / 20) * cis(deg2rad(phs)) for (ampdb, phs) in zip(exi.ampdb, exi.phsdeg)]
 
 
 """
@@ -61,8 +61,11 @@ complex(exi::Exi) = [10^(ampdb/20) * cis(deg2rad(phs))  for (ampdb,phs) in zip(e
 Reads contents of a Ticra-compatible excitation file and returns a `Exi` object.
 """
 function read_exifile(filename::AbstractString)
-    open(filename,"r") do fid
-        header = String[]; ampdb = Float64[]; phsdeg = Float64[]; id = String[]
+    open(filename, "r") do fid
+        header = String[]
+        ampdb = Float64[]
+        phsdeg = Float64[]
+        id = String[]
         inheader = true
         for line in eachline(fid)
             if inheader
@@ -72,13 +75,13 @@ function read_exifile(filename::AbstractString)
                 end
                 push!(header, rstrip(line))
             else
-                (i,a,p) = split(line)
-                push!(id,i)
-                push!(ampdb, parse(Float64,a))
-                push!(phsdeg, parse(Float64,p))
+                (i, a, p) = split(line)
+                push!(id, i)
+                push!(ampdb, parse(Float64, a))
+                push!(phsdeg, parse(Float64, p))
             end
         end
-        return Exi(header,ampdb,phsdeg,id)
+        return Exi(header, ampdb, phsdeg, id)
     end
 end
 

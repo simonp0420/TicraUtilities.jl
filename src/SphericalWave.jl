@@ -2,7 +2,7 @@ using OffsetArrays: OffsetArray, OffsetVector, Origin
 using Printf: @printf
 using AssociatedLegendrePolynomials: Plm!, LegendreNormCoeff, LegendreOrthoNorm, legendre, legendre!, LegendreOrthoCoeff
 using ForwardDiff: Dual, value, partials
-derivative(x::Dual) = partials(x,1)
+derivative(x::Dual) = partials(x, 1)
 using FFTW: fft!, bfft!, ifft!, fftshift
 using LinearAlgebra: norm
 using Dates: now
@@ -47,9 +47,9 @@ in the File Formats section of the Ticra official documentation.
     t6::String = "1.0 2.0 3.0 4.0 5.0"
     t7::String = "dummy t7"
     t8::String = "dummy t8"
-    qsmns::OffsetArray{ComplexF64, 3, Array{ComplexF64, 3}} = 
-        OffsetArray(zeros(ComplexF64, (2, 2mmax+1, nmax)), 1:2, -mmax:mmax, 1:nmax)
-    powerms::OffsetVector{Float64, Vector{Float64}}  = OffsetArray(zeros(mmax+1), 0:mmax)
+    qsmns::OffsetArray{ComplexF64,3,Array{ComplexF64,3}} =
+        OffsetArray(zeros(ComplexF64, (2, 2mmax + 1, nmax)), 1:2, -mmax:mmax, 1:nmax)
+    powerms::OffsetVector{Float64,Vector{Float64}} = OffsetArray(zeros(mmax + 1), 0:mmax)
 end
 
 import Base.show
@@ -62,11 +62,11 @@ function show(io::IO, swe::SWEQPartition)
     println(io, "  nmax     $(swe.nmax)")
     println(io, "  mmax     $(swe.mmax)")
     println(io, string("  qsmns    OffsetArray{ComplexF64}(",
-    first(axes(swe.qsmns,1)), ":", last(axes(swe.qsmns,1)), ",",
-    first(axes(swe.qsmns,2)), ":", last(axes(swe.qsmns,2)), ",",
-    first(axes(swe.qsmns,3)), ":", last(axes(swe.qsmns,3)), ")"))
+        first(axes(swe.qsmns, 1)), ":", last(axes(swe.qsmns, 1)), ",",
+        first(axes(swe.qsmns, 2)), ":", last(axes(swe.qsmns, 2)), ",",
+        first(axes(swe.qsmns, 3)), ":", last(axes(swe.qsmns, 3)), ")"))
     println(io, string("  powerms  OffsetArray{Float64}(",
-    first(axes(swe.powerms,1)), ":", last(axes(swe.powerms,1)), ")"))
+        first(axes(swe.powerms, 1)), ":", last(axes(swe.powerms, 1)), ")"))
     return nothing
 end
 
@@ -94,8 +94,8 @@ function read_sphfile(fname::AbstractString)
             nthe, nphi, nmax, mmax = parse.(Int, split(readline(io)))
             t4, t5, t6, t7, t8 = (readline(io) for _ in 4:8)
 
-            qsmns = OffsetArray(zeros(ComplexF64, 2, 2mmax+1, nmax), 1:2, -mmax:mmax, 1:nmax)
-            powerms = OffsetArray(zeros(mmax+1), 0:mmax)
+            qsmns = OffsetArray(zeros(ComplexF64, 2, 2mmax + 1, nmax), 1:2, -mmax:mmax, 1:nmax)
+            powerms = OffsetArray(zeros(mmax + 1), 0:mmax)
             for absm in 0:mmax
                 # Read Q coefficients for current value of absm
                 words = split(readline(io))
@@ -144,7 +144,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
         for sp in sps # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
             (; t4, t5, t6, t7, t8, qsmns, powerms) = sp
-        
+
             # Write header info of next partition:
             println(io, prgtag)
             println(io, idstrg)
@@ -155,7 +155,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
                 miszero = iszero(absm)
                 nmin = max(1, absm)
                 # Write Q coefficients for current value of absm
-                @printf(io, "%6i %23.17G\n", absm, ipwrnormfactor*powerms[absm])
+                @printf(io, "%6i %23.17G\n", absm, ipwrnormfactor * powerms[absm])
                 for n in nmin:nmax
                     q1r, q1i = inormfactor * qsmns[1, -absm, n] |> conj |> reim # s = 1
                     q2r, q2i = inormfactor * qsmns[2, -absm, n] |> conj |> reim # s = 2
@@ -206,13 +206,13 @@ See documentation for `AssociatedLegendrePolynomials.Plm` for calling convention
 end
 
 @inline function P̄nm(n::UnitRange, m::UnitRange, x::Number)
-    any(<(0),m) && throw(ArgumentError("all m values must be nonnegative"))
+    any(<(0), m) && throw(ArgumentError("all m values must be nonnegative"))
     _checkmn(m, n)
     p = legendre(Qcoef, n, m, x)
     # Remove Condon–Shortley phase factor
-    for mp1 in axes(p,2) 
+    for mp1 in axes(p, 2)
         isodd(mp1) && continue # 1-based indexing!
-        p[:,mp1] .*= -1
+        p[:, mp1] .*= -1
     end
     return p
 end
@@ -231,7 +231,7 @@ function P̄nm!(Λ::Matrix, n::Int, m::Int, x::Number)
     # Remove Condon–Shortley phase factor
     for mp1 in axes(Λ, 2)
         isodd(mp1) && continue # 1-based indexing!
-        Λ[:,mp1] .*= -1
+        Λ[:, mp1] .*= -1
     end
     return nothing
 end
@@ -276,10 +276,10 @@ function sph2cut(sphfile::AbstractString; kwargs...)
     sph2cut(swe; kwargs...)
 end
 
-function sph2cut(swe::SWEQPartition; 
-    theta::AbstractRange=0.0:-1.0:1.0, 
+function sph2cut(swe::SWEQPartition;
+    theta::AbstractRange=0.0:-1.0:1.0,
     phi::AbstractRange=0.0:-1.0:1.0,
-    ipol::Int = 0)
+    ipol::Int=0)
 
     (0 ≤ ipol ≤ 3) || Throw(ArgumentError("polarization must be either 0,1,2, or 3"))
 
@@ -292,14 +292,14 @@ function sph2cut(swe::SWEQPartition;
     end
     if isempty(phi)
         Nϕ = swe.nphi
-        ϕs = range(0.0, 360-360/Nϕ, Nϕ)
+        ϕs = range(0.0, 360 - 360 / Nϕ, Nϕ)
     else
         Nϕ = length(phi)
         ϕs = range(first(phi), last(phi), Nϕ)
     end
 
     Es = _q2evec(swe.qsmns, θs, ϕs)
-    
+
     if iszero(ipol)
         # Find the maximum norm E-field
         _, imaxnorm = findmax(_norm², Es)
@@ -307,9 +307,9 @@ function sph2cut(swe::SWEQPartition;
         ϕ_maxnorm = ϕs[last(Tuple(imaxnorm))]
         # Check which polarization decomposition produces largest copol:
         Eθϕ = Eθϕ_maxnorm
-        (θ̂,ϕ̂), (R̂,L̂), (ĥ,v̂) = _pol_basis_vectors(ϕ_maxnorm)
-        ERL = @SMatrix[R̂ ⋅ θ̂   R̂ ⋅ ϕ̂; L̂ ⋅ θ̂   L̂ ⋅ ϕ̂] * Eθϕ
-        Ehv = @SMatrix[ĥ ⋅ θ̂   ĥ ⋅ ϕ̂; v̂ ⋅ θ̂   v̂ ⋅ ϕ̂] * Eθϕ
+        (θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂) = _pol_basis_vectors(ϕ_maxnorm)
+        ERL = @SMatrix[R̂⋅θ̂ R̂⋅ϕ̂; L̂⋅θ̂ L̂⋅ϕ̂] * Eθϕ
+        Ehv = @SMatrix[ĥ⋅θ̂ ĥ⋅ϕ̂; v̂⋅θ̂ v̂⋅ϕ̂] * Eθϕ
         icomp = argmax(maximum(abs2.(x)) for x in (Eθϕ, ERL, Ehv))
     else
         icomp = ipol
@@ -321,7 +321,7 @@ function sph2cut(swe::SWEQPartition;
         # Re-express field vectors in the selected polarization components
         @inbounds for iϕ in 1:Nϕ
             b̂₁, b̂₂ = _pol_basis_vectors(ϕs[iϕ])[icomp]
-            polmat = @SMatrix[b̂₁ ⋅ θ̂   b̂₁ ⋅ ϕ̂; b̂₂ ⋅ θ̂   b̂₂ ⋅ ϕ̂]
+            polmat = @SMatrix[b̂₁⋅θ̂ b̂₁⋅ϕ̂; b̂₂⋅θ̂ b̂₂⋅ϕ̂]
             for iθ in 1:Nθ
                 Es[iθ, iϕ] = polmat * Es[iθ, iϕ]
             end
@@ -338,7 +338,7 @@ function sph2cut(swe::SWEQPartition;
     theta = θs
     phi = ϕs
     evec = Es
-    cut = Cut(;ncomp, icut, icomp, text, theta, phi, evec)
+    cut = Cut(; ncomp, icut, icomp, text, theta, phi, evec)
 
     return cut
 end # function
@@ -350,28 +350,28 @@ function _q2evec(qsmns, θs, ϕs)
     _checkmn(mabsmax, nmax)
 
     # Prepare Channel for multithreading
-    TD = typeof(Dual(1.0,1.0))
+    TD = typeof(Dual(1.0, 1.0))
     chnl = Channel{Matrix{TD}}(Threads.nthreads())
     foreach(1:Threads.nthreads()) do _
-        put!(chnl, Matrix{TD}(undef, nmax+1, mabsmax+1))
+        put!(chnl, Matrix{TD}(undef, nmax + 1, mabsmax + 1))
     end
 
     Nθ = length(θs)
     Nϕ = length(ϕs)
 
     # Precompute complex exponentials for fast lookup
-    expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax+1)
+    expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax + 1)
     expmjmϕs = OffsetArray(expmjmϕs_parent, 1:Nϕ, 0:mabsmax)
-    expmjmϕs[:,1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
+    expmjmϕs[:, 1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
     for m in 2:mabsmax
-        for iϕ in axes(expmjmϕs,1)
+        for iϕ in axes(expmjmϕs, 1)
             expmjmϕs[iϕ, m] = expmjmϕs[iϕ, m-1] * expmjmϕs[iϕ, 1]
         end
     end
 
     (θ̂, ϕ̂) = _pol_basis_vectors(0)[1] # θ̂ and ϕ̂ are independent of ϕ in (θ, ϕ) basis
-    Es = zeros(SVector{2, ComplexF64}, Nθ, Nϕ)
-    cfactor = 1/(2*sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
+    Es = zeros(SVector{2,ComplexF64}, Nθ, Nϕ)
+    cfactor = 1 / (2 * sqrt(π)) # Includes 1/sqrt(2) needed for f1 and f2
 
     Threads.@threads for iθ in eachindex(θs)
         result_parent = take!(chnl)
@@ -383,14 +383,14 @@ function _q2evec(qsmns, θs, ϕs)
         (θis0 || θis180) || P̄nm!(result_parent, nmax, mabsmax, Dual(cosθ, 1.0))
 
         @inbounds for iϕ in eachindex(ϕs)
-            Eθϕ = @SVector[complex(0.0,0.0), complex(0.0,0.0)] # Initialization
+            Eθϕ = @SVector[complex(0.0, 0.0), complex(0.0, 0.0)] # Initialization
             nsign = 1
-            jⁿ = complex(0,1)
-            jⁿ⁺¹ = jⁿ * complex(0,1)
+            jⁿ = complex(0, 1)
+            jⁿ⁺¹ = jⁿ * complex(0, 1)
             @inbounds for n in 1:nmax
 
                 if θis0 || θis180
-                    mPfactor = sqrt(n * (n+1) * (2n+1) / 8)
+                    mPfactor = sqrt(n * (n + 1) * (2n + 1) / 8)
                     mrange = -1:2:1
                 else
                     # General, non-endpoint θ
@@ -398,7 +398,7 @@ function _q2evec(qsmns, θs, ϕs)
                     mrange = -mlim:1:mlim
                 end # Limiting cases
 
-                nfactor = inv(sqrt(n*(n+1)))
+                nfactor = inv(sqrt(n * (n + 1)))
 
                 for m in mrange
                     mabs = abs(m)
@@ -410,7 +410,7 @@ function _q2evec(qsmns, θs, ϕs)
                             dP *= -nsign
                         end
                     else
-                        res = result[n,mabs]
+                        res = result[n, mabs]
                         mP = m * value(res) / sinθ
                         dP = -sinθ * derivative(res)
                     end
@@ -418,11 +418,11 @@ function _q2evec(qsmns, θs, ϕs)
                     cisfact = m ≥ 0 ? expmjmϕs[iϕ, m] : conj(expmjmϕs[iϕ, abs(m)])
                     #cisfact = cis(-m * deg2rad(ϕ))
                     cmn = (cfactor * mfactor * nfactor) * cisfact
-                    f1factor = -jⁿ⁺¹ * cmn 
-                    f2factor = jⁿ * cmn 
-                    f⃗₁ = f1factor * (im * mP * θ̂  +       dP * ϕ̂)
-                    f⃗₂ = f2factor * (dP * θ̂       -  im * mP * ϕ̂)
-                    Eθϕ += qsmns[1,m,n] * f⃗₁ + qsmns[2,m,n] * f⃗₂
+                    f1factor = -jⁿ⁺¹ * cmn
+                    f2factor = jⁿ * cmn
+                    f⃗₁ = f1factor * (im * mP * θ̂ + dP * ϕ̂)
+                    f⃗₂ = f2factor * (dP * θ̂ - im * mP * ϕ̂)
+                    Eθϕ += qsmns[1, m, n] * f⃗₁ + qsmns[2, m, n] * f⃗₂
                 end # m loop
 
                 # Update n loop variables
@@ -433,7 +433,7 @@ function _q2evec(qsmns, θs, ϕs)
             end # n loop
 
             Es[iθ, iϕ] = Eθϕ # Store result
- 
+
         end # ϕ loop
 
         put!(chnl, result_parent)
@@ -455,11 +455,11 @@ end # function
 
 Starting value of Δ iterations from Hansen Eq. (4.95), after correcting sign error in denominator
 """
-function _Δⁿₙₘ(m::Integer,n::Integer)
+function _Δⁿₙₘ(m::Integer, n::Integer)
     n > 0 || throw(ArgumentError("n must be positive"))
     mabs = abs(m)
-    mabs ≤ n ||  throw(ArgumentError("|m| must be less than or equal to n"))
-    return sqrt(prod((n-mabs+i)/2i for i in 1:(n+mabs)) / 2.0^(n-mabs)) # Hansen (4.95) after correction
+    mabs ≤ n || throw(ArgumentError("|m| must be less than or equal to n"))
+    return sqrt(prod((n - mabs + i) / 2i for i in 1:(n+mabs)) / 2.0^(n - mabs)) # Hansen (4.95) after correction
 end
 
 """
@@ -474,7 +474,7 @@ function _Δⁿₘₚₘ(m′::Integer, m::Integer, n::Integer)
     Δip1 = 0.0
     Δi = _Δⁿₙₘ(m, n)
     for i in n:-1:m′+1
-        Δim1 = -(sqrt((n+i+1)*(n-i)) * Δip1 + 2m * Δi) / sqrt((n+i) * (n-i+1))
+        Δim1 = -(sqrt((n + i + 1) * (n - i)) * Δip1 + 2m * Δi) / sqrt((n + i) * (n - i + 1))
         Δip1, Δi = Δi, Δim1
     end
     return Δi
@@ -517,14 +517,18 @@ end
 
 function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
-    cutθϕ = deepcopy(cut); convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
-    θs = get_theta(cutθϕ); Nθ = length(θs); Δθ = θs[2] - θs[1]
+    cutθϕ = deepcopy(cut)
+    convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
+    θs = get_theta(cutθϕ)
+    Nθ = length(θs)
+    Δθ = θs[2] - θs[1]
     iszero(first(θs)) || error("First θ value in cut must be zero")
-    180/Δθ ≈ round(Int, 180/Δθ) || error("Δθ must divide evenly into 180 in cut")
-    ϕs = get_phi(cutθϕ);   Nϕ = length(ϕs)
+    180 / Δθ ≈ round(Int, 180 / Δθ) || error("Δθ must divide evenly into 180 in cut")
+    ϕs = get_phi(cutθϕ)
+    Nϕ = length(ϕs)
     if 180 ≠ last(θs)
         # Extend cut to θ = 180 with zeros
-        newθs = (last(θs) + Δθ):Δθ:180
+        newθs = (last(θs)+Δθ):Δθ:180
         newzeros = zeros(eltype(cut.evec), length(newθs), Nϕ)
         cutθϕ.evec = vcat(cutθϕ.evec, newzeros)
         cutθϕ.theta = first(θs):Δθ:180
@@ -533,15 +537,15 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     end
 
     # Step 1: CP components using Eθ and Eϕ components
-    W₊₁ₘ = [first(e) + im*last(e) for e in get_evec(cutθϕ)]
-    W₋₁ₘ = [first(e) - im*last(e) for e in get_evec(cutθϕ)]
+    W₊₁ₘ = [first(e) + im * last(e) for e in get_evec(cutθϕ)]
+    W₋₁ₘ = [first(e) - im * last(e) for e in get_evec(cutθϕ)]
 
     # Step 2: ϕ integration. Eq. (4.127):
     ifft!(W₊₁ₘ, 2)
     ifft!(W₋₁ₘ, 2)
 
     # Create storage for extended samples in theta
-    Nθe = round(Int, 360/Δθ)
+    Nθe = round(Int, 360 / Δθ)
     Nθe == 2(Nθ - 1) || error("Nθe = $Nθe is not equal to 2(Nθ-1) = $(2(Nθ-1))")
     vp1 = zeros(ComplexF64, Nθe)  # For one column of w
     vm1 = zeros(ComplexF64, Nθe)  # For one column of w
@@ -554,14 +558,14 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     b̃m1 = zeros(ComplexF64, 4N)
 
     # Step 12: Periodic extension of the Pi function
-    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j)  for j in 0:(4N-1)]
+    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j) for j in 0:(4N-1)]
     ftΠ̃ = fft!(Π̃)
 
-    qsmns = OffsetArray(zeros(ComplexF64, (2, 2M+1, N)), 1:2, -M:M, 1:N)
+    qsmns = OffsetArray(zeros(ComplexF64, (2, 2M + 1, N)), 1:2, -M:M, 1:N)
     sqroots = Origin(0)(Float64[sqrt(p) for p in 0:2N+1])
-    cfactors = [-sqrt((n+0.5)*π) * (im)^n for n in 1:N]
+    cfactors = [-sqrt((n + 0.5) * π) * (im)^n for n in 1:N]
     for m in -M:M
-        mfactorp1 = (1.0im)^(1+m)
+        mfactorp1 = (1.0im)^(1 + m)
         # Fill extended vectors
         mμsign = iseven(1 - m) ? 1 : -1
         column = m ≥ 0 ? m + 1 : Nϕ + m + 1
@@ -569,7 +573,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
         vm1 .= zero(ComplexF64)
         vp1[1:Nθ] .= @view W₊₁ₘ[:, column]
         vm1[1:Nθ] .= @view W₋₁ₘ[:, column]
-        for (i,ie) in enumerate(Nθ+1:Nθe)
+        for (i, ie) in enumerate(Nθ+1:Nθe)
             vp1[ie] = mμsign * W₊₁ₘ[Nθ-i, column]
             vm1[ie] = mμsign * W₋₁ₘ[Nθ-i, column]
         end
@@ -591,13 +595,15 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
         b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
         b̃m1[end-Nm1] *= 0.5
         # Step 4: Compute K sequences using convolution
-        fft!(b̃p1); b̃p1 .*= ftΠ̃ 
-        fft!(b̃m1); b̃m1 .*= ftΠ̃ 
+        fft!(b̃p1)
+        b̃p1 .*= ftΠ̃
+        fft!(b̃m1)
+        b̃m1 .*= ftΠ̃
         Kp1 = ifft!(b̃p1)
         Km1 = ifft!(b̃m1)
         for n in max(1, abs(m)):N
-            Δiₘ, Δip1ₘ = _Δⁿₙₘ(m,n), 0.0 # For (m', m) recursion
-            Δi₁, Δip1₁ = _Δⁿₙₘ(1,n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
+            Δiₘ, Δip1ₘ = _Δⁿₙₘ(m, n), 0.0 # For (m', m) recursion
+            Δi₁, Δip1₁ = _Δⁿₙₘ(1, n), 0.0  # For (m',μ) recursion (1 subscript means μ=+1)
             sp1 = sm1 = zero(ComplexF64) # Sums for μ = ±1
             mprimefact = 1 # See Eq. (A2.32)
             for i in n:-1:1 # i plays role of m′
@@ -620,15 +626,15 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
 
             nsign = iseven(n) ? -1 : 1
             cfactor = nsign * cfactors[n] * mfactorp1
-            qsmns[1,m,n] = cfactor * (sp1 - sm1)
-            qsmns[2,m,n] = cfactor * (sp1 + sm1)
+            qsmns[1, m, n] = cfactor * (sp1 - sm1)
+            qsmns[2, m, n] = cfactor * (sp1 + sm1)
         end
     end
-    
+
 
     # Eliminate modes with negligible power
     (qpwr, powerms, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
-    
+
 
     # Create output SWEQPartition
     date, clock = split(string(now()), 'T')
@@ -647,10 +653,10 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
     srange, mrange, nrange = axes(qsmns)
     mabsmax = last(mrange)
     nmax = last(nrange)
-    powerms = Origin(0)(zeros(mabsmax+1))
-    powerms[0] = 0.5 * sum(abs2, (qsmns[s,0,n] for s in srange for n in nrange))
+    powerms = Origin(0)(zeros(mabsmax + 1))
+    powerms[0] = 0.5 * sum(abs2, (qsmns[s, 0, n] for s in srange for n in nrange))
     for mabs in 1:mabsmax
-        powerms[mabs] = 0.5 * sum(abs2, (qsmns[s,m,n] for s in 1:2 for m in (-mabs,mabs) for n in nrange))
+        powerms[mabs] = 0.5 * sum(abs2, (qsmns[s, m, n] for s in 1:2 for m in (-mabs, mabs) for n in nrange))
     end
     qpwr = sum(powerms)
     pwrtol ≤ 0 && return (qpwr, powerms, qsmns)
@@ -670,8 +676,8 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
     if pwrtol > 0
         for ntest in 1:nmax
             nretain = ntest
-            qsretained = (qsmns[s,m,n] for s in 1:2 for m in -mretain:mretain for n in 1:nretain)
-            qpwr - 0.5*sum(abs2, qsretained) < pwrtol && break
+            qsretained = (qsmns[s, m, n] for s in 1:2 for m in -mretain:mretain for n in 1:nretain)
+            qpwr - 0.5 * sum(abs2, qsretained) < pwrtol && break
         end
     end
 
@@ -682,18 +688,18 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
         nmax = nretain
         qsmn = OffsetArray(zeros(ComplexF64, 2, 2mabsmax + 1, nmax), 1:2, -mabsmax:mabsmax, 1:nmax)
         @inbounds for n in 1:nmax, m in -mabsmax:mabsmax, s in 1:2
-            qsmn[s,m,n] = qsmns[s,m,n]
+            qsmn[s, m, n] = qsmns[s, m, n]
         end
-        powerm = Origin(0)(zeros(mabsmax+1))
-        powerm[0] = 0.5 * sum(abs2, qsmn[s,0,n] for s in 1:2, n in 1:nmax)
+        powerm = Origin(0)(zeros(mabsmax + 1))
+        powerm[0] = 0.5 * sum(abs2, qsmn[s, 0, n] for s in 1:2, n in 1:nmax)
         for mabs in 1:mabsmax
-            powerm[mabs] = 0.5 * sum(abs2, qsmn[s,m,n] for s in 1:2, m in (-mabs,mabs), n in 1:nmax)
+            powerm[mabs] = 0.5 * sum(abs2, qsmn[s, m, n] for s in 1:2, m in (-mabs, mabs), n in 1:nmax)
         end
         qpwr = sum(powerm)
     else
         powerm = powerms
         qsmn = qsmns
-    end                
+    end
 
     return (qpwr, powerm, qsmn)
 end

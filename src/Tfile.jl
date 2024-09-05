@@ -4,12 +4,12 @@
 Ticra Field-on-stations ("T-file") data.
 """
 struct Tfile
-    title   ::String  # title string from first line of file
-    nel     ::Int          # Number of elements in the array (or number of beams)
-    nsta    ::Vector{Int}  # Number of stations in each partition
-    npart   ::Int          # Number of partitions
-    p1      ::Vector{Matrix{ComplexF64}}  # 1st pol component, element size = (nsta[kp], Nel)
-    p2      ::Vector{Matrix{ComplexF64}}  # 2cd pol component, element size = (nsta[kp], Nel)
+    title::String  # title string from first line of file
+    nel::Int          # Number of elements in the array (or number of beams)
+    nsta::Vector{Int}  # Number of stations in each partition
+    npart::Int          # Number of partitions
+    p1::Vector{Matrix{ComplexF64}}  # 1st pol component, element size = (nsta[kp], Nel)
+    p2::Vector{Matrix{ComplexF64}}  # 2cd pol component, element size = (nsta[kp], Nel)
 end
 
 import Base.show
@@ -47,7 +47,7 @@ function read_tfile(filename)
                 idbeam == ibeam || error("beam number mismatch")
                 for ks = 1:nsta[kp]
                     tline = split(readline(fid))
-                    (x1,x2,x3,x4) = (parse(Float64, t) for t in tline)
+                    (x1, x2, x3, x4) = (parse(Float64, t) for t in tline)
                     p1kp[ks, ibeam] = complex(x1, x2)
                     p2kp[ks, ibeam] = complex(x3, x4)
                 end
@@ -56,6 +56,6 @@ function read_tfile(filename)
             push!(p2, p2kp)
         end
         return Tfile(title, nel, nsta, npart, p1, p2)
-    end 
+    end
 end
 

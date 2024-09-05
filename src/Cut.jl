@@ -23,7 +23,7 @@ contains all of the cuts for a single frequency.
 * `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
 * `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
-@kwdef mutable struct Cut{T <: AbstractRange, N}
+@kwdef mutable struct Cut{T<:AbstractRange,N}
     ncomp::Int
     icut::Int
     icomp::Int
@@ -44,7 +44,7 @@ function show(io::IO, t::Cut)
     if isempty(t.text)
         println(io, "")
     elseif length(t.text) < 6
-        println(io,"")
+        println(io, "")
         for line in t.text
             println(io, "      \t" * line)
         end
@@ -88,15 +88,15 @@ end
 
 Return the maximum amplitude for any polarization component stored in the `Cut` object.
 """
-Base.maximum(cut::Cut) = maximum(x -> maximum(abs,x), cut.evec)
+Base.maximum(cut::Cut) = maximum(x -> maximum(abs, x), cut.evec)
 
 
 """
-    maxdb(cut::Cut)
+    maximum_db(cut::Cut)
 
 Return the maximum amplitude in dB for any polarization component stored in the `Cut` object.
 """
-maxdb(cut::Cut) = 20*log10(maximum(cut))
+maximum_db(cut::Cut) = 20 * log10(maximum(cut))
 
 
 """
@@ -166,7 +166,7 @@ amplitude_db(c::Cut, ipol::Integer) = 10 * log10.(abs2.(getindex.(get_evec(c), i
 
 amplitude_db(c::Cut, polsymb::Symbol) = amplitude_db(c, lowercase(string(polsymb)))
 
-function amplitude_db(c::Cut, polstr::String = "copol")
+function amplitude_db(c::Cut, polstr::String="copol")
     polstr = lowercase(strip(polstr))
     minflag = maxflag = false
     if isequal(polstr, "copol")
@@ -209,7 +209,7 @@ phase_deg(c::Cut, ipol::Int) = rad2deg.(angle.(getindex.(get_evec(c), ipol)))
 phase_deg(c::Cut, polsymb::Symbol) = phase_deg(c, lowercase(string(polsymb)))
 
 
-function phase_deg(c::Cut, polstr::String = "copol")
+function phase_deg(c::Cut, polstr::String="copol")
     polstr = lowercase(polstr)
     minflag = maxflag = false
     if isequal(polstr, "copol")
@@ -249,7 +249,7 @@ function power(cut::Cut, θmax=180)::Float64
     phifullmax = sym ? 180.0 : 360.0
     phi = get_phi(cut)
     nphi = length(phi)
-    p = vec(sum(x -> real(x ⋅ x), get_evec(cut), dims = 2))
+    p = vec(sum(x -> real(x ⋅ x), get_evec(cut), dims=2))
     if nphi > 1
         dphi = abs(phi[begin+1] - cut.phi[begin])
         # Check that the full range of phi is covered in the cut object:
@@ -298,17 +298,17 @@ function read_cutfile(fname::AbstractString)
                     cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
                 else
                     if ncomp == 2
-                        evecnext = [@SVector[0.0+0.0im, 0.0+0.0im] for _ in 1:nth]
+                        evecnext = [@SVector[0.0 + 0.0im, 0.0 + 0.0im] for _ in 1:nth]
                     else
-                        evecnext = [@SVector[0.0+0.0im, 0.0+0.0im, 0.0+0.0im] for _ in 1:nth]# Storage increment for reading field values
+                        evecnext = [@SVector[0.0 + 0.0im, 0.0 + 0.0im, 0.0 + 0.0im] for _ in 1:nth]# Storage increment for reading field values
                     end
                 end
                 kf += 1
                 header = String[textline]
                 cutphi = phi:phi
-                theta = range(start = ths, step = dth, length = nth)
-                evecallphi = ncomp == 2 ? Array{SVector{2,ComplexF64},1}(undef,0) : Array{SVector{3,ComplexF64},1}(undef,0) 
-                evec = ncomp == 2 ? Array{SVector{2,ComplexF64},2}(undef,0,0) : Array{SVector{3,ComplexF64},2}(undef,0,0) 
+                theta = range(start=ths, step=dth, length=nth)
+                evecallphi = ncomp == 2 ? Array{SVector{2,ComplexF64},1}(undef, 0) : Array{SVector{3,ComplexF64},1}(undef, 0)
+                evec = ncomp == 2 ? Array{SVector{2,ComplexF64},2}(undef, 0, 0) : Array{SVector{3,ComplexF64},2}(undef, 0, 0)
                 cut = Cut(ncomp, icut, icomp, header, theta, cutphi, evec)
                 if firstcut
                     cuts = [cut]
@@ -326,7 +326,7 @@ function read_cutfile(fname::AbstractString)
             # Check consistency
             cut = cuts[end]
             @assert (icomp, icut, ncomp) == (cut.icomp, cut.icut, cut.ncomp)
-            @assert (ths, dth, nth) == (first(cut.theta), cut.theta[2]-cut.theta[1], length(cut.theta)) 
+            @assert (ths, dth, nth) == (first(cut.theta), cut.theta[2] - cut.theta[1], length(cut.theta))
             append!(evecallphi, evecnext)
             evecthisphi = @view evecallphi[end-nth+1:end]
 
@@ -335,10 +335,10 @@ function read_cutfile(fname::AbstractString)
                 str = readline(fid)
                 if ncomp == 2
                     (t1, t2, t3, t4) = (parse(Float64, s) for s in split(str))
-                    evecthisphi[i] = @SVector[complex(t1,t2), complex(t3,t4)]
+                    evecthisphi[i] = @SVector[complex(t1, t2), complex(t3, t4)]
                 else
                     (t1, t2, t3, t4, t5, t6) = (parse(Float64, s) for s in split(str))
-                    evecthisphi[i] = @SVector[complex(t1,t2), complex(t3,t4), complex(t5,t6)]
+                    evecthisphi[i] = @SVector[complex(t1, t2), complex(t3, t4), complex(t5, t6)]
                 end
             end
         end # while
@@ -369,7 +369,7 @@ Write `Cut` cut data to a Ticra-compatible cut file.
 function write_cutfile(
     fname::AbstractString,
     cut::Cut{T,N},
-    title::String = "Cut file created by write_cutfile"
+    title::String="Cut file created by write_cutfile"
 ) where {T,N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
@@ -400,8 +400,8 @@ end
 function write_cutfile(
     fname::AbstractString,
     cuts::AbstractVector{Cut{T,N}},
-    title::String = "Cut file created by write_cutfile",
-    ) where {T,N}
+    title::String="Cut file created by write_cutfile",
+) where {T,N}
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
@@ -421,7 +421,7 @@ function write_cutfile(
                         @printf(fid, " %18.10E %18.10E %18.10E %18.10E %18.10E %18.10E\n",
                             real(e1), imag(e1), real(e2), imag(e2), real(e3), imag(e3))
                     else
-                            error("Unknown type parameter $N")
+                        error("Unknown type parameter $N")
                     end
                 end
             end
@@ -444,7 +444,7 @@ in dB greater than `min_dropoff` relative to the peak field are considered.
 """
 function phscen end
 
-function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
+function phscen(cut::Cut, fghz=11.802852677165355; min_dropoff=-10.0)
     cut = asym2sym(cut)  # Ensure cut is symmetric
     # Determine which pol slot has main polarization:
     p1max, p2max = (maximum(x -> abs2(x[i]), get_evec(cut)) for i in 1:2)
@@ -494,7 +494,7 @@ function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
     return (x0, y0, z0[1], z0[2])
 end
 
-function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff = -10)
+function phscen(cutfile::AbstractString, fghz=11.802852677165355; min_dropoff=-10)
     cut = read_cutfile(cutfile)
     phscen(cut, fghz; min_dropoff)
 end
@@ -631,7 +631,7 @@ in field magnitude squared being numerically equal to directivity.
 """
 function normalize2dir!(cut::Cut)
     pwr = power(cut)
-    c = sqrt(4π/pwr)
+    c = sqrt(4π / pwr)
     @inbounds for i in eachindex(cut.evec)
         cut.evec[i] *= c
     end
@@ -665,22 +665,22 @@ function convert_cut!(cut::Cut{Tc,N}, icomp::Integer) where {Tc,N}
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
     (inpol = get_icomp(cut)) == outpol && return
     evec = get_evec(cut)
-    @inbounds for (col, phi) in enumerate(get_phi(cut))        
+    @inbounds for (col, phi) in enumerate(get_phi(cut))
         p̂s = _pol_basis_vectors(phi)
         p̂1in, p̂2in = p̂s[inpol]
         p̂1out, p̂2out = p̂s[outpol]
         if N == 2
-            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in)
-                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in)]
+            mat = @SMatrix [(p̂1out⋅p̂1in) (p̂1out⋅p̂2in)
+                (p̂2out⋅p̂1in) (p̂2out⋅p̂2in)]
         elseif N == 3
-            mat = @SMatrix [(p̂1out ⋅ p̂1in)  (p̂1out ⋅ p̂2in) 0 
-                            (p̂2out ⋅ p̂1in)  (p̂2out ⋅ p̂2in) 0
-                                 0              0          1]
+            mat = @SMatrix [(p̂1out⋅p̂1in) (p̂1out⋅p̂2in) 0
+                (p̂2out⋅p̂1in) (p̂2out⋅p̂2in) 0
+                0 0 1]
         else
             error("Unknown type parameter $N")
         end
-    for row in 1:length(get_theta(cut))
-            evec[row,col] = mat * evec[row,col]
+        for row in 1:length(get_theta(cut))
+            evec[row, col] = mat * evec[row, col]
         end
     end
     cut.icomp = outpol
@@ -700,12 +700,12 @@ in this representation `θ̂ == [1,0]` and `ϕ̂ == [0,1]`.
 """
 function _pol_basis_vectors(ϕ::Real)
     sinϕ, cosϕ = sincosd(ϕ)
-    θ̂ = @SVector [1.0+0im, 0.0+0.0im]
-    ϕ̂ = @SVector [0.0+0.0im, 1.0+0im]
-    ĥ = θ̂*cosϕ - ϕ̂*sinϕ
-    v̂ = θ̂*sinϕ + ϕ̂*cosϕ
-    R̂ = iroot2 * (ĥ - im*v̂)
-    L̂ = iroot2 * (ĥ + im*v̂)
+    θ̂ = @SVector [1.0 + 0im, 0.0 + 0.0im]
+    ϕ̂ = @SVector [0.0 + 0.0im, 1.0 + 0im]
+    ĥ = θ̂ * cosϕ - ϕ̂ * sinϕ
+    v̂ = θ̂ * sinϕ + ϕ̂ * cosϕ
+    R̂ = iroot2 * (ĥ - im * v̂)
+    L̂ = iroot2 * (ĥ + im * v̂)
     return ((θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂))
 end
 
@@ -715,8 +715,8 @@ function _add_3rd_component(cut::Cut)
     ncomp_old == 3 && return deepcopy(cut)
     evec_old = get_evec(cut)
     evec = [@SVector[t[1], t[2], rand(ComplexF64)] for t in evec_old]
-    cut_new = Cut(3, get_icut(cut), get_icomp(cut), get_text(cut), 
-                       get_theta(cut), get_phi(cut), evec)
+    cut_new = Cut(3, get_icut(cut), get_icomp(cut), get_text(cut),
+        get_theta(cut), get_phi(cut), evec)
     return cut_new
 end
 
@@ -741,29 +741,29 @@ function _find_max_pol(cut::Cut)
     ϕ_maxnorm = get_phi(cut)[last(Tuple(imaxnorm))]
     # Check which polarization decomposition produces largest copol:
     Eθϕ = Eθϕ_maxnorm
-    (θ̂,ϕ̂), (R̂,L̂), (ĥ,v̂) = _pol_basis_vectors(ϕ_maxnorm)
-    ERL = @SMatrix[R̂ ⋅ θ̂   R̂ ⋅ ϕ̂; L̂ ⋅ θ̂   L̂ ⋅ ϕ̂] * Eθϕ
-    Ehv = @SMatrix[ĥ ⋅ θ̂   ĥ ⋅ ϕ̂; v̂ ⋅ θ̂   v̂ ⋅ ϕ̂] * Eθϕ
+    (θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂) = _pol_basis_vectors(ϕ_maxnorm)
+    ERL = @SMatrix[R̂⋅θ̂ R̂⋅ϕ̂; L̂⋅θ̂ L̂⋅ϕ̂] * Eθϕ
+    Ehv = @SMatrix[ĥ⋅θ̂ ĥ⋅ϕ̂; v̂⋅θ̂ v̂⋅ϕ̂] * Eθϕ
     icompm1 = argmax(maximum(abs2.(x)) for x in (ERL, Ehv))
     Emaxsq12 = abs2.((ERL, Ehv)[icompm1])
     if icompm1 == 1
         # CP components: Sense will reverse for secondary pattern!
-        if Emaxsq12[1] > Emaxsq12[2] 
-            pol = :lhcp     
+        if Emaxsq12[1] > Emaxsq12[2]
+            pol = :lhcp
         else
             pol = :rhcp
         end
-    else 
+    else
         # Ludwig 3 components
-        if Emaxsq12[1] > Emaxsq12[2] 
+        if Emaxsq12[1] > Emaxsq12[2]
             pol = :l3h
         else
             pol = :l3v
         end
     end
-    convert_cut!(cut, icompm1+1)
+    convert_cut!(cut, icompm1 + 1)
     return (pol, cut)
- end
+end
 
 
 
@@ -811,16 +811,16 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
     pol = Symbol(lowercase(string(pol)))
     pol in (:lhcp, :rhcp, :l3h, :l3v, :max) || error("Illegal pol value: $pol")
     # Compute β (feed tilt angle) and θe (edge ray angle):
-    xm = Oc + D/2  # Upper edge
+    xm = Oc + D / 2  # Upper edge
     zm = xm^2 / 4F
     θU = atan(xm / (F - zm))  # Upper edge angle
-    xm = Oc - D/2  # Lower edge
+    xm = Oc - D / 2  # Lower edge
     zm = xm^2 / 4F
-    θL = atan(xm / (F-zm))  # Lower edge angle
+    θL = atan(xm / (F - zm))  # Lower edge angle
     β = 0.5 * (θU + θL)  # Bisector angle (radians)
     sβ, cβ = sincos(β)
     θe = 0.5 * (θU - θL)  # Edge angle (radians)
-    
+
     pwr = power(cut) # Total radiated power
     ηₗₒₛₛ = clamp(pwr / 4π, 0, 1)
 
@@ -872,7 +872,7 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
     end
 
     # Convert fields to θ/ϕ components in preparation for integration:
-    foreach(x -> convert_cut!(x,1), (cut, cut_copol, cut_copol_0phase))
+    foreach(x -> convert_cut!(x, 1), (cut, cut_copol, cut_copol_0phase))
 
     evec = get_evec(cut) # actual fields
     evec_copol = get_evec(cut_copol)
@@ -880,22 +880,22 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
 
     # Storage for ϕ integrals at each θ location
     itgr, itgr_copol, itgr_copol0 = (zeros(SVector{2,ComplexF64}, length(get_theta(cut))) for _ in 1:3)
-    
+
     # Compute ϕ integrals:
     for (iθ, θ) in pairs(get_theta(cut))
         sθ, cθ = scθ[iθ]
-        θ == 180 && ((sθ, cθ)  = (0.0001, -0.9999)) # Avoid irrelevant singularity at 180°
+        θ == 180 && ((sθ, cθ) = (0.0001, -0.9999)) # Avoid irrelevant singularity at 180°
         for (iϕ, ϕ) in pairs(get_phi(cut))
             eθ, eϕ = evec[iθ, iϕ]
             ecθ, ecϕ = evec_copol[iθ, iϕ]
             ec0θ, ec0ϕ = evec_copol_0phase[iθ, iϕ]
             sϕ, cϕ = scϕ[iϕ]
-            common = sθ / (1 + cθ*cβ - sθ*cϕ*sβ)^2
-            f1 = cϕ * (1 + cβ*cθ) - sβ*sθ
+            common = sθ / (1 + cθ * cβ - sθ * cϕ * sβ)^2
+            f1 = cϕ * (1 + cβ * cθ) - sβ * sθ
             f2 = -sϕ * (cβ + cθ)
-            itgr[iθ] += common * @SVector [f1 * eθ  + f2 * eϕ, f2 * eθ  -  f1 * eϕ]
-            itgr_copol[iθ] +=  common * @SVector [f1 * ecθ + f2 * ecϕ, f2 * ecθ - f1 * ecϕ]
-            itgr_copol0[iθ] +=  common * @SVector [f1 * ec0θ + f2 * ec0ϕ, f2 * ec0θ - f1 * ec0ϕ]
+            itgr[iθ] += common * @SVector [f1 * eθ + f2 * eϕ, f2 * eθ - f1 * eϕ]
+            itgr_copol[iθ] += common * @SVector [f1 * ecθ + f2 * ecϕ, f2 * ecθ - f1 * ecϕ]
+            itgr_copol0[iθ] += common * @SVector [f1 * ec0θ + f2 * ec0ϕ, f2 * ec0θ - f1 * ec0ϕ]
         end
     end
     phi = get_phi(cut)
@@ -914,14 +914,14 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
     Ic0vec, errest3 = quadgk(splc0, 0, θmax; rtol=1e-10)
 
     # Compute efficiency vectors:
-    factor = 2/π * F/D 
+    factor = 2 / π * F / D
     Ivec *= factor
-    Icvec *= factor 
-    Ic0vec *= factor 
+    Icvec *= factor
+    Ic0vec *= factor
 
     ηI = clamp(_norm²(Ivec), 0, 1)
     ηₚₒₗ = clamp(ηI / _norm²(Icvec), 0, 1)  # Polarization efficiency
-    ηₚₕ =  clamp(_norm²(Icvec) / _norm²(Ic0vec), 0, 1)  # Phase error efficiency
+    ηₚₕ = clamp(_norm²(Icvec) / _norm²(Ic0vec), 0, 1)  # Phase error efficiency
     ηᵢₗ = clamp(ηI / (ηₗₒₛₛ * ηₛₚ * ηₚₒₗ * ηₚₕ), 0, 1)
 
     # Compute polarization unitary vector:
@@ -930,15 +930,15 @@ function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Nu
     elseif pol == :l3v
         uhat = @SVector [zero(ComplexF64), one(ComplexF64)]
     elseif pol == :lhcp
-        uhat = @SVector [iroot2, im*iroot2]
+        uhat = @SVector [iroot2, im * iroot2]
     elseif pol == :rhcp
-        uhat = @SVector [iroot2, -im*iroot2]
+        uhat = @SVector [iroot2, -im * iroot2]
     else
         error("Illegal pol value: $pol")
-    end 
+    end
 
     # Boresight polarization mismatch loss:
-    ηₓ = clamp(abs2(uhat ⋅  Ivec) / _norm²(Ivec), 0, 1)
+    ηₓ = clamp(abs2(uhat ⋅ Ivec) / _norm²(Ivec), 0, 1)
 
     return (; ηₗₒₛₛ, ηₛₚ, ηᵢₗ, ηₚₕ, ηₚₒₗ, ηₓ)
 end
@@ -956,7 +956,7 @@ function sym2asym(cut::Cut)
     get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     phi = get_phi(cut)
     theta = get_theta(cut)
-    iszero(first(theta)) && return deepcopy(cut) 
+    iszero(first(theta)) && return deepcopy(cut)
     first(theta) == -last(theta) || error("Not a symmetrical cut")
     0 in theta || error("cut does not include θ=0")
     dphi = phi[2] - phi[1]
@@ -971,13 +971,13 @@ function sym2asym(cut::Cut)
     ncomp = get_ncomp(cut)
     convert_cut!(cut, 1) # Convert to θ/ϕ components
     it0 = findfirst(iszero, theta)
-    
+
     # Set up the new cut2, also in θ/ϕ components
     phi2 = first(phi):dphi:(360-dphi)
     np2 = length(phi2)
     theta2 = 0:dtheta:last(theta)
     nt2 = length(theta2)
-    evec2 = Array{SVector{2, ComplexF64}}(undef,  nt2, np2)
+    evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
     text2 = ["phi = $p" for p in phi2]
     for ip1 in 1:np1
         ip2 = ip1 + np1
@@ -1004,7 +1004,7 @@ function asym2sym(cut::Cut)
     get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     phi = get_phi(cut)
     theta = get_theta(cut)
-    (first(theta) == -last(theta)) && return deepcopy(cut) 
+    (first(theta) == -last(theta)) && return deepcopy(cut)
     iszero(first(theta)) || error("cut does begin at θ=0")
     iseven(length(phi)) || error("Number of ϕ cuts is not even")
     for ϕ in phi
@@ -1027,19 +1027,19 @@ function asym2sym(cut::Cut)
     it0 = findfirst(iszero, theta)
     nt1 = length(theta)
     np1 = length(phi)
-    np1o2 = length(phi)÷2
-    
+    np1o2 = length(phi) ÷ 2
+
     # Set up the new cut2, also in θ/ϕ components
     phi2 = phi[1:np1÷2]
     np2 = length(phi2)
     theta2 = -last(theta):dtheta:last(theta)
     nt2 = length(theta2)
-    evec2 = Array{SVector{2, ComplexF64}}(undef, nt2, np2)
+    evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
     text2 = ["phi = $p" for p in phi2]
     for ip2 in 1:np2
         for i in 1:nt1
-            evec2[end - i + 1, ip2] = cut.evec[end - i + 1, ip2]
-            evec2[i, ip2] = -cut.evec[end - i + 1, ip2 + np2]
+            evec2[end-i+1, ip2] = cut.evec[end-i+1, ip2]
+            evec2[i, ip2] = -cut.evec[end-i+1, ip2+np2]
         end
     end
     cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
@@ -1049,15 +1049,15 @@ end
 
 
 "Plot recipe for Cut"
-@recipe function f(cut::Cut; 
-    phi = get_phi(cut), 
-    theta = get_theta(cut),
-    pol = :both, # or :copol or :xpol or 1 or 2, or "both" or "copol" or "xpol"
-    quantity = :db, # or :power or :linear or :phase
-    normalization = NaN # A number or :peak
-    )
+@recipe function f(cut::Cut;
+    phi=get_phi(cut),
+    theta=get_theta(cut),
+    pol=:both, # or :copol or :xpol or 1 or 2, or "both" or "copol" or "xpol"
+    quantity=:db, # or :power or :linear or :phase
+    normalization=NaN # A number or :peak
+)
 
-    all(x -> x in get_theta(cut), extrema(theta)) || error("some requested theta are outside those of cut") 
+    all(x -> x in get_theta(cut), extrema(theta)) || error("some requested theta are outside those of cut")
     quantity = Symbol(lowercase(string(quantity)))
     pol isa Symbol || pol isa AbstractString && (pol = Symbol(lowercase(string(pol))))
     if normalization isa Symbol
@@ -1071,7 +1071,7 @@ end
                 normalization = 1.0
             end
         end
-        else
+    else
         error("Illegal type for normalization")
     end
 
@@ -1081,7 +1081,7 @@ end
                 quantity == :linear ? "Field Amplitude" :
                 quantity == :power ? "Power Amplitude" :
                 quantity == :phase ? "Phase (deg)" :
-                error("Illegal value for quantity: $quantity")) 
+                error("Illegal value for quantity: $quantity"))
     icomp = get_icomp(cut)
     pol_labels = (("E_θ", "E_ϕ"), ("E_R", "E_L"), ("E_h", "E_v"))[icomp]
     evec = get_evec(cut)
@@ -1092,7 +1092,7 @@ end
         isequal(quantity, :phase) && error(":peak normalization may not be requested for :phase plot")
         Esqmax = maximum(abs2, Evecmax)
         Emax = sqrt(Esqmax)
-        normdb = 10*log10(Esqmax)
+        normdb = 10 * log10(Esqmax)
     else
         Emax = Esqmax = normdb = normalization
     end
@@ -1102,10 +1102,10 @@ end
     elseif isequal(pol, :copol)
         ipols = (icopol,)
     elseif isequal(pol, :xpol)
-        ipols = (3-icopol,)
+        ipols = (3 - icopol,)
     elseif isequal(pol, 1)
         ipols = (1,)
-    elseif isequal(pol,2)
+    elseif isequal(pol, 2)
         ipols = (2,)
     else
         error("illegal value for pol: $(pol)")
@@ -1115,15 +1115,15 @@ end
     for ϕ in phi
         iϕ = findfirst(≈(ϕ), phi)
         isnothing(iϕ) && continue
-        spl = CubicSpline((@view evec[:,iϕ]), get_theta(cut))
+        spl = CubicSpline((@view evec[:, iϕ]), get_theta(cut))
         efield = spl(theta)
-        for (ii,ipol) in enumerate(ipols)
+        for (ii, ipol) in enumerate(ipols)
             if quantity == :db
-                y = [10*log10(abs2(e[ipol])) - normdb for e in efield]
+                y = [10 * log10(abs2(e[ipol])) - normdb for e in efield]
             elseif quantity == :power
                 y = [abs2(e[ipol]) / Esqmax for e in efield]
             elseif quantity == :LinearIndices
-                y = [abs2(e[ipol])  / Emax for e in efield]
+                y = [abs2(e[ipol]) / Emax for e in efield]
             else
                 y = [rad2deg(angle(e[ipol])) - normalization for e in efield]
             end

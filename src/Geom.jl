@@ -6,24 +6,24 @@ abstract type Geom end
 
 function _check_legal_length_units(unit::AbstractString)
     u = lowercase(unit)
-    @assert u == "mm" || u == "cm" || u == "m" || u == "km" || u == "in"  "Illegal length unit"
+    @assert u == "mm" || u == "cm" || u == "m" || u == "km" || u == "in" "Illegal length unit"
 end
 
 abstract type Rim <: Geom end
 
 struct EllipticalRim <: Rim
-    centre::      SVector{2, Float64}
-    half_axis::   SVector{2, Float64}
-    rotation::    Float64
-    length_unit:: String
+    centre::SVector{2,Float64}
+    half_axis::SVector{2,Float64}
+    rotation::Float64
+    length_unit::String
 
-    function EllipticalRim(c,h,r,l)
+    function EllipticalRim(c, h, r, l)
         _check_legal_length_units(l)
-        new(c,h,r,l)
+        new(c, h, r, l)
     end
 end
-EllipticalRim(c,h,r) = EllipticalRim(c,h,r,"in")
-EllipticalRim(c,h) = EllipticalRim(c,h,0.0,"in")
+EllipticalRim(c, h, r) = EllipticalRim(c, h, r, "in")
+EllipticalRim(c, h) = EllipticalRim(c, h, 0.0, "in")
 
 function EllipticalRim(obj::TorObj)
     @assert obj.objtype == "elliptical_rim" "Incorrect TOR object type: $(obj.objtype)"
@@ -32,23 +32,23 @@ function EllipticalRim(obj::TorObj)
     @assert length(i) > 0 "elliptical_rim missing half-axis property"
     @assert length(i) == 1 "elliptical_rim contains more than one half-axis property"
     (xha, yha, xhaunit, yhaunit) = _parse_tor_xy_struct(obj.propval[i[1]])
-    
+
     i = findall(==("centre"), obj.propname)
     if isempty(i)
         xc = yc = 0.0
         xcunit = ycunit = xhaunit
     else
-        (xc,yc,xcunit,ycunit) = _parse_tor_xy_struct(obj.propval[i[1]])
+        (xc, yc, xcunit, ycunit) = _parse_tor_xy_struct(obj.propval[i[1]])
         @assert xcunit == ycunit == xhaunit == yhaunit "Inconsistent units"
     end
-    
+
     i = find(==("rotation"), obj.propname)
     if isempty(i)
         rotation = 0.0
     else
         rotation = parse(Float64, obj.propval[i[1]])
     end
-    return EllipticalRim([xc,yc], [xha, yha], rotation, xcunit)
+    return EllipticalRim([xc, yc], [xha, yha], rotation, xcunit)
 end
 
 
@@ -65,20 +65,20 @@ end
 
 
 struct SuperEllipticalRim <: Rim
-    centre::      SVector{2, Float64}
-    half_axis::   SVector{2, Float64}
-    exponent::    Float64
-    rotation::    Float64
-    length_unit:: String
+    centre::SVector{2,Float64}
+    half_axis::SVector{2,Float64}
+    exponent::Float64
+    rotation::Float64
+    length_unit::String
 
-    function SuperEllipticalRim(c,h,e,r,l)
-        @assert e > 2  "exponent must be greater than 2"
+    function SuperEllipticalRim(c, h, e, r, l)
+        @assert e > 2 "exponent must be greater than 2"
         _check_legal_length_units(l)
-        new(c,h,e,r,l)
+        new(c, h, e, r, l)
     end
 end
-SuperEllipticalRim(c,h,e,r) = SuperEllipticalRim(c,h,e,r,"in")
-SuperEllipticalRim(c,h,e) = SuperEllipticalRim(c,h,e,0.0,"in")
+SuperEllipticalRim(c, h, e, r) = SuperEllipticalRim(c, h, e, r, "in")
+SuperEllipticalRim(c, h, e) = SuperEllipticalRim(c, h, e, 0.0, "in")
 
 function SuperEllipticalRim(obj::TorObj)
     @assert obj.objtype == "superelliptical_rim" "Incorrect TOR object type: $(obj.objtype)"
@@ -89,16 +89,16 @@ function SuperEllipticalRim(obj::TorObj)
 
     i = findall(==("half_axis"), obj.propname)
     @assert length(i) == 1 "superelliptical_rim requires exactly one half_axis property"
-    (xha,yha,xhaunit,yhaunit) = parse_tor_xy_struct(obj.propval[i[1]])
+    (xha, yha, xhaunit, yhaunit) = parse_tor_xy_struct(obj.propval[i[1]])
 
     i = findall(==("centre"), obj.propname)
     if isempty(i)
         xc = yc = 0.0
         xcunit = ycunit = xhaunit
     else
-        (xc,yc,xcunit,ycunit) = parse_tor_xy_struct(obj.propval[i[1]])
+        (xc, yc, xcunit, ycunit) = parse_tor_xy_struct(obj.propval[i[1]])
     end
-    
+
     i = find(==("rotation"), obj.propname)
     if isempty(i)
         rotation = 0.0
@@ -107,7 +107,7 @@ function SuperEllipticalRim(obj::TorObj)
     end
 
     @assert xcunit == ycunit == xhaunit == yhaunit "Inconsistent units"
-    return   SuperEllipticalRim([xc,yc], [xha,yha], exponent, rotation, xcunit)
+    return SuperEllipticalRim([xc, yc], [xha, yha], exponent, rotation, xcunit)
 end
 
 import Base.show
@@ -123,21 +123,21 @@ end
 
 
 struct TabulatedRimXYold <: Rim
-    x::                 Vector{Float64}
-    y::                 Vector{Float64}
-    centre::            SVector{2, Float64}
-    length_unit::       String
-    interpobject::      Spline1D
+    x::Vector{Float64}
+    y::Vector{Float64}
+    centre::SVector{2,Float64}
+    length_unit::String
+    interpobject::Spline1D
 
-    function TabulatedRimXYold(x::Vector{Float64},y::Vector{Float64},centre,unit,rotation=0.0)
+    function TabulatedRimXYold(x::Vector{Float64}, y::Vector{Float64}, centre, unit, rotation=0.0)
         _check_legal_length_units(unit)
-        @assert length(x) == length(y)  "x and y have different lengths"
+        @assert length(x) == length(y) "x and y have different lengths"
         # Eliminate duplicate points:
         xyp = unique([(x - centre[1]) (y - centre[2])], dims=1)
-        xp = xyp[:,1]
-        yp = xyp[:,2]
+        xp = xyp[:, 1]
+        yp = xyp[:, 2]
         # Compute rho and phi:
-        rho_in = sqrt.(xp.^2 + yp.^2)
+        rho_in = sqrt.(xp .^ 2 + yp .^ 2)
         phi_in = atan2.(yp, xp) .+ rotation
         ind = sortperm(phi_in)  # Sort into order of increasing phi
         rho_in .= rho_in[ind]
@@ -156,15 +156,15 @@ struct TabulatedRimXYold <: Rim
             push!(rho_in, rho_in[orig_start])
         end
         rho_versus_phi_interp = Spline1D(phi_in, rho_in)
-        new(x,y,centre,unit,rho_versus_phi_interp)
+        new(x, y, centre, unit, rho_versus_phi_interp)
     end
 end
 
-TabulatedRimXYold(x,y,centre) = TabulatedRimXYold(x,y,centre,"in")
+TabulatedRimXYold(x, y, centre) = TabulatedRimXYold(x, y, centre, "in")
 
 function TabulatedRimXYold(obj::TorObj)
-    @assert (obj.objtype == "tabulated_rim_xy" || 
-             obj.objtype == "tabulated_rim")  "Incorrect TOR object type: $(obj.objtype)"
+    @assert (obj.objtype == "tabulated_rim_xy" ||
+             obj.objtype == "tabulated_rim") "Incorrect TOR object type: $(obj.objtype)"
 
     i = findall(==("file_form"), obj.propname)
     #isempty(i) && error("Only file_form = 'old_grasp' is allowed")
@@ -174,10 +174,10 @@ function TabulatedRimXYold(obj::TorObj)
         file_form = obj.propval[i[1]]
     end
     file_form == "old_grasp" || error("Only file_form = 'old_grasp' is allowed")
-         
+
     # Disallowed properties:
-    for prop in ["file_xy_number", "file_xy_values", 
-                 "file_corner_points_id"]
+    for prop in ["file_xy_number", "file_xy_values",
+        "file_corner_points_id"]
         i = findall(==(prop), obj.propname)
         @assert isempty(i) "Unable to process property $prop"
     end
@@ -189,7 +189,7 @@ function TabulatedRimXYold(obj::TorObj)
     i = findall(==("unit"), obj.propname)
     isempty(i) || (unit = obj.propval[i[1]])
     _check_legal_length_units(unit)
-    
+
     npoints = 0
     i = findall(p -> p == "number_of_points" || p == "n_points", obj.propname)
     isempty(i) || (npoints = parse(Int, obj.propval[i[1]]))
@@ -199,32 +199,32 @@ function TabulatedRimXYold(obj::TorObj)
     isempty(i) || (factor = parse(Float64, obj.propval[i[1]]))
     @assert abs(factor - 1.0) < 1e-6 "Unable to process non-unity factor"
 
-    centre = [Inf,Inf] # Inf means to determine center automatically
+    centre = [Inf, Inf] # Inf means to determine center automatically
     i = find(p -> p == "centre" || p == "polar_origin", obj.propname)
     if !isempty(i)
         (x, y, xunit, yunit) = _parse_tor_xy_struct(obj.propval[i[1]])
         if xunit == "automatic"
             x = Inf # Special value means to automatically determine the centroid
             xunit = yunit
-        else 
-            @assert xunit == yunit  "Inconsistent units"
+        else
+            @assert xunit == yunit "Inconsistent units"
         end
-        centre = [x,y]
+        centre = [x, y]
     end
 
-    translation = [0.0, 0.0] 
+    translation = [0.0, 0.0]
     i = find(==("translation"), obj.propname)
     if !isempty(i)
-        (x,y,xunit,yunit) = _parse_tor_xy_struct(obj.propval[i[1]])
-        @assert xunit == yunit  "Inconsistent units"
-        translation = [x,y]    
+        (x, y, xunit, yunit) = _parse_tor_xy_struct(obj.propval[i[1]])
+        @assert xunit == yunit "Inconsistent units"
+        translation = [x, y]
         @assert all(translation .== 0.0) "Nonzero translation not implemented"
     end
 
     rotation = 0.0
     i = findall(==("rotation"), obj.propname)
     isempty(i) || (rotation = parse(Float64, obj.propval[i[1]]))
-    
+
     return read_tabulatedrimxyold(file_name, unit, npoints, centre, rotation)
 end
 
@@ -243,25 +243,25 @@ end
 rimexponent(r::EllipticalRim) = 2.0
 rimexponent(r::SuperEllipticalRim) = r.exponent
 
-function insiderim(x::T, y::T, rim::R) where {T<:Real, R<:Union{EllipticalRim,SuperEllipticalRim}}
+function insiderim(x::T, y::T, rim::R) where {T<:Real,R<:Union{EllipticalRim,SuperEllipticalRim}}
     (sphi, cphi) = sincosd(rim.rotation)
     (a, b) = rim.half_axis
     (x0, y0) = rim.centre
     exponent = rimexponent(rim)
-    xp = (x - x0) * cphi + (y - y0) * sphi 
+    xp = (x - x0) * cphi + (y - y0) * sphi
     yp = (yi - y0) * cphi - (xi - x0) * sphi
-    inside = abs(xp/a)^exponent + abs(yp/b)^exponent ≤ 1.0
+    inside = abs(xp / a)^exponent + abs(yp / b)^exponent ≤ 1.0
     return inside
 end
 
-function insiderim(x::T, y::T, rim::TabulatedRimXYold) where {T <: Real}
+function insiderim(x::T, y::T, rim::TabulatedRimXYold) where {T<:Real}
     (x0, y0) = rim.centre
     xp = x - x0
     yp = y - y0
     rhosq = xp * xp + yp * yp
-    phi = atan2(yp,xp)
+    phi = atan2(yp, xp)
     rhoi = rim.interpobject[phi]
-    inside = rhosq ≤ rhoi*rhoi
+    inside = rhosq ≤ rhoi * rhoi
     return inside
 end
 
@@ -271,7 +271,7 @@ end
 Read `np` `Real`s from `fid`, where the number of numbers per line is not known.
 Return a vector of type `datatype`.  
 """
-function _read_n_numbers(io::IO, n::Integer, ::Type{T}, delim_chars) where {T <: Real}
+function _read_n_numbers(io::IO, n::Integer, ::Type{T}, delim_chars) where {T<:Real}
     numbers = type[]
     while length(numbers) < n
         for word in split(readline(io), delim_chars; keepempty=false)
@@ -289,37 +289,37 @@ read_tabulatedrimxyold(fname::AbstractString, unit::AbstractString, npoints::Int
 Read the data from a `grasp_old`-formatted Ticra rim file and return a `TabulatedRimXYold`
 variable.
 """
-function read_tabulatedrimxyold(fname::AbstractString, unit::AbstractString, npoints::Int, 
-                                centre::SVector{2,Float64}, rotation::Float64)
-    delim_chars = ('\t',' ',',','\n','\r','\f','\v')
-    open(fname,"r") do fid
+function read_tabulatedrimxyold(fname::AbstractString, unit::AbstractString, npoints::Int,
+    centre::SVector{2,Float64}, rotation::Float64)
+    delim_chars = ('\t', ' ', ',', '\n', '\r', '\f', '\v')
+    open(fname, "r") do fid
         line = readline(fid)  # Comment line
         line = strip(readline(fid))
         linesplit = split(line)
         np = parse(Int, linesplit[1])
         npoints > 0 && (np = min(np, npoints))
         # kspace == 0 -> equal spacing in phi, == 1 -> unequal spacing in phi
-        kspace = length(linesplit) > 1 ? parse(Int,linesplit[2]) : 1
+        kspace = length(linesplit) > 1 ? parse(Int, linesplit[2]) : 1
         # kxyrp == 1 -> points are cartesian coords, == 2 -> points are cylindrical coords
-        kxyrp = length(linesplit) > 2 ?  parse(Int, linesplit[3]) : 1
-        @assert np > 2  "np must be greater than 2"
+        kxyrp = length(linesplit) > 2 ? parse(Int, linesplit[3]) : 1
+        @assert np > 2 "np must be greater than 2"
         @assert 0 ≤ kspace ≤ 1 "kspace must be 0 or 1"
         @assert 1 ≤ kxyrp ≤ 2 "kxyrph must be 1 or 2"
-        @assert (kspace,kxyrp) != (0,1) "(kspace,kxyrph) == (0,1) not allowed"
-        if kspace == 0  
+        @assert (kspace, kxyrp) != (0, 1) "(kspace,kxyrph) == (0,1) not allowed"
+        if kspace == 0
             # Points are equispaced in ϕ:
             rho = _read_n_numbers(fid, np, Float64, delim_chars)
-            phi = range(0.0, 2pi * (np-1)/np, length=np)
-            x = [ρ * cos(ϕ) for (ρ,ϕ) in zip(rho, phi)]
-            y = [ρ * sin(ϕ) for (ρ,ϕ) in zip(rho, phi)]
+            phi = range(0.0, 2pi * (np - 1) / np, length=np)
+            x = [ρ * cos(ϕ) for (ρ, ϕ) in zip(rho, phi)]
+            y = [ρ * sin(ϕ) for (ρ, ϕ) in zip(rho, phi)]
         else
             if kxyrp == 1  # cartesian coordinates
-                xy = reshape(_read_n_numbers(fid, 2*np, Float64, delim_chars), 2, np)
-                x = @view xy[1,:]
-                y = @view xy[2,:]
+                xy = reshape(_read_n_numbers(fid, 2 * np, Float64, delim_chars), 2, np)
+                x = @view xy[1, :]
+                y = @view xy[2, :]
             else
                 # cylindrical coords
-                phidegrho = reshape(_read_n_numbers(fid, 2*np, Float64, delim_chars), 2, np)
+                phidegrho = reshape(_read_n_numbers(fid, 2 * np, Float64, delim_chars), 2, np)
                 x = zeros(np)
                 y = zeros(np)
                 for (i, (ϕdeg, ρ)) in enumerate(eachcol(phidegrho))
@@ -331,7 +331,7 @@ function read_tabulatedrimxyold(fname::AbstractString, unit::AbstractString, npo
         xcen = mean(x)
         ycen = mean(y)
         centre = [xcen, ycen]
-        return TabulatedRimXYold(x,y,centre,unit,rotation)
+        return TabulatedRimXYold(x, y, centre, unit, rotation)
     end
 end
 
@@ -339,13 +339,13 @@ end
 abstract type CoordinateSystem <: Geom end
 
 struct CoorSys <: CoordinateSystem
-    name::         String
-    length_unit::  String
-    origin::       SVector{3, Float64}
-    x_axis::       SVector{3, Float64}
-    y_axis::       SVector{3, Float64}
-    base::Union{CoorSys, Nothing}
+    name::String
+    length_unit::String
+    origin::SVector{3,Float64}
+    x_axis::SVector{3,Float64}
+    y_axis::SVector{3,Float64}
+    base::Union{CoorSys,Nothing}
 end
 
-CoorSys(n,l,o,x,y) = CoorSys(n,l,o,x,y,nothing)
+CoorSys(n, l, o, x, y) = CoorSys(n, l, o, x, y, nothing)
 

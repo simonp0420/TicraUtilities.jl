@@ -8,7 +8,7 @@ Contains the data for a single partition of a Ticra station file.
 """
 struct Station
     "`npoint`: The number of stations in the partition."
-    npoint::Int 
+    npoint::Int
 
     """
     `u`: A vector of length `npoint` containing the u values (unitless) 
@@ -76,14 +76,14 @@ struct Station
     area_weight::Vector{Float64} # Used by SHSPO only
 end
 
-Station() = Station(0,Float64[],Float64[],Float64[],Float64[],Int[],Float64[],Float64[],
-    String[],Bool[],Bool[],Bool[],Float64[])
+Station() = Station(0, Float64[], Float64[], Float64[], Float64[], Int[], Float64[], Float64[],
+    String[], Bool[], Bool[], Bool[], Float64[])
 
 # Define a constructor that doesn't require the `SHSPO`-specific fields:
 Station(n::Int, u::AbstractVector{Float64}, v::AbstractVector{Float64}, g::AbstractVector{Float64},
     w::Vector{Float64}, ipol::AbstractVector{Int}, rot::AbstractVector{Float64},
-    att::AbstractVector{Float64}, ID::AbstractVector{String}) = 
-    Station(n, u, v, g, w, ipol, rot, att, ID, Bool[],Bool[],Bool[],Float64[])
+    att::AbstractVector{Float64}, ID::AbstractVector{String}) =
+    Station(n, u, v, g, w, ipol, rot, att, ID, Bool[], Bool[], Bool[], Float64[])
 
 
 """
@@ -99,8 +99,8 @@ function write_station(stationfile::AbstractString, stadat::AbstractVector{Stati
             @printf(fid, "%d\n", d.npoint)
             for k = 1:d.npoint
                 @printf(fid, "%9.5f%9.5f%18.9e%18.9e%3d%7.2f%7.2f %s\n",
-                        d.u[k], d.v[k], d.goal[k], d.weight[k], d.ipol[k],
-                        d.rot[k], d.att[k], d.ID[k])
+                    d.u[k], d.v[k], d.goal[k], d.weight[k], d.ipol[k],
+                    d.rot[k], d.att[k], d.ID[k])
             end
         end
         @printf(fid, "    0  GRASP8/POS4 station file terminator\n")
@@ -119,14 +119,14 @@ a vector of length `npart`, where `npart` is the number of partitions in the fil
 """
 function read_station(stafile)
     stadat = open(stafile, "r") do fid
-        kpart = 0;  # Partition counter
+        kpart = 0  # Partition counter
         stadat = Station[]
-        
+
         # Read number of points in next partition.
         tline = split(readline(fid))
         isempty(tline) && error("Unable to read number of points from first line!")
         npoint = parse(Int, first(tline))
-        
+
         while npoint > 0
             kpart += 1  # Bump number of partitions
             # Preallocate a structure:
@@ -135,7 +135,7 @@ function read_station(stafile)
                 zeros(npoint),
                 zeros(npoint),
                 zeros(npoint),
-                zeros(Int,npoint),
+                zeros(Int, npoint),
                 zeros(npoint),
                 zeros(npoint),
                 fill("", npoint))
@@ -148,8 +148,8 @@ function read_station(stafile)
                 (d.rot[k], d.att[k]) = (parse(Float64, tline[i]) for i in 6:7)
                 length(tline) > 7 && (d.ID[k] = tline[8])
             end
-            push!(stadat,d)
-            
+            push!(stadat, d)
+
             # Read number of points in next partition.
             tline = split(readline(fid))
             if isempty(tline)

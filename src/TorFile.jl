@@ -23,19 +23,19 @@ Write a tor object to a previously opened tor output file.
 """
 function write_tor_object(iu::IO, obj::TorObj)
 
-    println(iu,  obj.name, "   ", obj.objtype, " (")
+    println(iu, obj.name, "   ", obj.objtype, " (")
 
     for (ip, name) in enumerate(obj.propname)
         print(iu, "   ", name, " : ")
         L = length(name) + 6  # Length of string written so far
         line = obj.propval[ip] # Remainder to be written
         while length(line) > 0
-            if L + length(line) ≤ 80 
+            if L + length(line) ≤ 80
                 print(iu, line) # Write the whole thing
                 break
             else
                 k = findlast(view(line, 1:80-L), ",")
-                if isnothing(k) 
+                if isnothing(k)
                     print(iu, line)
                     break
                 end
@@ -43,13 +43,13 @@ function write_tor_object(iu::IO, obj::TorObj)
                 line = strip(line[k+1:length(line)])
                 if length(line) > 0
                     println(iu, "")
-                    print(iu, " " ^ L)
+                    print(iu, " "^L)
                 end
             end
         end
-        ip < length(obj.propname) && println(iu,  ",")
+        ip < length(obj.propname) && println(iu, ",")
     end
-    println(iu,  ")")
+    println(iu, ")")
     return nothing
 end
 
@@ -65,21 +65,21 @@ function _read_tor_file(filename)
     CS = "/*" # comment start
     in_block_comment = false  # /* */-style comment flag
 
-    content::Vector{String} = open(readlines, filename,"r")
+    content::Vector{String} = open(readlines, filename, "r")
 
-    
+
     for (k, line) in enumerate(content)
         line = strip(replace(line, '\t' => ' '))
         # Strip off material after // comment marker:
         ir = findfirst("//", line)
-        isnothing(ir) || (line = strip(line[1:(first(ir) - 1)]))
+        isnothing(ir) || (line = strip(line[1:(first(ir)-1)]))
 
-        if in_block_comment 
+        if in_block_comment
             ir = findfirst(CE, line) # Test if comment ends on this line:
             if isnothing(ir)
                 line = ""  # Erase this entire line since entire line is within comment region
             else
-                line = strip(line[(last(ir) + 1):end]) # Throw away commented portion
+                line = strip(line[(last(ir)+1):end]) # Throw away commented portion
                 in_comment = false  # toggle comment state flag
             end
         else
@@ -111,14 +111,14 @@ Alters i1 to point to next character after end of token.
 
 """
 function _next_token_from_i1(line, i1)
-    while i1 ≤ length(line) && isspace(line[i1]) 
+    while i1 ≤ length(line) && isspace(line[i1])
         i1 += 1
     end
     i2 = findnext(x -> x ∈ (' ', ':'), line, i1) - 1
     if isnothing(i2)
         return (line[i1:end], length(line))
     else
-        return (line[i1:i2], i2+1)
+        return (line[i1:i2], i2 + 1)
     end
 end
 
@@ -134,14 +134,18 @@ function _parse_properties(line, i1)
     propvals = String[]
     i1 += 1
     while true
-        while isspace(line[i1]); i1 += 1; end
+        while isspace(line[i1])
+            i1 += 1
+        end
         if line[i1] == RP
             i1 += 1
             return (i1, propnames, propvals)
         end
         (propname, i1) = _next_token_from_i1(line, i1)
         push!(propnames, propname)
-        while isspace(line[i1]); i1 += 1; end
+        while isspace(line[i1])
+            i1 += 1
+        end
         @assert line[i1] == ':'
         i1 += 1
         i2 = _find_next_comma_or_level0_rp(line, i1)
@@ -160,7 +164,7 @@ Find next comma or right parenthesis not preceded by a left parenthesis
 """
 function _find_next_comma_or_level0_rp(line, i1)
     plevel = 1 # paren level
-    i2 = i1+1
+    i2 = i1 + 1
     while i2 < length(line)
         i2 += 1
         if line[i2] == LP
@@ -183,11 +187,11 @@ end
 
 Return a vector of TorObj objects found in a TOR file
 """
-function parse_tor_file(torfile::AbstractString)      
-    i1 = 1          
+function parse_tor_file(torfile::AbstractString)
+    i1 = 1
     line = strip(join(_read_tor_file(torfile), ' ')) # Create a single, long string to process
     objects = TorObj[]
-    while i1 < length(line) 
+    while i1 < length(line)
         # i1 is pointing to the first character of the object name
         (name, i1) = _next_token_from_i1(line, i1)
         isempty(name) && break
@@ -222,8 +226,8 @@ respective unit strings.
 """
 function _parse_tor_xy_struct(s::AbstractString)
     cf = r"([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)"  # This RE captures a float
-    (x,y) = (parse(Float64, s[rng]) for rng in findall(cf, s))
-    s2 = split(s,',')
+    (x, y) = (parse(Float64, s[rng]) for rng in findall(cf, s))
+    s2 = split(s, ',')
     xunit = split(s2[1])[end]
     yunit = split(s2[2])[end]
     yunit[end] == ')' && (yunit = yunit[1:end-1])
