@@ -1,7 +1,13 @@
 """
-  Exi
+    Exi
 
-Data from a Ticra excitation file.
+Contains data from a Ticra excitation file.
+
+### Fields
+* `header::Vector{String}`: Header strings. One element for each line of the header.
+* `ampdb::Vector{Float64}`: Excitation amplitudes in dB.
+* `phsdeg::Vector{Float64}`: Excitation phases in degrees.
+* `id::Vector{String}`: Excitation ID strings.
 """
 struct Exi
   header::Vector{String}
@@ -11,30 +17,30 @@ struct Exi
 end
 
 """
-  get_header(t::Exi)
+    get_header(t::Exi)
 
-Return a vector of header strings.
+Return a vector of excitation header strings.
 """
 get_header(t::Exi) = t.header
 
 """
-  amplitude_db(t::Exi)
+    amplitude_db(t::Exi)
 
-Return a vector of amplitudes in dB
+Return a vector of excitation amplitudes in dB
 """
 amplitude_db(t::Exi) = t.ampdb
 
 """
-  phase_deg(t::Exi)
+    phase_deg(t::Exi)
 
-Return a vector of phases in degrees.
+Return a vector of excitation phases in degrees.
 """
 phase_deg(t::Exi) = t.phsdeg
 
 """
-  get_ids(t::Exi)
+    get_ids(t::Exi)
 
-Return a vector of id strings.
+Return a vector of excitation ID strings.
 """
 get_ids(t::Exi) = t.id
 
@@ -42,7 +48,7 @@ get_ids(t::Exi) = t.id
 import Base.complex
 
 """
-  complex(t::Exi)
+    complex(t::Exi)
 
 Return a vector complex excitation amplitudes.
 """
@@ -50,11 +56,11 @@ complex(exi::Exi) = [10^(ampdb/20) * cis(deg2rad(phs))  for (ampdb,phs) in zip(e
 
 
 """
-  read_exi(filename::AbstractString)
+    read_exifile(filename::AbstractString)
   
 Reads contents of a Ticra-compatible excitation file and returns a `Exi` object.
 """
-function read_exi(filename::AbstractString)
+function read_exifile(filename::AbstractString)
     open(filename,"r") do fid
         header = String[]; ampdb = Float64[]; phsdeg = Float64[]; id = String[]
         inheader = true
@@ -78,11 +84,11 @@ end
 
 using Printf: @printf
 """
-  write_exi(filename::AbstractString, t::Exi)
+  write_exifile(filename::AbstractString, t::Exi)
   
 Create a Ticra-compatible excitation file from a `Exi` object.
 """
-function write_exi(filename::AbstractString, t::Exi)
+function write_exifile(filename::AbstractString, t::Exi)
     open(filename, "w") do fid
         for line in t.header
             println(fid, rstrip(line))

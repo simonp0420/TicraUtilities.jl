@@ -25,7 +25,7 @@ export
     phscen,
     power,
     read_cutfile,
-    read_exi,
+    read_exifile,
     read_sphfile,
     read_station,
     read_surface,
@@ -35,7 +35,7 @@ export
     sph2cut,
     sym2asym,
     write_cutfile,
-    write_exi,
+    write_exifile,
     write_sphfile,
     write_station,
     write_surface,
@@ -96,7 +96,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     p = power(scut)
     cuts = read_cutfile(cutfile)
     exifile = joinpath(@__DIR__, "..", "test", "beam_A14R.exi")
-    exi = read_exi(exifile)
+    exi = read_exifile(exifile)
     sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.swe")
     swe = read_sphfile(sphfile)
     stafile = joinpath(@__DIR__, "..", "test", "scenario2_coverage.sta")

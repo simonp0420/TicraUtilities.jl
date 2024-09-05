@@ -2,7 +2,7 @@ using SafeTestsets
 
 @safetestset "Exi" begin 
     using TicraUtilities
-    t = read_exi(joinpath(@__DIR__, "beam_A14R.exi"))
+    t = read_exifile(joinpath(@__DIR__, "beam_A14R.exi"))
     @test length(get_header(t)) == 1
     @test get_header(t)[1] == "DirecTV-15S A14R"
     @test length(get_ids(t)) == length(amplitude_db(t)) == length(phase_deg(t)) == 16
@@ -18,8 +18,8 @@ using SafeTestsets
     @test complex(t)[[begin,end]] == [0.07304811253768777 - 0.02930714779532224im, 0.20110825515817327 - 0.025654723899872im]
 
     testfile = tempname()
-    write_exi(testfile, t)
-    t2 = read_exi(testfile)
+    write_exifile(testfile, t)
+    t2 = read_exifile(testfile)
     for field in fieldnames(typeof(t2))
         @test getfield(t, field) == getfield(t2, field)
     end

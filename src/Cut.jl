@@ -8,8 +8,10 @@ using LinearAlgebra: ⋅, norm
 using RecipesBase: @recipe, @series
 
 """
-`Cut` Holds data for a Ticra "Tabulated Pattern Data" object.
-Note that a single `Cut` instance contains all of the cuts for a single frequency.
+    Cut
+ 
+Contains data for a Ticra "Tabulated Pattern Data" object. Note that a single `Cut` instance 
+contains all of the cuts for a single frequency.
 
 ### Fields
 
