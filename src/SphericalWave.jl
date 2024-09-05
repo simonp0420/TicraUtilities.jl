@@ -491,7 +491,7 @@ the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 
 The single positional input argument can be either a string containing the name 
 of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
-that results from reading such a file with `read_cut`.  The output of this function
+that results from reading such a file with `read_cutfile`.  The output of this function
 can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
 spherical wave coefficients.
 
@@ -510,7 +510,7 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
   precludes removal of any modes.
 """
 function cut2sph(cutfile::AbstractString; kwargs...)
-    cut = read_cut(cutfile)
+    cut = read_cutfile(cutfile)
     cut2sph(cut; kwargs...)
 end
 

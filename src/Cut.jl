@@ -266,29 +266,16 @@ end
 
 
 """
-    read_cut(fname, warnflag=true)::Cut
-
-Read the first frequency's data from a Ticra-compatible cut file.  
-`warnflag`, if `true`, causes this function to issue a warning
-if more than one frequency is detected in the file.
-"""
-function read_cut(fname::AbstractString, warnflag::Bool = true)
-    # Read a single frequency from a (possibly multi-frequency) cut file.
-    # warnflag, if true, instructs this routine to issue a warning
-    # if more than one frequency is present in the file.
-    t = read_cuts(fname)
-    n = length(t)
-    n > 1 && warnflag && @warn "$n frequencies found in $fname.  Returning only 1st..."
-    return t[1]
-end
-
-"""
-    read_cuts(fname)::Vector{Cut}  
+    read_cutfile(fname) -> Vector{Cut}  
 
 Read data from a possibly multi-frequency Ticra-compatible cut file.  
-Return a vector of one or more `Cut` structs.
+
+Return a vector of one or more `Cut` structs.  Each element of the returned vector 
+corresponds to a particular operating frequency partition in the file.  If there 
+is only a single partition in the file, then instead of returning a 1-element
+vector, the single element of type `Cut` is returned as a scalar.
 """
-function read_cuts(fname::AbstractString)
+function read_cutfile(fname::AbstractString)
     cuts = open(fname, "r") do fid
         cutphi = Float64[]
         header = String[]
@@ -362,9 +349,13 @@ function read_cuts(fname::AbstractString)
         cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
 
         return cuts
-    end # function
-    return cuts
-end
+    end # do closure
+    if length(cuts) > 1
+        return cuts
+    else
+        return only(cuts)
+    end
+end # function
 
 """
     write_cutfile(fname::AbstractString, cut::Cut, title::AbstractString="Cut file created by write_cutfile")
@@ -502,7 +493,7 @@ function phscen(cut::Cut, fghz = 11.802852677165355; min_dropoff = -10.0)
 end
 
 function phscen(cutfile::AbstractString, fghz = 11.802852677165355; min_dropoff = -10)
-    cut = read_cut(cutfile)
+    cut = read_cutfile(cutfile)
     phscen(cut, fghz; min_dropoff)
 end
 
@@ -526,7 +517,7 @@ Ticra cut file.
 ## Arguments:
 
 - `cut`:   A string containing the name of the cut file to evaluate,
-  or a `Cut` object as returned by `read_cut`.
+  or a `Cut` object as returned by `read_cutfile`.
 - `fghz`: The frequency in GHz.
 - `thetamax`:  The maximum theta angle in degrees for which the pattern is
   to be evaluated.
@@ -553,7 +544,7 @@ Ticra cut file.
 """
 function eval_cut end
 
-eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_cut(cutfile), fghz, thetamax)
+eval_cut(cutfile::AbstractString, fghz::Real, thetamax::Real) = eval_cut(read_cutfile(cutfile), fghz, thetamax)
 
 function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
     cut = sym2asym(cut) # Ensure that cut is asymmetric
@@ -782,7 +773,7 @@ specified by `cut`.
 
 ## Positional input arguments:
 * `cut`: Either a string containing the name of a Ticra-compatible, spherical,
-  polar, asymmetric cut file, or a `Cut` object as returned by the `read_cut`
+  polar, asymmetric cut file, or a `Cut` object as returned by the `read_cutfile`
   function.
 
 ## Keyword input arguments:
@@ -811,7 +802,7 @@ specified by `cut`.
 * `ηₚₒₗ`: Polarization efficiency (a real number between 0 and 1).
 * `ηₓ`: Boresight polarization mismatch loss efficiency (a real number between 0 and 1)
 """
-sor_efficiency(cutfile::String; kwargs...) = sor_efficiency(read_cut(cutfile); kwargs...)
+sor_efficiency(cutfile::String; kwargs...) = sor_efficiency(read_cutfile(cutfile); kwargs...)
 
 function sor_efficiency(cut::Cut; pol::Symbol=:max, F::Number, D::Number, Oc::Number, dz::Real=0.0)
     cut = sym2asym(cut) # Ensure asymmetrical, and make copy to avoid accidental mutation

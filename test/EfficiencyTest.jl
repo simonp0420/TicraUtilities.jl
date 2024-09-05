@@ -13,7 +13,7 @@ using SafeTestsets
     @test t1.ηₓ ≈ 0.4985615310506499
 
     # Higher resolution for the ϕ integrals
-    cut = read_cut(cutfile)
+    cut = read_cutfile(cutfile)
     nphi = 2 * length(get_phi(cut))
     Δphi = 360 / nphi
     phi = range(0,360-Δphi, nphi)

@@ -24,8 +24,7 @@ export
     phase_deg,  
     phscen,
     power,
-    read_cut,
-    read_cuts,
+    read_cutfile,
     read_exi,
     read_sphfile,
     read_station,
@@ -35,6 +34,7 @@ export
     sor_efficiency,
     sph2cut,
     sym2asym,
+    write_cutfile,
     write_exi,
     write_sphfile,
     write_station,
@@ -74,7 +74,7 @@ include("Surface.jl")
 using PrecompileTools: @setup_workload, @compile_workload
 @compile_workload begin
     cutfile = joinpath(@__DIR__, "..", "test", "test.cut")
-    cut = read_cut(cutfile)
+    cut = read_cutfile(cutfile)
     adb = amplitude_db(cut)
     scut = asym2sym(cut)
     cut1 = convert_cut!(cut,1)    
@@ -94,7 +94,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     pdeg = phase_deg(cut, 1)
     pcen = phscen(cutfile)
     p = power(scut)
-    cuts = read_cuts(cutfile)
+    cuts = read_cutfile(cutfile)
     exifile = joinpath(@__DIR__, "..", "test", "beam_A14R.exi")
     exi = read_exi(exifile)
     sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.swe")

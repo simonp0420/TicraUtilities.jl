@@ -1,8 +1,8 @@
 using SafeTestsets
 
-@safetestset "read_cuts" begin 
+@safetestset "read_cutfile" begin 
     using TicraUtilities
-    t2 = read_cuts(joinpath(@__DIR__, "test2.cut"))
+    t2 = read_cutfile(joinpath(@__DIR__, "test2.cut"))
     @test length(t2) == 3
     @test t2[1].theta == t2[2].theta == t2[3].theta == 0.0:0.5:180.0
     @test t2[1].phi == t2[2].phi == t2[3].phi == 0.0:5.0:355.0
@@ -22,9 +22,9 @@ using SafeTestsets
 
 end
 
-@safetestset "read_cut" begin 
+@safetestset "read_cutfile_2" begin 
     using TicraUtilities
-    t = read_cut(joinpath(@__DIR__, "test.cut"))
+    t = read_cutfile(joinpath(@__DIR__, "test.cut"))
     @test t.theta == 0.0:0.5:180.0
     @test t.phi == 0.0:5.0:355.0
     @test t.evec[1,1][1] ≈ 0.16835983292 + 0.0092799907903im
@@ -37,7 +37,7 @@ end
 
 @safetestset "Cut amplitude_db" begin 
     using TicraUtilities
-    t = read_cut(joinpath(@__DIR__, "test.cut"))
+    t = read_cutfile(joinpath(@__DIR__, "test.cut"))
     @test 10*log10(abs2(t.evec[10,10][1])) == amplitude_db(t,1)[10,10]
     @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,2)[10,10]
     @test 10*log10(abs2(t.evec[10,10][2])) == amplitude_db(t,:copol)[10,10]
@@ -48,7 +48,7 @@ end
 
 @safetestset "Cut phase_deg" begin 
     using TicraUtilities
-    t = read_cut(joinpath(@__DIR__, "test.cut"))
+    t = read_cutfile(joinpath(@__DIR__, "test.cut"))
     @test rad2deg(angle(t.evec[10,10][1])) == phase_deg(t,1)[10,10]
     @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,2)[10,10]
     @test rad2deg(angle(t.evec[10,10][2])) == phase_deg(t,:copol)[10,10]
@@ -59,10 +59,10 @@ end
 
 @safetestset "Cut power" begin 
     using TicraUtilities
-    t = read_cut(joinpath(@__DIR__, "test.cut"))
+    t = read_cutfile(joinpath(@__DIR__, "test.cut"))
     @test abs(power(t) - 4π) ≤ 1.e-5
     @test maxdb(t) ≈ 12.246790349581193
-    ts = read_cuts(joinpath(@__DIR__, "test2.cut"))
+    ts = read_cutfile(joinpath(@__DIR__, "test2.cut"))
     for t1 in ts
         @test abs(power(t1) - 4π) ≤ 1.e-5
     end
@@ -71,10 +71,10 @@ end
 @safetestset "write_cutfile" begin 
     using TicraUtilities
 
-    cut1 = read_cut(joinpath(@__DIR__, "test.cut"))
+    cut1 = read_cutfile(joinpath(@__DIR__, "test.cut"))
     tfile = joinpath(tempdir(), "temp.cut")
     write_cutfile(tfile, cut1, "Cut file normalized to directivity")
-    cut2 = read_cut(tfile)
+    cut2 = read_cutfile(tfile)
     for fn in fieldnames(TicraUtilities.Cut)
         @test getfield(cut1, fn) == getfield(cut2, fn)
     end
@@ -82,7 +82,7 @@ end
     cut1_3components = TicraUtilities._add_3rd_component(cut1)
     tfile = joinpath(tempdir(), "temp.cut")
     write_cutfile(tfile, cut1_3components, "Cut file normalized to directivity")
-    cut2_3components = read_cut(tfile)
+    cut2_3components = read_cutfile(tfile)
     for fn in fieldnames(TicraUtilities.Cut)
         if fn == :evec
             @test getfield(cut1_3components, fn) ≈ getfield(cut2_3components, fn)
@@ -91,10 +91,10 @@ end
         end
     end
 
-    cuts1 = read_cuts(joinpath(@__DIR__, "test2.cut"))
+    cuts1 = read_cutfile(joinpath(@__DIR__, "test2.cut"))
     tfile = joinpath(tempdir(),"temp.cut")
     write_cutfile(tfile, cuts1, "Cut file normalized to directivity")
-    cuts2 = read_cuts(tfile)
+    cuts2 = read_cutfile(tfile)
     for (i,(cut1, cut2)) in enumerate(zip(cuts1, cuts2))
         for fn in fieldnames(TicraUtilities.Cut)
             if getfield(cut1, fn) ≠ getfield(cut2, fn)
@@ -109,7 +109,7 @@ end
     cuts1_3components = [TicraUtilities._add_3rd_component(cut) for cut in cuts1]
     tfile = joinpath(tempdir(),"temp.cut")
     write_cutfile(tfile, cuts1_3components, "Cut file normalized to directivity")
-    cuts2_3components = read_cuts(tfile)
+    cuts2_3components = read_cutfile(tfile)
     for (i,(cut1, cut2)) in enumerate(zip(cuts1_3components, cuts2_3components))
         for fn in fieldnames(TicraUtilities.Cut)
             if fn == :evec
@@ -158,7 +158,7 @@ end
 @safetestset "convert_cut" begin 
     using TicraUtilities
     cutfile = joinpath(@__DIR__, "test.cut")
-    cut2 = read_cut(cutfile)
+    cut2 = read_cutfile(cutfile)
     cut12 = convert_cut(cut2, 1)
     cut21 = convert_cut(cut12, 2)
     cut32 = convert_cut(cut2, 3)
