@@ -155,7 +155,8 @@ get_text(c::Cut) = c.text
     amplitude_db(c::Cut, polstr::String = "copol")
 
 Return a matrix of amplitudes in dB for some choice of polarization in the cut.
-Legal values for `ipol` are 1, 2, or 3.  Legal values for `polstr` are
+Legal values for `ipol` are 1, 2, or 3, the latter only being legal if there are
+three polarization components present in the cut.  Legal values for `polstr` are
 "copol" (the default) and "xpol".  Capitalization is not significant. Legal
 values for `polsymb` are `:copol` and `:xpol`.  Again, capitalization is not
 significant.

@@ -8,6 +8,7 @@ export
     CoorSys,
     EllipticalRim,
     eval_cut,
+    Exi,
     header,
     ids,
     parse_tor_file,

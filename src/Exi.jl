@@ -45,14 +45,12 @@ Return a vector of excitation ID strings.
 get_ids(t::Exi) = t.id
 
 
-import Base.complex
-
 """
     complex(t::Exi)
 
-Return a vector complex excitation amplitudes.
+Return a vector of complex excitation amplitudes.
 """
-complex(exi::Exi) = [10^(ampdb / 20) * cis(deg2rad(phs)) for (ampdb, phs) in zip(exi.ampdb, exi.phsdeg)]
+Base.complex(exi::Exi) = [10^(ampdb / 20) * cis(deg2rad(phs)) for (ampdb, phs) in zip(exi.ampdb, exi.phsdeg)]
 
 
 """
