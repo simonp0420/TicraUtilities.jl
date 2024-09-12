@@ -1114,8 +1114,8 @@ end
 
     # Add a series for each phi cut and each selected polarization
     for ϕ in phi
-        iϕ = findfirst(≈(ϕ), phi)
-        isnothing(iϕ) && continue
+        iϕ = findfirst(≈(ϕ), get_phi(cut))
+        isnothing(iϕ) && error("ϕ = $(ϕ)° is not present in the cut to be plotted")
         spl = CubicSpline((@view evec[:, iϕ]), get_theta(cut))
         efield = spl(theta)
         for (ii, ipol) in enumerate(ipols)
