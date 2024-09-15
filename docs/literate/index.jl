@@ -19,6 +19,7 @@ This package provides utilities in the Julia programming language for
 #=
 # Contents  
 ```@contents
+Depth = 3
 Pages = ["Tutorial.md", "autodocs.md"]
 ```
 =#

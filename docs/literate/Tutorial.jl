@@ -1,6 +1,7 @@
-# # Usage Examples
+# # Tutorial
 
 # ## Reading and Plotting Cut Files
+#
 # We begin by reading in an existing cut file:
 using TicraUtilities
 
@@ -15,8 +16,124 @@ cut = read_cutfile(cutfile)
 
 
 
-# Now plot the resulting `Cut` object, using the default settings:
+# This package includes a recipe for plotting a `Cut` object using the standard 
+# [`Plots`](https://docs.juliaplots.org/stable/) package.  So a plot of the cut
+# can be generated very simply:
 using Plots
 plot(cut)
 
-# We see that
+# The default result in this case is not very satisfactory.  Note that each trace is automatically
+# labeled according to its polarization (either LHCP or RHCP for this case) and ϕ value, but there 
+# are too many ϕ cut labels to fit in the legend.  Let's tweak the plot by just selecting a 
+# just a few ϕ values to plot.  We will also normalize the amplitudes according to the peak 
+# directivity, and print this peak value in the title of the plot.  Finally, we'll adjust the axes
+# limits and tick locations:
+
+peakdb = round(maximum_db(cut), digits=3)
+plot(
+    cut, 
+    normalization = :peak,
+    phi=0:90:315, 
+    title="Peak = $peakdb dB",
+    framestyle=:box,
+    xtick=0:20:180, xlim=(0,180),
+    ytick=-60:5:0, ylim=(-60,0),
+)
+
+# The plot appearance is now more pleasing. We used the [`maximum_db`](@ref) function to label the peak
+# field value used for normalizing the plot.  For plotting, most of the keyword arguments that were 
+# passed to the `plot` function above come standard with the `Plots` package, but `phi` and `normalization` 
+# are custom keywords introduced by `TicraUtilities` and are supported
+# only when plotting a `Cut` object.  The full list of custom keywords available 
+# for plotting `Cut` objects is presented in the table below:
+#
+# ### Custom `Plots` Keywords Specific to `Cut` Objects
+# |Keyword        | Description          | Legal values                                  |
+# |:--------------|:---------------------|:---------------------------------------------------|
+# | phi           | ϕ value(s) to plot   | Scalar or iterable (defaults to [`get_phi(cut)`](@ref)) |
+# | theta         | θ value(s) to plot   | Scalar or iterable (defaults to [`get_theta(cut)`](@ref)) |
+# | pol           | Polarization to plot | `:both`, `:copol`, `:xpol`, `1`, or `2` (defaults to `:both`) |
+# | quantity      | Quantity to plot     | `:db` (the default), `:power`, `:linear`, or `:phase`  |
+# | normalization | How to normalize plot | `:peak` or a scalar (defaults to `NaN` meaning don't normalize) |
+#
+# Values passed in via the `phi` keyword must all be present in the `Cut` object.
+# If the values passed via the `theta` keyword are spaced more finely than those stored in the `Cut`
+# object, the pattern will be interpolated onto these values using a cubic spline interpolant.  This
+# is demonstrated in the following example plot:
+
+scatter(
+    cut, 
+    label = "Interpolated In θ",
+    pol = :copol,
+    normalization = :peak,
+    phi=0,
+    theta=0:0.1:5,
+    title="Normalized Copol (LHCP), Peak = $peakdb dB",
+    framestyle=:box,
+    xtick=0:0.5:10, xlim=(0,5),
+    ytick=-10:0.05:0, ylim=(-0.2,0.01),
+)
+scatter!(
+    cut, 
+    label = "No θ Interpolation",
+    pol = :copol,
+    normalization = :peak,
+    phi=0,
+    marker = :cross, ms = 6, msw = 2,
+)
+
+# The above scatter plot clearly illustrates the results of interpolating in ``\theta``.  The example
+# also shows that the default trace labels appearing in the legend can be overridden as desired.
+#
+# ## Manipulation and Conversion of `Cut` Objects
+# ### Symmetrical and Asymmetrical Cuts
+# In the previous examples the `cut` variable
+# contains "asymmetric" cuts, each beginning at ``\theta = 0``.   A "symmetric" cut would cover equal extents
+# in the positive and negative ``\theta`` directions.  Functions [`asym2sym`](@ref) and [`sym2asym`](@ref) 
+# can be used to convert between these types of cuts.  Continuing with the asymmetric `Cut` object from the
+# previous examples:
+scut = asym2sym(cut) # Create a symmetric cut
+#
+# Note that the symmetric cuts only extend to 175° in ``\phi``, and that each cut covers the range 
+# ``-180^\circ \le \theta \le 180^\circ``.  We plot the new cut below to see this alternative representation
+# of the same data:
+plot(
+    scut, 
+    normalization = :peak,
+    phi=0:45:135,
+    title="Normalized Symmetric Cut, Peak = $peakdb dB",
+    framestyle=:box,
+    xtick=-180:30:180, xlim=(-180,180),
+    ytick=-60:5:0, ylim=(-60,0),
+)
+# This type of symmetric plot can be useful for spotting pattern asymmetries.
+#
+# ### Changing the Polarization Basis
+# The functions [`convert_cut`](@ref) and [`convert_cut!`](@ref) can be used to change
+# which of the following pairs of field components
+# 1. ``E_\theta`` and ``E_\phi``
+# 2. ``E_R`` and ``E_L`` (CP or Circular Polarization, right- and left-handed, resp.)
+# 3. ``E_h`` and ``E_v`` (L3 or Ludwig 3, directed along ``x`` and ``y``, resp.)
+# is used for representing the electric field vector stored in a `Cut` object. The `cut`
+# variable used in the previous examples uses CP components, as can be verified
+# using the [`get_icomp`](@ref) function:
+get_icomp(cut)
+#
+# If we convert to an L3 representation:
+cut_L3 = convert_cut(cut, 3)
+peakdb_L3 = round(maximum_db(cut_L3), digits=3)
+# we see that the peak directivity has been reduced by about 3 dB from its previous value.  Since
+# the boresight radiated field is nearly perfectly circularly polarized, then both L3 components
+# will be approximately equal in magnitude, 3 dB below this value, as shown in the following plot:
+plot(
+    cut_L3, 
+    normalization = :peak,
+    phi=0:90:315, 
+    title="Ludwig 3 Components, Peak = $peakdb_L3 dB",
+    framestyle=:box,
+    xtick=0:20:180, xlim=(0,180),
+    ytick=-60:5:0, ylim=(-60,0),
+)
+
+
+# ## Spherical Wave Expansions

@@ -1,4 +1,6 @@
-# # Publicly Exported Functions
+# # API Reference
+
+# ## Publicly Exported Functions
 
 
 # ```@docs
@@ -17,7 +19,7 @@
 # Private = false
 # ```
 
-# # Publicly Exported Types
+# ## Publicly Exported Types
 # ```@autodocs
 # Modules = [TicraUtilities]
 # Order   = [:type]

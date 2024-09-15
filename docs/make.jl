@@ -10,7 +10,7 @@ makedocs(
     pages = [
         "Introduction" => "index.md",
         "Tutorial" => "Tutorial.md",
-        "Index" => "index.md",
+        "API Reference" => "autodocs.md",
     ],
     sitename = "TicraUtilities"
 )
