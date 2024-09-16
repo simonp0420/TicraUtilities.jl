@@ -3,3 +3,5 @@
 /doc/theorydoc
 docs/Manifest.toml
 docs/build/
+docs/src/
+docs/theorydoc/
