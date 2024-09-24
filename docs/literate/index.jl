@@ -1,8 +1,10 @@
 #=
 # Introduction
+`TicraUtilities` is a package to facilitate working with Ticra-compatible files and data objects in the 
+Julia language.
 [TICRA](https://www.ticra.com) is a Danish company specializing in antenna analysis and synthesis software. Their
 products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as
-standards in the aerospace industry.  As a result, the file formats defined and used by TICRA software have also
+standards in the antenna community.  As a result, the file formats defined and used by TICRA software have also
 become de facto industry standards. 
     
 This package provides utilities in the Julia programming language for 
@@ -13,13 +15,4 @@ This package provides utilities in the Julia programming language for
 * Reading and writing array excitation (.exi) files.
 * Reading and writing "surface" (.sfc) files.
 * And more...
-=#
-
-
-#=
-# Contents  
-```@contents
-Depth = 3
-Pages = ["Tutorial.md", "autodocs.md"]
-```
 =#

@@ -12,10 +12,13 @@ cut = read_cutfile(cutfile)
 # the REPL shows that the `Cut` object contains 72 distinct ϕ cuts, each consisting of 361
 # points in the θ direction, with θ ranging from 0° to 180° in steps of 0.5°. 
 # See [Cut](@ref) for documentation on the remaining fields.
-# 
-
-
-
+#
+# Values within the `Cut` object can be accessed via the functions
+# [`get_ncomp`](@ref), [`get_icut`](@ref), [`get_icomp`](@ref), [`get_text`](@ref), 
+# [`get_theta`](@ref), [`get_phi`](@ref), and [`get_evec`](@ref).  Some derived
+# quantities can be obtained via the functions [`power`](@ref), [`amplitude_db`](@ref), 
+# and [`phase_deg`](@ref).
+#
 # This package includes a recipe for plotting a `Cut` object using the standard 
 # [`Plots`](https://docs.juliaplots.org/stable/) package.  So a plot of the cut
 # can be generated very simply:
@@ -108,7 +111,7 @@ plot(
 )
 # This type of symmetric plot can be useful for spotting pattern asymmetries.
 #
-# ### Changing the Polarization Basis
+# ### Changing the Polarization Basis of a `Cut`
 # The functions [`convert_cut`](@ref) and [`convert_cut!`](@ref) can be used to change
 # which of the following pairs of field components
 # 1. ``E_\theta`` and ``E_\phi``
@@ -124,7 +127,7 @@ cut_L3 = convert_cut(cut, 3)
 peakdb_L3 = round(maximum_db(cut_L3), digits=3)
 # we see that the peak directivity has been reduced by about 3 dB from its previous value.  Since
 # the boresight radiated field is nearly perfectly circularly polarized, then both L3 components
-# will be approximately equal in magnitude, 3 dB below this value, as shown in the following plot:
+# will be approximately equal in magnitude as shown in the following plot:
 plot(
     cut_L3, 
     normalization = :peak,
@@ -134,6 +137,48 @@ plot(
     xtick=0:20:180, xlim=(0,180),
     ytick=-60:5:0, ylim=(-60,0),
 )
+
+# ### Cut Normalization
+# Typically, the fields recorded in cut files are normalized so that the total radiated power is ``4\pi``.
+# When this is the case, the field magnitude squared is numerically equal to directivity.  The power integral
+# for a `Cut` object can be calculated using the `power` function:
+power(cut) / 4π
+# We see that the power in `cut` is very close to ``4\pi``.  We can modify `cut` to make the normalization more
+# nearly exact by using the `normalize!` function:
+normalize!(cut)
+power(cut) / 4π
+# The remaining departure of the radiated power from exact equality to ``4\pi`` is due to floating point error.
+
+# ## Synthesizing a Cut from E- and H-Plane Patterns
+# A "BOR₁" horn [kildal2015](@cite) is rotationally symmetric and contains only TE₁ₙ and TM₁ₙ waveguide modes in its 
+# radiating aperture.  It's radiated far field can therefore be expressed in terms
+# of the E-plane and H-plane (principal plane) patterns it radiates when excited for linear polarization. 
+# The [`eh2bor1cut`](@ref) function can be used to synthesize a `Cut` object from its principal plane
+# patterns, optionally adding in a specified level of crosspol due to an imperfect feed network.
+
+# We begin by reading a cut file for a BOR₁ horn created by Ticra's CHAMP program:
+using TicraUtilities
+using Plots
+cutfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ticra_hpol_horn.cut")
+cut = read_cutfile(cutfile)
+
+# We see from the above output that the cut file contains 3 cuts at ``\phi = 0^\circ, 45^\circ``, and
+# ``90^\circ``.  Since the cut file was created for horizontal excitation of the horn, the dominant
+# far-field polarization will be Ludwig 3 horizontal, which is stored in the first polarization slot of the cut.
+# It also follows that the E-plane pattern can be extracted from the first (``\phi = 0^\circ``) cut
+# and the H-plane pattern from the last (``\phi = 90^\circ``) cut:
+fe = get_evec(cut, 1)[:, 1] # ϕ = 0° cut is E-plane for horizontal pol
+fh = get_evec(cut, 1)[:, end] # ϕ = 90° cut is H-plane for horizontal pol
+plot(xlim=(0,180),
+     ylim=(-60,30),
+     framestyle=:box,
+     title = "BOR₁ Horn Principal Plane Patterns",
+     xlabel="θ (deg)",
+     ylabel="Amplitude (dB)")
+theta = get_theta(cut)
+plot!(theta, 10 .* log10.(abs2.(fe)), label="E-Plane")
+plot!(theta, 10 .* log10.(abs2.(fh)), label="H-Plane")
+
 
 
 # ## Spherical Wave Expansions
