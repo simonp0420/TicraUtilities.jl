@@ -19,8 +19,8 @@ contains all of the cuts for a single frequency.
 * `icut::Int`: 1 for standard constant ϕ polar cuts, 2 for conical, constant θ cuts.
 * `icomp::Int`: Polarization control parameter. 1 for Eθ and Eφ, 2 for RHCP and LHCP, 3 for Co and Cx (Ludwig 3).
 * `text::Vector{String}`: Identification text for each constant angle cut.
-* `theta::T<:AbstractRange`: The theta values (in degrees) stored in the cut.
-* `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
+* `theta::Tt<:AbstractRange`: The theta values (in degrees) stored in the cut.
+* `phi::Tp<:AbstractRange`: The phi values (in degrees) stored in the cut.
 * `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
 @kwdef mutable struct Cut{Tt<:AbstractRange, Tp<:AbstractRange, N}
@@ -35,7 +35,7 @@ end
 
 
 import Base.show
-function show(io::IO, t::Cut)
+function show(io::IO, mime::MIME"text/plain", t::Cut)
     println(io, "Cut")
     println(io, "  ncomp\t$(t.ncomp)")
     println(io, "  icut \t$(t.icut)")
@@ -62,6 +62,11 @@ function show(io::IO, t::Cut)
         println(io, "  phi  \tEmpty range")
     end
     println(io, "  evec \t$(summary(t.evec))")
+    return nothing
+end
+
+function show(io::IO, t::Cut)
+    print(io, "Cut with ncomp=$(t.ncomp), icomp=$(t.icomp), phi=$(t.phi), theta=$(t.theta)")
     return nothing
 end
 
@@ -1097,10 +1102,10 @@ of the E-plane and H-plane patterns it radiates when excited for linear polariza
     expressed as RHCP and LHCP components.
   If linear (circular) polarization is requested, then the output `Cut` object will contain eight (four)
   cuts, spaced every 45° (90°). 
--`xpd`: The crosspol level in dB < 0. Defaults to `-Inf` (negative infinity).  If finite, then
+- `xpd`: The crosspol level in dB < 0. Defaults to `-Inf` (negative infinity).  If finite, then
   in addition to the specified polarization, a crosspolarized contribution will be added to the cut,
   as if the horn is fed by an imperfect feed network with the specified crosspol level.
--`xpphase`: The phase (in degrees) of the crosspol contribution whose amplitude is specified by `xpd`.
+- `xpphase`: The phase (in degrees) of the crosspol contribution whose amplitude is specified by `xpd`.
 """
 function eh2bor1cut(
     theta::AbstractVector,
