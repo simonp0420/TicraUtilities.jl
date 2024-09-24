@@ -23,13 +23,13 @@ contains all of the cuts for a single frequency.
 * `phi::T<:AbstractRange`: The phi values (in degrees) stored in the cut.
 * `evec`: Matrix of complex field vectors for the two or three polarization components.
 """
-@kwdef mutable struct Cut{T<:AbstractRange,N}
+@kwdef mutable struct Cut{Tt<:AbstractRange, Tp<:AbstractRange, N}
     ncomp::Int
     icut::Int
     icomp::Int
     text::Vector{String}
-    theta::T
-    phi::T
+    theta::Tt
+    phi::Tp
     evec::Matrix{SVector{N,ComplexF64}}
 end
 
@@ -102,23 +102,39 @@ maximum_db(cut::Cut) = 20 * log10(maximum(cut))
 """
     get_theta(c::Cut)
 
-Return the theta values (in degrees) stored in the cut
+Return the theta values (in degrees) stored in the cut.  The returned value will be 
+some type of [`AbstractRange`](https://docs.julialang.org/en/v1/base/math/#Base.range) object.
 """
 get_theta(c::Cut) = c.theta
 
 """
     get_phi(c::Cut)
 
-Return the phi values (degrees) stored in the cut.
+Return the phi values (degrees) stored in the cut. The returned value will be 
+some type of [`AbstractRange`](https://docs.julialang.org/en/v1/base/math/#Base.range) object.
 """
 get_phi(c::Cut) = c.phi
 
 """
     get_evec(c::Cut)
 
-Return the ntheta × nphi matrix of complex field vectors stored in the cut.
+Return the ntheta × nphi matrix of complex field vectors stored in the cut. Each element
+of the returned matrix will be either a 2-vector or 3-vector, depending on the number
+of field components stored in the cut.
 """
 get_evec(c::Cut) = c.evec
+
+"""
+    get_evec(c::Cut, ipol::Integer)
+
+Return the ntheta × nphi matrix of complex numbers stored in polarization slot `ipol` of 
+the cut. `ipol` must be positive and less than or equal to `get_ncomp(cut)`.
+"""
+function get_evec(c::Cut, ipol::Integer) 
+    ncomp = get_ncomp(c)
+    1 ≤ ipol ≤ ncomp || throw(ArgumentError("ipol is not between 1 and $(ncomp)"))
+    return getindex.(get_evec(c), ipol)
+end
 
 """
     get_ncomp(c::Cut)
@@ -131,6 +147,7 @@ get_ncomp(c::Cut) = c.ncomp
     get_icut(c::Cut)
 
 Return icut, the control parameter of the cut. 1 for a polar cut, 2 for a conical cut.
+`TicraUtilities` currently accommodates only `icut == 1`, wherein each cut is for a constant ϕ value.
 """
 get_icut(c::Cut) = c.icut
 
@@ -151,7 +168,7 @@ get_text(c::Cut) = c.text
 
 """
     amplitude_db(c::Cut, ipol::Int)
-    amplitude_db(c::Cut, polsymb::Symbol)
+    amplitude_db(c::Cut, polsymb::Symbol = :copol)
     amplitude_db(c::Cut, polstr::String = "copol")
 
 Return a matrix of amplitudes in dB for some choice of polarization in the cut.
@@ -159,7 +176,8 @@ Legal values for `ipol` are 1, 2, or 3, the latter only being legal if there are
 three polarization components present in the cut.  Legal values for `polstr` are
 "copol" (the default) and "xpol".  Capitalization is not significant. Legal
 values for `polsymb` are `:copol` and `:xpol`.  Again, capitalization is not
-significant.
+significant.  Copol is defined as the polarization with maximum amplitude
+at θ = ϕ = 0.
 """
 function amplitude_db end
 
@@ -369,9 +387,9 @@ Write `Cut` cut data to a Ticra-compatible cut file.
 """
 function write_cutfile(
     fname::AbstractString,
-    cut::Cut{T,N},
+    cut::Cut{T1, T2, N},
     title::String="Cut file created by write_cutfile"
-) where {T,N}
+) where {T1<:AbstractRange, T2<:AbstractRange, N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
             @printf(fid, "%s, phi = %8.3f\n", title, phi)
@@ -400,9 +418,9 @@ end
 
 function write_cutfile(
     fname::AbstractString,
-    cuts::AbstractVector{Cut{T,N}},
+    cuts::AbstractVector{Cut{T1, T2, N}},
     title::String="Cut file created by write_cutfile",
-) where {T,N}
+) where {T1, T2, N}
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
@@ -625,14 +643,14 @@ function eval_cut(cut::Cut, fghz::Real, thetamax::Real)
 end
 
 """
-    normalize2dir!(cut::Cut)
+    normalize!(cut::Cut, totpower=4π)
 
-Normalize a Cut object so it's total power is 4π.  This results
-in field magnitude squared being numerically equal to directivity.
+Normalize a Cut object so it's total power is `totpower` (which defaults to `4π`).
+The default value results in field magnitude squared being numerically equal to directivity.
 """
-function normalize2dir!(cut::Cut)
+function normalize!(cut::Cut, totpower=4π)
     pwr = power(cut)
-    c = sqrt(4π / pwr)
+    c = sqrt(totpower / pwr)
     @inbounds for i in eachindex(cut.evec)
         cut.evec[i] *= c
     end
@@ -660,7 +678,7 @@ for `icomp` and their meanings:
 *  2 => ERHCP and ELHCP
 *  3 => Eh and Ev (Ludwig 3 co and cx)
 """
-function convert_cut!(cut::Cut{Tc,N}, icomp::Integer) where {Tc,N}
+function convert_cut!(cut::Cut{Tct, Tcp, N}, icomp::Integer) where {Tct, Tcp, N}
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
     outpol = icomp
     get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
@@ -1046,6 +1064,114 @@ function asym2sym(cut::Cut)
     cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
     convert_cut!(cut2, icomp) # Restore polarization basis
     return cut2
+end
+
+"""
+    eh2bor1cut(theta, fe, fh; kwargs...) -> cut::Cut
+
+Create a [`Cut`](@ref) object for a "BOR1" horn from its E-plane and H-plane patterns.
+
+A "BOR₁" horn is circularly symmetric and contains only TE₁ₙ and TM₁ₙ waveguide modes in its 
+radiating aperture.  It's radiated far field can therefore be expressed in terms
+of the E-plane and H-plane patterns it radiates when excited for linear polarization.
+
+## Positional Input Arguments
+- `theta`: A vector or range (an `AbstractVector`) of θ values (in degrees) at which the cut 
+  pattern should be evaluated. The first element of `theta` must be 0, and the entries must 
+  be equally spaced, as in a `range` object.
+- `fe`, `fh`: The E-plane and H-plane patterns, resp.  These are either both `AbstractVector`s of the 
+  same length as `theta`, or both functions which take a single input θ (in degrees) and return the 
+  respective patterns evaluated at that angle.
+
+## Keyword Arguments
+- `pol`: Defines the manner in which the horn is assumed to be excited, and the polarization basis 
+  selected for use in the output `Cut`.  `pol` is a `String` or `Symbol` taking one of the values
+  (capitalization is not significant):
+  * "l3v" or `:l3v`: (the default value) The horn is excited for "vertical" (y-directed) linear polarization 
+    and the far field is expressed as Ludwig-3 components.  
+  * `:l3h`: The horn is excited for "horizontal" (x-directed) linear polarization and the far field is
+    expressed as Ludwig-3 components.
+  * `:rhcp`: The horn is excited for RHCP (right-hand circular polarization) and the far field is
+    expressed as RHCP and LHCP components.
+  * `:lhcp`: The horn is excited for LHCP (left-hand circular polarization) and the far field is
+    expressed as RHCP and LHCP components.
+  If linear (circular) polarization is requested, then the output `Cut` object will contain eight (four)
+  cuts, spaced every 45° (90°). 
+-`xpd`: The crosspol level in dB < 0. Defaults to `-Inf` (negative infinity).  If finite, then
+  in addition to the specified polarization, a crosspolarized contribution will be added to the cut,
+  as if the horn is fed by an imperfect feed network with the specified crosspol level.
+-`xpphase`: The phase (in degrees) of the crosspol contribution whose amplitude is specified by `xpd`.
+"""
+function eh2bor1cut(
+    theta::AbstractVector,
+    fe::AbstractVector, 
+    fh::AbstractVector;
+    pol::Union{Symbol, String} = :l3v,
+    xpd::Real = -Inf,
+    xpphase::Real = 0.0)
+
+    polsymb = string(pol) |> lowercase |> Symbol
+    if polsymb ∈ (:l3h, :l3v) 
+        icomp = 3
+        xpolsym = setdiff((:l3h, :l3v), (polsymb,)) |> only
+        phi = 0:45:(360-45)
+    elseif polsymb ∈ (:rhcp, :lhcp)
+        icomp = 2
+        xpolsym = setdiff((:rhcp, :lhcp), (polsymb,)) |> only
+        phi = 0:90:(360-90)
+    else 
+        throw(ArgumentError("Illegal value for pol"))
+    end
+    xpd ≥ 0 && throw(ArgumentError("xpd must be < 0"))
+
+    ncomp = 2 # Number of polarization components
+    icut = 1 # standard polar cut
+    nphi = length(phi)
+    ntheta = length(theta)
+    thetarange = range(first(theta), last(theta), ntheta)
+    first(theta) |> iszero || throw(ArgumentError("theta does not begin at 0"))
+    thetarange ≈ theta || throw(ArgumentError("theta not equally spaced"))
+    evec = Matrix{SVector{2,ComplexF64}}(undef, ntheta, nphi)
+    text = ["phi = " * string(p) for p in phi]
+    cut = Cut(; ncomp, icut, icomp, text, theta=thetarange, phi, evec)
+
+    for (kp, ph) in pairs(phi)
+        sp, cp = sincosd(ph)
+        cpsp = cp * sp
+        sp², cp² = sp * sp, cp * cp
+        cis2phi = cis(2 * deg2rad(ph))
+        for (kt, th) in pairs(thetarange)
+            if polsymb == :l3h
+                cut.evec[kt, kp] = SVector(fe[kt] * cp² + fh[kt] * sp², (fe[kt] - fh[kt]) * cpsp)
+            elseif polsymb == :l3v
+                cut.evec[kt, kp] = SVector((fe[kt] - fh[kt]) * cpsp, fe[kt] * sp² + fh[kt] * cp²)
+            elseif polsymb == :rhcp
+                cut.evec[kt, kp] = SVector(0.5 * (fe[kt] + fh[kt]), 0.5 * conj(cis2phi) * (fe[kt] - fh[kt]))
+            else # :lhcp
+                cut.evec[kt, kp] = SVector(0.5 * cis2phi * (fe[kt] - fh[kt]), 0.5 * (fe[kt] + fh[kt]))
+            end
+        end
+    end
+
+    isinf(xpd) && return cut
+
+    # Add in crosspol
+    xpdpwr = 10 ^ (xpd / 10)
+    a = sqrt(inv(1 + xpdpwr)) # Voltage weight for original cut
+    b = a * sqrt(xpdpwr) * cis(deg2rad(xpphase)) # Voltage weight for xpol cut
+    xcut = eh2bor1cut(theta, fe, fh; pol = xpolsym)
+    cut.evec .= a .* cut.evec + b .* xcut.evec
+    return cut
+end
+
+function eh2bor1cut(
+    theta::AbstractVector,
+    fe::F1, 
+    fh::F2;
+    kwargs...) where {F1<:Function, F2<:Function}
+    fevec = [fe(t) for t in theta]
+    fhvec = [fh(t) for t in theta]
+    return eh2bor1cut(theta, fevec, fhvec, kwargs...)
 end
 
 

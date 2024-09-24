@@ -7,6 +7,7 @@ export
     convert_cut!,
     Cut,
     cut2sph, 
+    eh2bor1cut,
     Exi,
     get_evec,
     get_header,
@@ -21,7 +22,7 @@ export
     get_y,
     get_z,
     maximum_db,
-    normalize2dir!,
+    normalize!,
     parse_tor_file,
     phase_deg,  
     phscen,
@@ -90,7 +91,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     text = get_text(cut)
     theta = get_theta(cut)
     mdb = maximum_db(cut)
-    normalize2dir!(cut)
+    normalize!(cut)
     torfile = joinpath(@__DIR__, "..", "test", "tabulated_rim_tor_file.tor")
     torparsed = parse_tor_file(torfile)
     pdeg = phase_deg(cut, 1)
