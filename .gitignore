@@ -1,8 +1,9 @@
 /Manifest.toml
 /sandbox
-/doc/theorydoc
+/docs/theorydoc
 docs/Manifest.toml
 docs/build/
-docs/src/
-!docs/src/ref*
+docs/src/*.md
+!docs/src/references.md
+!docs/src/assets/citations.css
 docs/theorydoc/

@@ -149,7 +149,7 @@ normalize!(cut)
 power(cut) / 4π
 # The remaining departure of the radiated power from exact equality to ``4\pi`` is due to floating point error.
 
-# ## Synthesizing a Cut from E- and H-Plane Patterns
+# ### Synthesizing a Cut from E- and H-Plane Patterns
 # A "BOR₁" horn [kildal2015](@cite) is rotationally symmetric and contains only TE₁ₙ and TM₁ₙ waveguide modes in its 
 # radiating aperture.  It's radiated far field can therefore be expressed in terms
 # of the E-plane and H-plane (principal plane) patterns it radiates when excited for linear polarization. 
@@ -179,6 +179,21 @@ theta = get_theta(cut)
 plot!(theta, 10 .* log10.(abs2.(fe)), label="E-Plane")
 plot!(theta, 10 .* log10.(abs2.(fh)), label="H-Plane")
 
+# Suppose now that we wish to create a `Cut` object for this horn, but assuming that it has been
+# excited to generate a predominantly RHCP (right-hand circularly polarized) far field.
+cutrhcp = eh2bor1cut(theta, fe, fh; pol=:rhcp)
+# `cutrhcp` contains cuts at ``\phi = 0^\circ, 90^\circ, 180^\circ, \text{and } 270^\circ``.
 
+plot(cutrhcp, phi=0, xlim=(0,90), ylim=(-50,0), framestyle=:box, normalization=:peak)
+
+# The plot confirms that the dominant polarization is RHCP.  The maximum crosspol level is about 
+# 45 dB below the copol peak.  To simulate the effect of an imperfect feed network that injects 
+# crosspol (LHCP) at 30 dB below the copol level, we can use the `xpd` keyword argument:
+cutrhcp2 = eh2bor1cut(theta, fe, fh; pol=:rhcp, xpd=-30)
+plot(cutrhcp2, phi=0, xlim=(0,90), ylim=(-50,0), framestyle=:box, normalization=:peak)
+# As expected, the boresight crosspol level is now 30 dB below the copol peak, and the crosspol
+# pattern resembles a scaled version of the copol pattern, at least in the vicinity
+# of boresight.  Note that the phase of the injected crosspol can be specified using the 
+# `xpphase` keyword argument of [`eh2bor1cut`](@ref).
 
 # ## Spherical Wave Expansions

@@ -12,6 +12,9 @@ for file in literate_list
     Literate.markdown(joinpath("literate", file*".jl"), "src")
 end
 makedocs(;
+    format = Documenter.HTML(
+        assets=String["assets/citations.css"],
+    ),
     pages = [
         "Contents" => "Contents.md",
         "Introduction" => "index.md",
@@ -20,5 +23,5 @@ makedocs(;
         "References" => "references.md",
     ],
     sitename = "TicraUtilities",
-    plugins = [bib],
+    plugins = [bib,],
 )
