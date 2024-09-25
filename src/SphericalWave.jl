@@ -53,7 +53,7 @@ in the File Formats section of the Ticra official documentation.
 end
 
 import Base.show
-function show(io::IO, swe::SWEQPartition)
+function show(io::IO, mime::MIME"text/plain", swe::SWEQPartition)
     println(io, "SWEQPartition")
     println(io, "  prgtag   $(swe.prgtag)")
     println(io, "  idstrg   $(swe.idstrg)")
@@ -67,6 +67,11 @@ function show(io::IO, swe::SWEQPartition)
         first(axes(swe.qsmns, 3)), ":", last(axes(swe.qsmns, 3)), ")"))
     println(io, string("  powerms  OffsetArray{Float64}(",
         first(axes(swe.powerms, 1)), ":", last(axes(swe.powerms, 1)), ")"))
+    return nothing
+end
+
+function show(io::IO, swe::SWEQPartition)
+    print(io, "SWEQPartition with nmax = $(swe.nmax), mmax = $(swe.mmax)")
     return nothing
 end
 
