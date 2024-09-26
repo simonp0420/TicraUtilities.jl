@@ -36,6 +36,7 @@ export
     read_tfile,
     sor_efficiency,
     sph2cut,
+    SWEQPartition,
     sym2asym,
     write_cutfile,
     write_exifile,
