@@ -170,3 +170,16 @@ end
     @test cut23.evec ≈ cut2.evec
     @test cut21.evec ≈ cut2.evec
 end
+
+
+@safetestset "eh2bor1cut" begin 
+    using TicraUtilities
+    cutfile = joinpath(@__DIR__, "ticra_hpol_horn.cut")
+    cuteh = read_cutfile(cutfile)
+    fe = get_evec(cuteh, 1)[:, 1] # ϕ = 0° cut is E-plane for horizontal pol
+    fh = get_evec(cuteh, 1)[:, end] # ϕ = 90° cut is H-plane for horizontal pol
+    cutrhcp = eh2bor1cut(get_theta(cuteh), fe, fh; pol=:rhcp, xpd=-30)
+    copol_amp_db = amplitude_db(cutrhcp, 1)[1,1]
+    xpol_amp_db = amplitude_db(cutrhcp, 2)[1,1]
+    @test copol_amp_db - xpol_amp_db ≈ 30.0
+end
