@@ -32,7 +32,7 @@ in the File Formats section of the Ticra official documentation.
 * `qsmns::OffsetArray{ComplexF64, 3}`: Contains the Q coefficients, assuming exp(jωt) time variation
   and using the Ticra normalization convention.  The array has axes `(1:2, -mmax:mmax, 1:nmax)`, meaning
   that some of the entries (those with `n < abs(m)`) are always zero.
-* `powerms::OffsetVector{Float64, Vector{Float64}}`: The array has axes `(0:mmax)` and the `m`th element
+* `powerms::OffsetArray{Float64, 1}`: The vector has axes `(0:mmax)` and the `m`th element
   contains the total power (one-half the sum of the magnitude squared) of all modes with `±m` as the m index.
 """
 @kwdef struct SWEQPartition
@@ -51,6 +51,102 @@ in the File Formats section of the Ticra official documentation.
         OffsetArray(zeros(ComplexF64, (2, 2mmax + 1, nmax)), 1:2, -mmax:mmax, 1:nmax)
     powerms::OffsetVector{Float64,Vector{Float64}} = OffsetArray(zeros(mmax + 1), 0:mmax)
 end
+
+"""
+    get_prgtag(s::SWEQPartition)
+
+Return the `prgtag` string of `s`.
+"""
+get_prgtag(s::SWEQPartition) = s.prgtag
+
+"""
+    get_idstrg(s::SWEQPartition)
+
+Return the `idstrg` string of `s`.
+"""
+get_idstrg(s::SWEQPartition) = s.idstrg
+
+"""
+    get_nthe(s::SWEQPartition)
+
+Return the integer `nthe` (number of theta points) associated with `s`.
+"""
+get_nthe(s::SWEQPartition) = s.nthe
+
+"""
+    get_nphi(s::SWEQPartition)
+
+Return the integer `nphi` (number of phi points) associated with `s`.
+"""
+get_nphi(s::SWEQPartition) = s.nphi
+
+"""
+    get_nmax(s::SWEQPartition)
+
+Return the integer `nmax` (maximum `n` index) associated with `s`.
+"""
+get_nmax(s::SWEQPartition) = s.nmax
+
+"""
+    get_mmax(s::SWEQPartition)
+
+Return the integer `mmax` (maximum `m` index) associated with `s`.
+"""
+get_mmax(s::SWEQPartition) = s.mmax
+
+"""
+    get_t4(s::SWEQPartition)
+
+Return the string `t4` associated with `s`.
+"""
+get_t4(s::SWEQPartition) = s.t4
+
+"""
+    get_t5(s::SWEQPartition)
+
+Return the string `t5` associated with `s`.
+"""
+get_t5(s::SWEQPartition) = s.t5
+
+"""
+    get_t6(s::SWEQPartition)
+
+Return the string `t6` associated with `s`.
+"""
+get_t6(s::SWEQPartition) = s.t6
+
+"""
+    get_t7(s::SWEQPartition)
+
+Return the string `t7` associated with `s`.
+"""
+get_t7(s::SWEQPartition) = s.t7
+
+"""
+    get_t8(s::SWEQPartition)
+
+Return the string `t8` associated with `s`.
+"""
+get_t8(s::SWEQPartition) = s.t8
+
+"""
+    get_qsmns(s::SWEQPartition)
+
+Return the offset array `qsmns::OffsetArray{ComplexF64, 3}` that contains the 
+Q coefficients, assuming exp(jωt) time variation and using the Ticra normalization 
+convention.  The array has axes `(1:2, -mmax:mmax, 1:nmax)`, meaning  that some of 
+the entries (those with `n < abs(m)`) are always zero.
+"""
+get_qsmns(s::SWEQPartition) = s.qsmns
+
+"""
+    get_powerms(s::SWEQPartition)
+
+Return the offset vector `powerms`. The vector has axes `(0:mmax)` (i.e. it can be indexed 
+with integers `m` ranging from `0` to `mmax`) and its `m`th element contains the total power
+(one-half the sum of the magnitude squared) of all modes with `±m` as the `m` index.
+"""
+get_powerms(s::SWEQPartition) = s.powerms
 
 import Base.show
 function show(io::IO, mime::MIME"text/plain", swe::SWEQPartition)
