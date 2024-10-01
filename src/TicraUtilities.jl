@@ -49,7 +49,7 @@ export
     read_tfile,
     sor_efficiency,
     sph2cut,
-    SWEQPartition,
+    SPHQPartition,
     sym2asym,
     write_cutfile,
     write_exifile,
@@ -58,25 +58,6 @@ export
     write_surface,
     write_cutfile,
     write_tor_object
-    #==
-       CorrList,
-       curvature,
-       field_rl_scan,
-       insiderim, 
-       make_cut_from_eh,
-       newfeedfrequency, 
-       phi, 
-       readfeeddiam, 
-       readfieldcut,
-       read_ticra_sfc,
-       Rim,
-       search_name_index,
-       smooth_sfc_to_given_curvature,
-       swefile,
-       TicraSfc, 
-       write_feed_file,
-include("eval_horn_primary_champ.jl")
-=##
 
 include("Cut.jl")
 include("Station.jl")
@@ -96,7 +77,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     scut = asym2sym(cut)
     cut1 = convert_cut!(cut,1)    
     cut2 = convert_cut!(cut,2)
-    swe_julia = cut2sph(cutfile)
+    sph_julia = cut2sph(cutfile)
     evec = get_evec(cut)
     icomp = get_icomp(cut)
     icut = get_icut(cut)
@@ -114,8 +95,8 @@ using PrecompileTools: @setup_workload, @compile_workload
     cuts = read_cutfile(cutfile)
     exifile = joinpath(@__DIR__, "..", "test", "beam_A14R.exi")
     exi = read_exifile(exifile)
-    sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.swe")
-    swe = read_sphfile(sphfile)
+    sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.sph")
+    sph = read_sphfile(sphfile)
     stafile = joinpath(@__DIR__, "..", "test", "scenario2_coverage.sta")
     stations = read_station(stafile)
     sfcfile = joinpath(@__DIR__, "..", "test", "parent_parabola.sfc")

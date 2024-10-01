@@ -1,7 +1,7 @@
 using SafeTestsets
 
 include("CutTest.jl")
-include("SWETest.jl")
+include("SPHTest.jl")
 include("StationTest.jl")
 include("TfileTest.jl")
 include("ExiTest.jl")

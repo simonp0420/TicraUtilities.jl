@@ -9,12 +9,12 @@ using Dates: now
 
 
 """
-    SWEQPartition
-Struct containing all the data read from a Ticra-compatible Q-type SWE file for one frequency.
+    SPHQPartition
+Struct containing all the data read from a Ticra-compatible Q-type SPH file for one frequency.
 The `qsmns` field contains the Q coefficients. It is indexed as `qsmns[s,m,n]` where `s ∈ {1,2}`, `m ∈ -mmax:mmax`, 
 `n ∈ {1, ..., mmax}`.  But not all entries are used.  The only possible nonzero entries are where 
-`n ∈ {max(1, abs(m)), ..., nmax}`.  Note that if the coefficients stored in the SWE files are `Q'`, and
-the cofficients stored in a `SWEQPartition` instance are `Q`, then `Q = sqrt(8π) * conj(Q')`, as discussed
+`n ∈ {max(1, abs(m)), ..., nmax}`.  Note that if the coefficients stored in the SPH files are `Q'`, and
+the cofficients stored in a `SPHQPartition` instance are `Q`, then `Q = sqrt(8π) * conj(Q')`, as discussed
 in the File Formats section of the Ticra official documentation.
 
 ### Fields
@@ -35,7 +35,7 @@ in the File Formats section of the Ticra official documentation.
 * `powerms::OffsetArray{Float64, 1}`: The vector has axes `(0:mmax)` and the `m`th element
   contains the total power (one-half the sum of the magnitude squared) of all modes with `±m` as the m index.
 """
-@kwdef struct SWEQPartition
+@kwdef struct SPHQPartition
     prgtag::String
     idstrg::String
     nthe::Int
@@ -53,121 +53,121 @@ in the File Formats section of the Ticra official documentation.
 end
 
 """
-    get_prgtag(s::SWEQPartition)
+    get_prgtag(s::SPHQPartition)
 
 Return the `prgtag` string of `s`.
 """
-get_prgtag(s::SWEQPartition) = s.prgtag
+get_prgtag(s::SPHQPartition) = s.prgtag
 
 """
-    get_idstrg(s::SWEQPartition)
+    get_idstrg(s::SPHQPartition)
 
 Return the `idstrg` string of `s`.
 """
-get_idstrg(s::SWEQPartition) = s.idstrg
+get_idstrg(s::SPHQPartition) = s.idstrg
 
 """
-    get_nthe(s::SWEQPartition)
+    get_nthe(s::SPHQPartition)
 
 Return the integer `nthe` (number of theta points) associated with `s`.
 """
-get_nthe(s::SWEQPartition) = s.nthe
+get_nthe(s::SPHQPartition) = s.nthe
 
 """
-    get_nphi(s::SWEQPartition)
+    get_nphi(s::SPHQPartition)
 
 Return the integer `nphi` (number of phi points) associated with `s`.
 """
-get_nphi(s::SWEQPartition) = s.nphi
+get_nphi(s::SPHQPartition) = s.nphi
 
 """
-    get_nmax(s::SWEQPartition)
+    get_nmax(s::SPHQPartition)
 
 Return the integer `nmax` (maximum `n` index) associated with `s`.
 """
-get_nmax(s::SWEQPartition) = s.nmax
+get_nmax(s::SPHQPartition) = s.nmax
 
 """
-    get_mmax(s::SWEQPartition)
+    get_mmax(s::SPHQPartition)
 
 Return the integer `mmax` (maximum `m` index) associated with `s`.
 """
-get_mmax(s::SWEQPartition) = s.mmax
+get_mmax(s::SPHQPartition) = s.mmax
 
 """
-    get_t4(s::SWEQPartition)
+    get_t4(s::SPHQPartition)
 
 Return the string `t4` associated with `s`.
 """
-get_t4(s::SWEQPartition) = s.t4
+get_t4(s::SPHQPartition) = s.t4
 
 """
-    get_t5(s::SWEQPartition)
+    get_t5(s::SPHQPartition)
 
 Return the string `t5` associated with `s`.
 """
-get_t5(s::SWEQPartition) = s.t5
+get_t5(s::SPHQPartition) = s.t5
 
 """
-    get_t6(s::SWEQPartition)
+    get_t6(s::SPHQPartition)
 
 Return the string `t6` associated with `s`.
 """
-get_t6(s::SWEQPartition) = s.t6
+get_t6(s::SPHQPartition) = s.t6
 
 """
-    get_t7(s::SWEQPartition)
+    get_t7(s::SPHQPartition)
 
 Return the string `t7` associated with `s`.
 """
-get_t7(s::SWEQPartition) = s.t7
+get_t7(s::SPHQPartition) = s.t7
 
 """
-    get_t8(s::SWEQPartition)
+    get_t8(s::SPHQPartition)
 
 Return the string `t8` associated with `s`.
 """
-get_t8(s::SWEQPartition) = s.t8
+get_t8(s::SPHQPartition) = s.t8
 
 """
-    get_qsmns(s::SWEQPartition)
+    get_qsmns(s::SPHQPartition)
 
 Return the offset array `qsmns::OffsetArray{ComplexF64, 3}` that contains the 
 Q coefficients, assuming exp(jωt) time variation and using the Ticra normalization 
 convention.  The array has axes `(1:2, -mmax:mmax, 1:nmax)`, meaning  that some of 
 the entries (those with `n < abs(m)`) are always zero.
 """
-get_qsmns(s::SWEQPartition) = s.qsmns
+get_qsmns(s::SPHQPartition) = s.qsmns
 
 """
-    get_powerms(s::SWEQPartition)
+    get_powerms(s::SPHQPartition)
 
 Return the offset vector `powerms`. The vector has axes `(0:mmax)` (i.e. it can be indexed 
 with integers `m` ranging from `0` to `mmax`) and its `m`th element contains the total power
 (one-half the sum of the magnitude squared) of all modes with `±m` as the `m` index.
 """
-get_powerms(s::SWEQPartition) = s.powerms
+get_powerms(s::SPHQPartition) = s.powerms
 
 import Base.show
-function show(io::IO, mime::MIME"text/plain", swe::SWEQPartition)
-    println(io, "SWEQPartition")
-    println(io, "  prgtag   $(swe.prgtag)")
-    println(io, "  idstrg   $(swe.idstrg)")
-    println(io, "  nthe     $(swe.nthe)")
-    println(io, "  nphi     $(swe.nphi)")
-    println(io, "  nmax     $(swe.nmax)")
-    println(io, "  mmax     $(swe.mmax)")
+function show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
+    println(io, "SPHQPartition")
+    println(io, "  prgtag   $(sph.prgtag)")
+    println(io, "  idstrg   $(sph.idstrg)")
+    println(io, "  nthe     $(sph.nthe)")
+    println(io, "  nphi     $(sph.nphi)")
+    println(io, "  nmax     $(sph.nmax)")
+    println(io, "  mmax     $(sph.mmax)")
     println(io, string("  qsmns    OffsetArray{ComplexF64}(",
-        first(axes(swe.qsmns, 1)), ":", last(axes(swe.qsmns, 1)), ",",
-        first(axes(swe.qsmns, 2)), ":", last(axes(swe.qsmns, 2)), ",",
-        first(axes(swe.qsmns, 3)), ":", last(axes(swe.qsmns, 3)), ")"))
+        first(axes(sph.qsmns, 1)), ":", last(axes(sph.qsmns, 1)), ",",
+        first(axes(sph.qsmns, 2)), ":", last(axes(sph.qsmns, 2)), ",",
+        first(axes(sph.qsmns, 3)), ":", last(axes(sph.qsmns, 3)), ")"))
     println(io, string("  powerms  OffsetArray{Float64}(",
-        first(axes(swe.powerms, 1)), ":", last(axes(swe.powerms, 1)), ")"))
+        first(axes(sph.powerms, 1)), ":", last(axes(sph.powerms, 1)), ")"))
     return nothing
 end
 
-function show(io::IO, swe::SWEQPartition)
-    print(io, "SWEQPartition with nmax = $(swe.nmax), mmax = $(swe.mmax)")
+function show(io::IO, sph::SPHQPartition)
+    print(io, "SPHQPartition with nmax = $(sph.nmax), mmax = $(sph.mmax)")
     return nothing
 end
 
@@ -175,20 +175,20 @@ end
 
 
 """
-    read_sphfile(fname) -> Vector{SWEQPartition}
+    read_sphfile(fname) -> Vector{SPHQPartition}
 
-Read the SWE coefficients from a Q-type spherical wave expansion file. 
+Read the SPH coefficients from a Q-type spherical wave expansion file. 
 
 In the process of reading the data, the coefficients in the file (Q′) are conjugated and then
 multiplied by the factor √(8π) to achieve Ticra-standard normalization.  
 Each element of the returned vector corresponds to a particular operating frequency partition
 in the file.  If there is only a single partition in the file, then instead of returning a 1-element
-vector, the single element of type `SWEQPartition` is returned as a scalar.
+vector, the single element of type `SPHQPartition` is returned as a scalar.
 """
 function read_sphfile(fname::AbstractString)
     normfactor = sqrt(8π)
     open(fname, "r") do io
-        sps = SWEQPartition[]
+        sps = SPHQPartition[]
         while !eof(io)
             # Read header info of next partition:
             prgtag, idstrg = (readline(io) for _ in 1:2)
@@ -217,7 +217,7 @@ function read_sphfile(fname::AbstractString)
                     end
                 end
             end
-            push!(sps, SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms))
+            push!(sps, SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms))
         end
         if length(sps) > 1
             return sps
@@ -230,15 +230,15 @@ end
 
 
 """
-    write_sphfile(fname, qs::Vector{SWEQPartition})
-    write_sphfile(fname, qs::SWEQPartition)
+    write_sphfile(fname, qs::Vector{SPHQPartition})
+    write_sphfile(fname, qs::SPHQPartition)
 
-Write SWE coefficients to a Q-type spherical wave expansion file.
+Write SPH coefficients to a Q-type spherical wave expansion file.
 
 In the process of writing the data, the coefficients in the file (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
 """
-function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
+function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
     open(fname, "w") do io
@@ -273,7 +273,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SWEQPartition})
     return
 end
 
-write_sphfile(fname::AbstractString, qs::SWEQPartition) = write_sphfile(fname, [qs])
+write_sphfile(fname::AbstractString, qs::SPHQPartition) = write_sphfile(fname, [qs])
 
 
 
@@ -344,9 +344,11 @@ end
 
 
 """
-    sph2cut(swefile::AbstractString; theta, phi, ipol) -> cut::Cut
+    sph2cut(sphfile::AbstractString; theta, phi, ipol) -> cut::Cut
 
-    sph2cut(swe:SWEQPartition; theta, phi, ipol) -> cut::Cut
+    sph2cut(sph:SPHQPartition; theta, phi, ipol) -> cut::Cut
+
+    sph2cut(sphs:Vector{SPHQPartition}; theta, phi, ipol) -> cuts::Vector{Cut}
 
 Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
 values, returned as a `Cut` object. 
@@ -358,10 +360,10 @@ such a file with `read_sphfile`.
 ## Optional Keyword Arguments:
 - `theta`: An abstract range denoting the desired polar angles (colattitudes) 
   in degrees at which the field should be evaluated. If an empty range is provided (the default), then
-  the values will be determined automatically by examining the modal content in `swe`.
+  the values will be determined automatically by examining the modal content in `sph`.
 - `phi`: An abstract range denoting the desired azimuthal angles in degrees at 
   which the field should be evaluated.  If an empty range is provided (the default), then
-  the values will be determined automatically by examining the modal content in `swe`.
+  the values will be determined automatically by examining the modal content in `sph`.
 - `ipol`:  An integer in the range 0:3 denoting the desired polarization decomposition 
   for the computed field values. The meanings of these values are:
     - 0: (Default value) Choose the basis among choices 1, 2, or 3 that produces the largest peak copol magnitude.
@@ -373,11 +375,13 @@ such a file with `read_sphfile`.
     cut = sph2cut("testfile.sph"; phi=0:5:355, theta=0:1:180, ipol=2)
 """
 function sph2cut(sphfile::AbstractString; kwargs...)
-    swe = read_sphfile(sphfile)
-    sph2cut(swe; kwargs...)
+    sph = read_sphfile(sphfile)
+    sph2cut(sph; kwargs...)
 end
 
-function sph2cut(swe::SWEQPartition;
+sph2cut(sphs::AbstractVector{SPHQPartition}; kwargs...) = [sph2cut(sph; kwargs...) for sph in sphs]
+
+function sph2cut(sph::SPHQPartition;
     theta::AbstractRange=0.0:-1.0:1.0,
     phi::AbstractRange=0.0:-1.0:1.0,
     ipol::Int=0)
@@ -385,21 +389,21 @@ function sph2cut(swe::SWEQPartition;
     (0 ≤ ipol ≤ 3) || Throw(ArgumentError("polarization must be either 0,1,2, or 3"))
 
     if isempty(theta)
-        Nθ = swe.nthe ÷ 2 + 1
+        Nθ = sph.nthe ÷ 2 + 1
         θs = range(0.0, 180.0, Nθ)
     else
         Nθ = length(theta)
         θs = range(first(theta), last(theta), Nθ)
     end
     if isempty(phi)
-        Nϕ = swe.nphi
+        Nϕ = sph.nphi
         ϕs = range(0.0, 360 - 360 / Nϕ, Nϕ)
     else
         Nϕ = length(phi)
         ϕs = range(first(phi), last(phi), Nϕ)
     end
 
-    Es = _q2evec(swe.qsmns, θs, ϕs)
+    Es = _q2evec(sph.qsmns, θs, ϕs)
 
     if iszero(ipol)
         # Find the maximum norm E-field
@@ -584,10 +588,13 @@ end
 Π(j) = isodd(j) ? 0.0 : 2.0 / (1 - j^2) # Eq. (4.84)
 
 """
-    cut2sph(cut::Cut; keywords...) -> s::SWEQPartition
-    cut2sph(cutfile::AbstractString; kwargs...) -> s::SWEQPartition
+    cut2sph(cut::Cut; keywords...) -> sph::SPHQPartition
 
-Convert a `Cut` object to a `SWEQPartition` using recursive FFT/IFFT methods from
+    cut2sph(cuts::AbstractVector{Cut}; keywords...) -> sphs::Vector{SPHQPartition}
+
+    cut2sph(cutfile::AbstractString; kwargs...) -> s::SPHQPartition
+
+Convert a `Cut` object to a `SPHQPartition` using recursive FFT/IFFT methods from
 the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 
 The single positional input argument can be either a string containing the name 
@@ -615,6 +622,7 @@ function cut2sph(cutfile::AbstractString; kwargs...)
     cut2sph(cut; kwargs...)
 end
 
+cut2sph(cuts::AbstractVector{<:Cut}; kwargs...) = [cut2sph(cut; kwargs...) for cut in cuts]
 
 function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
@@ -737,7 +745,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     (qpwr, powerms, qsmn) = _filter_qmodes_by_power(qsmns, pwrtol)
 
 
-    # Create output SWEQPartition
+    # Create output SPHQPartition
     date, clock = split(string(now()), 'T')
     funcname = nameof(var"#self#")
     prgtag = string(funcname, " ", date, " ", clock)
@@ -747,7 +755,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     N = last(axes(qsmn, 3))
     nphi = Nϕ
     t4 = t5 = t6 = t7 = "Dummy Text"
-    return SWEQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
+    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
 end
 
 function _filter_qmodes_by_power(qsmns, pwrtol)
