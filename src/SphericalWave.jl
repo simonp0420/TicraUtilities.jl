@@ -366,7 +366,7 @@ such a file with `read_sphfile`.
   the values will be determined automatically by examining the modal content in `sph`.
 - `ipol`:  An integer in the range 0:3 denoting the desired polarization decomposition 
   for the computed field values. The meanings of these values are:
-    - 0: (Default value) Choose the basis among choices 1, 2, or 3 that produces the largest peak copol magnitude.
+    - 0: (Default value) Choose the basis among choices 2 or 3 that produces the largest peak copol magnitude.
     - 1: Use a (θ̂, ϕ̂) basis.
     - 2: Use a (R̂, L̂) (i.e., circular polarization) basis.
     - 3: Use a (ĥ, v̂) (Ludwig 3) basis.
@@ -415,7 +415,7 @@ function sph2cut(sph::SPHQPartition;
         (θ̂, ϕ̂), (R̂, L̂), (ĥ, v̂) = _pol_basis_vectors(ϕ_maxnorm)
         ERL = @SMatrix[R̂⋅θ̂ R̂⋅ϕ̂; L̂⋅θ̂ L̂⋅ϕ̂] * Eθϕ
         Ehv = @SMatrix[ĥ⋅θ̂ ĥ⋅ϕ̂; v̂⋅θ̂ v̂⋅ϕ̂] * Eθϕ
-        icomp = argmax(maximum(abs2.(x)) for x in (Eθϕ, ERL, Ehv))
+        icomp = 1 + argmax(maximum(abs2.(x)) for x in (ERL, Ehv))
     else
         icomp = ipol
     end
