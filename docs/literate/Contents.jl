@@ -1,7 +1,7 @@
 #=
 # Contents  
 ```@contents
-Depth = 3
+Depth = 4
 Pages = ["index.md", "Tutorial.md", "autodocs.md", "references.md"]
 ```
 =#

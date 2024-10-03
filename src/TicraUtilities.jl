@@ -50,6 +50,7 @@ export
     sor_efficiency,
     sph2cut,
     SPHQPartition,
+    Surface,
     sym2asym,
     write_cutfile,
     write_exifile,

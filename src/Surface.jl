@@ -1,3 +1,14 @@
+"""
+    Surface
+Struct containing all the data read from a Ticra-compatible regular x-y grid surface file.
+
+### Fields
+* `text::String`: Descriptive string.
+* `idstrg::String`: Identification text.
+* `x::AbstractRange`: The x coordinates at which the surface is sampled.
+* `y::AbstractRange`: The y coordinates at which the surface is sampled.
+* `z::Matrix{Float64}`:  `z[i,j]` contains the surface ``z``-coordinate sampled at ``x`` = `x[i]` and ``y`` = `y[j]`.
+"""
 struct Surface
     text::String
     x::AbstractRange
@@ -7,8 +18,7 @@ end
 
 Surface() = Surface("", 0:0, 0:0, zeros(0, 0))
 
-import Base.show
-function show(io::IO, t::Surface)
+function Base.show(io::IO, mime::MIME"text/plain", t::Surface)
     println(io, "Surface")
     println(io, "  text: ", t.text)
     println(io, "     x: ", t.x)
@@ -17,11 +27,40 @@ function show(io::IO, t::Surface)
     return nothing
 end
 
+"""
+    get_x(c::Surface) -> x::AbstractRange
+
+Return the range of x values for surface `c`.
+"""
 get_x(c::Surface) = c.x
+
+"""
+    get_y(c::Surface) -> y::AbstractRange
+
+Return the range of y values for surface `c`.
+"""
 get_y(c::Surface) = c.y
+
+"""
+    get_z(c::Surface) -> z::Matrix{Float64}
+
+Return the matrix of `z` values for surface `c`. `z[i,j]` is the ``z`` value sampled
+at ``(x, y)`` coordinates ``(```x[i]`, `y[j]```)``.
+"""
 get_z(c::Surface) = c.z
+
+"""
+    get_text(c::Surface) -> t::String
+
+Return the text string associated with surface `c`.
+"""
 get_text(c::Surface) = c.text
 
+"""
+    read_surface(fname::AbstractString) -> s::Surface
+
+Read a Ticra-compatible surface file and return a `Surface` object.
+"""
 function read_surface(fname::AbstractString)
     # Read a Ticra .sfc file.
     sfc = open(fname, "r") do fid
@@ -40,6 +79,12 @@ function read_surface(fname::AbstractString)
 end
 
 import Base.+
+"""
+    +(s1::Surface, s2::Surface)
+
+Return a new `Surface` whose ``z`` values are the sum of those of `s1` and `s2`.
+`s1` and `s2` must have identical `x` and `y` fields.
+"""
 function +(s1::Surface, s2::Surface)
     (s1.x ≈ s2.x && s1.y ≈ s2.y) || error("Surfaces not defined on the same points")
     z = s1.z + s2.z
@@ -48,6 +93,12 @@ function +(s1::Surface, s2::Surface)
 end
 
 import Base.-
+"""
+    -(s1::Surface, s2::Surface)
+
+Return a new `Surface` whose ``z`` values are the difference of those of `s1` and `s2`.
+`s1` and `s2` must have identical `x` and `y` fields.
+"""
 function -(s1::Surface, s2::Surface)
     (s1.x ≈ s2.x && s1.y ≈ s2.y) || error("Surfaces not defined on the same points")
     z = s1.z - s2.z
@@ -55,6 +106,11 @@ function -(s1::Surface, s2::Surface)
     return Surface(text, s1.x, s1.y, z)
 end
 
+"""
+    write_surface(fname::AbstractString, sfc::Surface)
+
+Write a `Surface` object to a Ticra-compatible surface file.
+"""
 function write_surface(fname::AbstractString, sfc::Surface)
     # Write a Ticra .sfc file.
     open(fname, "w") do fid

@@ -14,7 +14,8 @@ struct TorObj
     propval::Vector{String}  # values of object properties
 end
 
-Base.show(io::IO, obj::TorObj) = write_tor_object(io, obj)
+Base.show(io::IO, mime::MIME"text/plain", obj::TorObj) = write_tor_object(io, obj)
+Base.show(io::IO, obj::TorObj) = print(io, obj.name, "::", obj.objtype)
 
 """
     write_tor_object(io::IO, obj::TorObj)

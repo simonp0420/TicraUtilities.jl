@@ -32,15 +32,17 @@ plot(cut)
 # directivity, and print this peak value in the title of the plot.  Finally, we'll adjust the axes
 # limits and tick locations:
 
-peakdb = round(maximum_db(cut), digits=3)
+peakdb = round(maximum_db(cut), digits = 3)
 plot(
     cut, 
     normalization = :peak,
-    phi=0:90:315, 
-    title="Peak = $peakdb dB",
-    framestyle=:box,
-    xtick=0:20:180, xlim=(0,180),
-    ytick=-60:5:0, ylim=(-60,0),
+    phi = 0:90:315, 
+    title = "Peak = $peakdb dB",
+    framestyle = :box,
+    xlim = (0, 180),
+    xtick = 0:20:180,
+    ylim = (-60, 0),
+    ytick = -60:5:0,
 )
 
 # The plot appearance is now more pleasing. We used the [`maximum_db`](@ref) function to label the peak
@@ -69,20 +71,24 @@ scatter(
     label = "Interpolated In θ",
     pol = :copol,
     normalization = :peak,
-    phi=0,
-    theta=0:0.1:5,
-    title="Normalized Copol (LHCP), Peak = $peakdb dB",
-    framestyle=:box,
-    xtick=0:0.5:10, xlim=(0,5),
-    ytick=-10:0.05:0, ylim=(-0.2,0.01),
+    phi = 0,
+    theta = 0:0.1:5,
+    title = "Normalized Copol (LHCP), Peak = $peakdb dB",
+    framestyle = :box,
+    xlim = (0, 5),
+    xtick = 0:0.5:10,
+    ylim=(-0.2, 0.01),
+    ytick = -10:0.05:0,
 )
 scatter!(
     cut, 
     label = "No θ Interpolation",
     pol = :copol,
     normalization = :peak,
-    phi=0,
-    marker = :cross, ms = 6, msw = 2,
+    phi = 0,
+    marker = :cross,
+    ms = 6,
+    msw = 2,
 )
 
 # The above scatter plot clearly illustrates the results of interpolating in ``\theta``.  The example
@@ -103,11 +109,13 @@ scut = asym2sym(cut) # Create a symmetric cut
 plot(
     scut, 
     normalization = :peak,
-    phi=0:45:135,
-    title="Normalized Symmetric Cut, Peak = $peakdb dB",
-    framestyle=:box,
-    xtick=-180:30:180, xlim=(-180,180),
-    ytick=-60:5:0, ylim=(-60,0),
+    phi = 0:45:135,
+    title = "Normalized Symmetric Cut, Peak = $peakdb dB",
+    framestyle = :box,
+    xlim = (-180, 180),
+    xtick = -180:30:180,
+    ylim = (-60, 0),
+    ytick = -60:5:0,
 )
 # This type of symmetric plot can be useful for spotting pattern asymmetries.
 #
@@ -121,21 +129,27 @@ plot(
 # variable used in the previous examples uses CP components, as can be verified
 # using the [`get_icomp`](@ref) function:
 get_icomp(cut)
+# The possible values for `icomp` and their meanings are documented in [ttools24; Sec. 9.7, p. 3306](@cite).
+# Alternatively, one can request help on the `Cut` type at the Julia REPL. Note: At present, most of the 
+# functions in `TicraUtilities` support only 1, 2, or 3 as possible values for `icomp`.  In this case, the 
+# value is `2`, meaning that a circular polarization basis was used.
 #
-# If we convert to an L3 representation:
+# If we convert the polarization basis to a Ludwig 3 representation:
 cut_L3 = convert_cut(cut, 3)
-peakdb_L3 = round(maximum_db(cut_L3), digits=3)
+peakdb_L3 = round(maximum_db(cut_L3), digits = 3)
 # we see that the peak directivity has been reduced by about 3 dB from its previous value.  Since
 # the boresight radiated field is nearly perfectly circularly polarized, then both L3 components
 # will be approximately equal in magnitude as shown in the following plot:
 plot(
     cut_L3, 
     normalization = :peak,
-    phi=0:90:315, 
-    title="Ludwig 3 Components, Peak = $peakdb_L3 dB",
-    framestyle=:box,
-    xtick=0:20:180, xlim=(0,180),
-    ytick=-60:5:0, ylim=(-60,0),
+    phi = 0:90:315, 
+    title = "Ludwig 3 Components, Peak = $peakdb_L3 dB",
+    framestyle = :box,
+    xlim = (0, 180),
+    xtick = 0:20:180,
+    ylim=(-60, 0),
+    ytick = -60:5:0,
 )
 
 # ### Cut Normalization
@@ -147,53 +161,190 @@ power(cut) / 4π
 # nearly exact by using the `normalize!` function:
 normalize!(cut)
 power(cut) / 4π
-# The remaining departure of the radiated power from exact equality to ``4\pi`` is due to floating point error.
+# After explicitly normalizing the cut, its radiated power is almost exactly equal to ``4\pi``.
 
 # ### Synthesizing a Cut from E- and H-Plane Patterns
 # A "BOR₁" horn [kildal2015](@cite) is rotationally symmetric and contains only TE₁ₙ and TM₁ₙ waveguide modes in its 
-# radiating aperture.  It's radiated far field can therefore be expressed in terms
+# radiating aperture.  Its radiated far field can therefore be expressed in terms
 # of the E-plane and H-plane (principal plane) patterns it radiates when excited for linear polarization. 
-# The [`eh2bor1cut`](@ref) function can be used to synthesize a `Cut` object from its principal plane
-# patterns, optionally adding in a specified level of crosspol due to an imperfect feed network.
+# The [`eh2bor1cut`](@ref) function synthesizes a `Cut` object for a BOR₁ antenna from
+# its principal plane patterns, optionally adding in a specified level of crosspol due to an 
+# imperfect feed network.
 
 # We begin by reading a cut file for a BOR₁ horn created by Ticra's CHAMP program:
 using TicraUtilities
 using Plots
 cutfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ticra_hpol_horn.cut")
 cut = read_cutfile(cutfile)
+println("Peak =  ", round(maximum_db(cut), digits = 2), " dB")
+#
+cut
 
-# We see from the above output that the cut file contains 3 cuts at ``\phi = 0^\circ, 45^\circ``, and
+# As seen from the above output, the cut file contains 3 cuts at ``\phi = 0^\circ, 45^\circ``, and
 # ``90^\circ``.  Since the cut file was created for horizontal excitation of the horn, the dominant
 # far-field polarization will be Ludwig 3 horizontal, which is stored in the first polarization slot of the cut.
 # It also follows that the E-plane pattern can be extracted from the first (``\phi = 0^\circ``) cut
 # and the H-plane pattern from the last (``\phi = 90^\circ``) cut:
 fe = get_evec(cut, 1)[:, 1] # ϕ = 0° cut is E-plane for horizontal pol
 fh = get_evec(cut, 1)[:, end] # ϕ = 90° cut is H-plane for horizontal pol
-plot(xlim=(0,180),
-     ylim=(-60,30),
-     framestyle=:box,
+plot(xlim=(0, 180),
+     xlabel = "θ (deg)",
+     ylim = (-60, 30),
+     ylabel = "Amplitude (dB)",
+     framestyle = :box,
      title = "BOR₁ Horn Principal Plane Patterns",
-     xlabel="θ (deg)",
-     ylabel="Amplitude (dB)")
+)
 theta = get_theta(cut)
-plot!(theta, 10 .* log10.(abs2.(fe)), label="E-Plane")
-plot!(theta, 10 .* log10.(abs2.(fh)), label="H-Plane")
+plot!(theta, 10 .* log10.(abs2.(fe)), label = "E-Plane")
+plot!(theta, 10 .* log10.(abs2.(fh)), label = "H-Plane")
 
 # Suppose now that we wish to create a `Cut` object for this horn, but assuming that it has been
-# excited to generate a predominantly RHCP (right-hand circularly polarized) far field.
-cutrhcp = eh2bor1cut(theta, fe, fh; pol=:rhcp)
-# `cutrhcp` contains cuts at ``\phi = 0^\circ, 90^\circ, 180^\circ, \text{and } 270^\circ``.
-
-plot(cutrhcp, phi=0, xlim=(0,90), ylim=(-50,0), framestyle=:box, normalization=:peak)
-
+# excited to generate a predominantly RHCP (right-hand circularly polarized) far field:
+cutrhcp = eh2bor1cut(theta, fe, fh; pol = :rhcp)
+println("Peak RHCP =  ", round(maximum_db(cutrhcp), digits = 2), " dBi")
+println("(Radiated power)/4π = ",  power(cutrhcp) / 4π)
+#
+cutrhcp
+# As shown above, the maximum field magnitude is about the same as that for the principal plane cuts. 
+# And since the cut is properly power-normalized, this value is the maximum partial directivity 
+# to RHCP polarization.
+# As stated in the documentation for [`eh2bor1cut`], `cutrhcp` contains cuts at 
+# ``\phi = 0^\circ, 90^\circ, 180^\circ, \text{and } 270^\circ``.  Plotting the cut at ``\phi = 0^\circ``:
+plot(cutrhcp, 
+     phi = 0,
+     xlim = (0, 90),
+     xtick = 0:10:90,
+     ylim = (-60, 0),
+     framestyle = :box, 
+     normalization = :peak,
+     title = "BOR₁ Horn Excited for RHCP, Normalized Pattern")
 # The plot confirms that the dominant polarization is RHCP.  The maximum crosspol level is about 
 # 45 dB below the copol peak.  To simulate the effect of an imperfect feed network that injects 
-# crosspol (LHCP) at 30 dB below the copol level, we can use the `xpd` keyword argument:
-cutrhcp2 = eh2bor1cut(theta, fe, fh; pol=:rhcp, xpd=-30)
-plot(cutrhcp2, phi=0, xlim=(0,90), ylim=(-50,0), framestyle=:box, normalization=:peak)
+# crosspol (LHCP) at a level 30 dB below the desired copol, we can use the `xpd` keyword argument:
+cutrhcp2 = eh2bor1cut(theta, fe, fh; pol = :rhcp, xpd = -30)
+plot(cutrhcp2,
+     phi = 0,
+     xlim = (0, 90),
+     xtick = 0:10:90,
+     ylim = (-60, 0),
+     framestyle = :box,
+     normalization = :peak,
+     title = "RHCP-Excited BOR₁ Horn, Normalized Pattern\n-30 dB Xpol Added\n")
 # As expected, the boresight crosspol level is now 30 dB below the copol peak, and the crosspol
 # pattern resembles a scaled version of the copol pattern, at least in the vicinity
 # of boresight.  Note that the phase of the injected crosspol can be specified using the 
 # `xpphase` keyword argument of [`eh2bor1cut`](@ref).
+#
+# After creating the `Cut` object `cutrhcp` in this manner, it can be saved as a Ticra-compatible
+# cut file using [`write_cutfile`](@ref), or it can be converted to a spherical wave expansion using
+# [`cut2sph`](@ref), as discussed below in [SWE/Cut Conversion](@ref).  The resulting `SPHQPartition`
+# object can be saved as a spherical wave expansion (.sph) file, if desired, using [`write_sphfile`](@ref).
 
-# ## Spherical Wave Expansions
+# ## Spherical Wave Expansions (SWEs)
+# The functions in `TicraUtilities` can read, write, and manipulate Ticra-compatible spherical wave 
+# expansion (.sph) files that employ the newer, more accurate, so-called "Q" modes.  To read the 
+# contents of such a file, one uses the 
+# [`read_sphfile`](@ref) function.  Below we demonstrate the function's use on a spherical wave expension
+# file previously generated using GRASP:
+using TicraUtilities
+sphfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "center_element_rhcp_excited_q.sph")
+sph_grasp = read_sphfile(sphfile)
+# `read_sphfile` returns an object of type [`SPHQPartition`](@ref), containing the SWE data
+# for a single partition (i.e., frequency) stored in a SWE file.  If the file had consisted of 
+# multiple partitions then the returned object would be a vector of such objects.
+# A `SPHQPartition` object (or a vector of such objects) can be written to a Ticra-compatible file using
+# [`write_sphfile`](@ref).  The values stored in the fields of a `SPHQPartition` object can be retrieved using the 
+# functions [`get_prgtag`](@ref), [`get_idstrg`](@ref), [`get_nthe`](@ref), [`get_nphi`](@ref), 
+# [`get_nmax`](@ref), [`get_mmax`](@ref), [`get_qsmns`](@ref), and [`get_powerms`](@ref), along with
+# [`get_t4`](@ref) through [`get_t8`](@ref).
+#
+#
+# ### SWE/Cut Conversion
+# #### Cut to SWE Conversion
+# A `Cut` object, a vector of `Cut` objects, or a cut file can be converted to SWE representation via the [`cut2sph`](@ref)
+# function.  We'll demonstrate this conversion using a measured cut file for a central element of a closely spaced
+# array of planar radiating elements.  Because of strong mutual coupling, the pattern is asymmetrical, as shown in
+# the plot below:
+using TicraUtilities
+using Plots
+cutfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "center_element_rhcp_excited.cut")
+cut_meas = read_cutfile(cutfile)
+#
+plot(cut_meas, legend=nothing, framestyle=:box)
+#
+# Note that although the cut file contains pattern data out to ``\theta = 180^\circ``, the values for 
+# ``\theta > 90^\circ`` are identially zero.  This fact and the large number
+# of samples in the two angular directions make it an interesting case for spherical wave expansion.  We generate
+# the SWE representation as follows:
+sph_julia = cut2sph(cut_meas)
+#
+# On a Core i7-9700 computer this conversion takes about 25 msec.  The `sph_grasp` object read in the previous 
+# example was generated from the same measured cut file by the Ticra GRASP program. The maximum difference between the SPH
+# coefficients in `sph_julia` and `sph_grasp` is
+maximum(abs, get_qsmns(sph_julia) - get_qsmns(sph_grasp))
+# 
+#
+# #### SWE to Cut Conversion
+# We can convert the previously read-in `SPHQPartition` object `sph` into a `Cut` object 
+# using the [`sph2cut`](@ref) function:
+cut_julia = sph2cut(sph_grasp; phi=0:5:355, theta=0:1:180, ipol=2)
+# Here we specified the desired output ``\phi`` and ``\theta`` ranges, and the desired polarization
+# basis (CP) for comparison to a similar cut file obtained from the SWE file using the TICRA GRASP program:
+cutfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "center_element_rhcp_excited_q.cut")
+cut_ticra = read_cutfile(cutfile)
+using LinearAlgebra: norm
+Eθ_err =  maximum(norm, get_evec(cut_julia, 1) - get_evec(cut_ticra, 1))
+Eϕ_err =  maximum(norm, get_evec(cut_julia, 2) - get_evec(cut_ticra, 2))
+@show (Eθ_err, Eϕ_err)
+# The differences between the GRASP-computed and `sph2cut` cuts are observed to be very small. 
+# A plot confirms the quality of agreement:
+using Plots
+plot(xlim = (0, 180),
+     ylim = (-100, 15),
+     title = "Copol (RHCP) Comparison",
+     framestyle = :box,
+)
+plot!(cut_julia, phi = 0, pol = 1, label = "RHCP sph2cut")
+plot!(cut_ticra, phi = 0, pol = 1, ls = :dash, label = "RHCP GRASP")
+#
+plot(xlim = (0, 180),
+     ylim = (-100, 15),
+     title = "Crosspol (LHCP) Comparison",
+     framestyle = :box,
+)
+plot!(cut_julia, phi = 0, pol = 2, label = "LHCP sph2cut")
+plot!(cut_ticra, phi = 0, pol = 2, ls = :dash, label = "LHCP GRASP")
+# The rapid dropoff at ``\phi = 90^\circ`` occurs because the original pattern data from which the 
+# spherical wave coefficients were derived was only nonzero in the forward hemisphere of the antenna.
+# Finite amplitudes in the reconstructed patterns for ``\theta > 90^\circ`` are due to the
+# discontinuity in the fields at ``\theta = 90^\circ``, which would require an infinite number of 
+# modes to reproduce exactly.
+# 
+# 
+
+
+# ## Surface Files
+# Ticra-compatible surface (.sfc) files can be read using the [`read_surface`](@ref) function, and written to 
+# disk using the [`write_surface`](@ref) function.  The results of reading a surface file are stored in an
+# object of type [`Surface`](@ref) as in the following example:
+sfcfile = joinpath(joinpath(dirname(pathof(TicraUtilities)), "..", "test", "parent_parabola.sfc"))
+sfc = read_surface(sfcfile)
+# Values within the `Surface` object can be accessed via the functions
+# [`get_x`](@ref), [`get_y`](@ref), [`get_z`](@ref), and [`get_text`](@ref).
+#
+# The `+` and `-` operators have been overloaded to work on surfaces, resulting in new surfaces whose
+# ``z`` values are the sum or difference of the operand surfaces:
+sfc2 = sfc + sfc
+get_z(sfc2) ≈ 2 * get_z(sfc)
+#
+sfc3 = sfc - sfc
+maximum(abs, get_z(sfc3))
+
+#
+# ## Array Excitation Files
+# TBC
+#
+# ## Optimization Station Files
+# TBC
+# ## Ticra Object Repository (TOR) Files
+# TBC

@@ -2,7 +2,6 @@
 
 # ## Publicly Exported Functions
 
-
 # ```@docs
 # complex(::Exi)
 # ```
@@ -12,6 +11,13 @@
 # ```@docs
 # maximum(::Cut)
 # ```
+# ```@docs
+# +(::Surface, ::Surface)
+# ```
+# ```@docs
+# -(::Surface, ::Surface)
+# ```
+
 
 # ```@autodocs
 # Modules = [TicraUtilities]
