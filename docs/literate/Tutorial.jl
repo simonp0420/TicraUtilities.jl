@@ -349,4 +349,20 @@ maximum(abs, get_z(sfc3))
 # ## Optimization Station Files
 # TBC
 # ## Ticra Object Repository (TOR) Files
-# TBC
+# TOR files can be read and written using the functions [`read_torfile`](@ref) and [`write_torfile`](@ref), 
+# respectively.  Here is an example of reading a TOR file:
+torfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "tabulated_rim_tor_file.tor")
+torobjs = read_torfile(torfile)
+
+# [`read_torfile`](@ref) returns a vector of `TorObj` objects.  Here is the first element of this vector:
+torobj = torobjs[1]
+# The name and Ticra type of the object are shown, followed by propertynames and their corresponding values.
+# These can be extracted from the `TorObj` object using functions [`get_name`](@ref), [`get_objtype`](@ref), 
+# [`get_propname`](@ref), and [`get_propval`](@ref). For example:
+get_name(torobj)
+#
+get_objtype(torobj)
+#
+get_propname(torobj)
+#
+get_propval(torobj)

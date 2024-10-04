@@ -16,13 +16,17 @@ export
     get_ids,
     get_idstrg,
     get_mmax,
+    get_name,
     get_ncomp,
     get_nmax,
     get_nphi,
     get_nthe,
+    get_objtype,
     get_phi,
     get_powerms,
     get_prgtag,
+    get_propname,
+    get_propval,
     get_qsmns,
     get_t4,
     get_t5,
@@ -36,7 +40,6 @@ export
     get_z,
     maximum_db,
     normalize!,
-    parse_tor_file,
     phase_deg,  
     phscen,
     power,
@@ -47,18 +50,20 @@ export
     read_surface,
     read_tabulatedrimxyold,
     read_tfile,
+    read_torfile,
     sor_efficiency,
     sph2cut,
     SPHQPartition,
     Surface,
     sym2asym,
+    TorObj,
     write_cutfile,
     write_exifile,
     write_sphfile,
     write_station,
     write_surface,
     write_cutfile,
-    write_tor_object
+    write_torfile
 
 include("Cut.jl")
 include("Station.jl")
@@ -89,7 +94,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     mdb = maximum_db(cut)
     normalize!(cut)
     torfile = joinpath(@__DIR__, "..", "test", "tabulated_rim_tor_file.tor")
-    torparsed = parse_tor_file(torfile)
+    torparsed = read_torfile(torfile)
     pdeg = phase_deg(cut, 1)
     pcen = phscen(cutfile)
     p = power(scut)

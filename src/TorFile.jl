@@ -5,7 +5,19 @@ const RP = ')'
 """
     TorObj
 
-Container for a general TOR-file object
+Struct containing a single, general, TOR object.
+
+### Fields
+* `name::String`: The name of the TOR object. Example: "my_rim".
+* `objtype::String`: The type of the TOR object. Example: "tabulated_rim_xy".
+* `propname::Vector{String}`: Names of object properties. Example: 
+  ["file_name", "unit", "number_of_points", "translation", "polar_origin"]
+* `propval::Vector{String}`: Values of object properties corresponding to the names in `propnames`. Example:
+  ["h_9m_scalloped_rim.xyz", "in", "112", "struct(x: 0.0 in, y: 0.0 in)", 
+  "struct(status: automatic, x: 0.0 in, y: 0.0 in)"]
+
+Note that the "values" in `propval` are simply strings that must be parsed for any numeric values
+that might be present.
 """
 struct TorObj
     name::String  # Name of the object
@@ -14,15 +26,64 @@ struct TorObj
     propval::Vector{String}  # values of object properties
 end
 
-Base.show(io::IO, mime::MIME"text/plain", obj::TorObj) = write_tor_object(io, obj)
+"""
+    get_name(obj::TorObj) -> name::String
+
+Return the object name.
+"""
+get_name(obj::TorObj) = obj.name
+
+"""
+    get_objtype(obj::TorObj) -> objtype::String
+
+Return the Ticra object type.
+"""
+get_objtype(obj::TorObj) = obj.objtype
+
+"""
+    get_propname(obj::TorObj) -> propname::Vector{String}
+
+Return the vector of object property names.
+"""
+get_propname(obj::TorObj) = obj.propname
+
+"""
+    get_propval(obj::TorObj) -> propval::Vector{String}
+
+Return the vector of object property values.
+"""
+get_propval(obj::TorObj) = obj.propval
+
+
+Base.show(io::IO, mime::MIME"text/plain", obj::TorObj) = _write_tor_object(io, obj)
 Base.show(io::IO, obj::TorObj) = print(io, obj.name, "::", obj.objtype)
 
 """
-    write_tor_object(io::IO, obj::TorObj)
+    write_torfile(fname::AbstractString, obj::TorObj; modestr = "w")
+    write_torfile(fname::AbstractString, objs::Vector{TorObj}; modestr = "w")
+
+Write one or multiple `TorObj` objects to a Ticra-compatible TOR (Ticra Object Repository) file.
+With the default value of `modestr = "w"`, the file is created if it doesn't already exist, or, if it 
+already exists, it is truncated to zero length before writing the TOR object(s).
+By setting the value of `modestr` to `"a"` one can append the object(s) to an existing file.
+"""
+function write_torfile(fname::AbstractString, objs::Vector{TorObj}; modestr = "w")
+    open(fname, modestr) do io
+        for obj in objs
+            _write_tor_object(io, obj)
+        end
+    end
+    return nothing
+end
+
+write_torfile(fname::AbstractString, obj::TorObj; kwargs...) = write_torfile(fname, [obj]; kwargs...)
+
+"""
+    _write_tor_object(io::IO, obj::TorObj)
 
 Write a tor object to a previously opened tor output file.
 """
-function write_tor_object(iu::IO, obj::TorObj)
+function _write_tor_object(iu::IO, obj::TorObj)
 
     println(iu, obj.name, "   ", obj.objtype, " (")
 
@@ -184,11 +245,11 @@ end
 
 
 """
-    parse_tor_file(torfile::AbstractString)
+    read_torfile(torfile::AbstractString)
 
 Return a vector of TorObj objects found in a TOR file
 """
-function parse_tor_file(torfile::AbstractString)
+function read_torfile(torfile::AbstractString)
     i1 = 1
     line = strip(join(_read_tor_file(torfile), ' ')) # Create a single, long string to process
     objects = TorObj[]
