@@ -1094,11 +1094,11 @@ of the E-plane and H-plane patterns it radiates when excited for linear polariza
   (capitalization is not significant):
   * "l3v" or `:l3v`: (the default value) The horn is excited for "vertical" (y-directed) linear polarization 
     and the far field is expressed as Ludwig-3 components.  
-  * `:l3h`: The horn is excited for "horizontal" (x-directed) linear polarization and the far field is
+  * "l3h" or `:l3h`: The horn is excited for "horizontal" (x-directed) linear polarization and the far field is
     expressed as Ludwig-3 components.
-  * `:rhcp`: The horn is excited for RHCP (right-hand circular polarization) and the far field is
+  * "rhcp" or `:rhcp`: The horn is excited for RHCP (right-hand circular polarization) and the far field is
     expressed as RHCP and LHCP components.
-  * `:lhcp`: The horn is excited for LHCP (left-hand circular polarization) and the far field is
+  * "lhcp" or `:lhcp`: The horn is excited for LHCP (left-hand circular polarization) and the far field is
     expressed as RHCP and LHCP components.
   If linear (circular) polarization is requested, then the output `Cut` object will contain eight (four)
   cuts, spaced every 45° (90°). 
