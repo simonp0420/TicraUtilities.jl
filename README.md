@@ -21,3 +21,12 @@ This package is still under development.  To do:
 
  
 [![Build Status](https://github.com/simonp0420/TicraUtilities.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/simonp0420/TicraUtilities.jl/actions/workflows/CI.yml?query=branch%3Amain)
+
+## Package Installation
+You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the first character of the command prompt):
+
+```julia
+(v1.10) pkg> add TicraUtilities
+```
+
+or with `using Pkg; Pkg.add("TicraUtilities")`.

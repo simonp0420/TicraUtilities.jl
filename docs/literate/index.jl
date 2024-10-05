@@ -15,4 +15,14 @@ This package provides utilities in the Julia programming language for
 * Reading and writing array excitation (.exi) files.
 * Reading and writing "surface" (.sfc) files.
 * And more...
+
+# Package Installation
+You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the first character of the command prompt):
+
+```julia
+(v1.10) pkg> add TicraUtilities
+```
+
+or with `using Pkg; Pkg.add("TicraUtilities")`.
 =#
+
