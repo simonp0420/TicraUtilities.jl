@@ -110,8 +110,7 @@ function SuperEllipticalRim(obj::TorObj)
     return SuperEllipticalRim([xc, yc], [xha, yha], exponent, rotation, xcunit)
 end
 
-import Base.show
-function show(io::IO, r::SuperEllipticalRim)
+function Base.show(io::IO, r::SuperEllipticalRim)
     println(io, "SuperEllipticalRim")
     println(io, "  centre: \t$(r.centre)")
     println(io, "  half_axis: \t$(r.half_axis)")

@@ -148,8 +148,7 @@ with integers `m` ranging from `0` to `mmax`) and its `m`th element contains the
 """
 get_powerms(s::SPHQPartition) = s.powerms
 
-import Base.show
-function show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
+function Base.show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
     println(io, "SPHQPartition")
     println(io, "  prgtag   $(sph.prgtag)")
     println(io, "  idstrg   $(sph.idstrg)")
@@ -166,7 +165,7 @@ function show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
     return nothing
 end
 
-function show(io::IO, sph::SPHQPartition)
+function Base.show(io::IO, sph::SPHQPartition)
     print(io, "SPHQPartition with nmax = $(sph.nmax), mmax = $(sph.mmax)")
     return nothing
 end

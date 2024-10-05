@@ -12,8 +12,7 @@ struct Tfile
     p2::Vector{Matrix{ComplexF64}}  # 2cd pol component, element size = (nsta[kp], Nel)
 end
 
-import Base.show
-function show(io::IO, t::Tfile)
+function Base.show(io::IO, t::Tfile)
     println(io, "Tfile")
     println(io, "  title: ", t.title)
     println(io, "  nel\t$(t.nel)")

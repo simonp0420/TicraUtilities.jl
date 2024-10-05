@@ -34,8 +34,7 @@ contains all of the cuts for a single frequency.
 end
 
 
-import Base.show
-function show(io::IO, mime::MIME"text/plain", t::Cut)
+function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     println(io, "Cut")
     println(io, "  ncomp\t$(t.ncomp)")
     println(io, "  icut \t$(t.icut)")
