@@ -14,7 +14,30 @@ struct Exi
     ampdb::Vector{Float64}
     phsdeg::Vector{Float64}
     id::Vector{String}
+
+    function Exi(header::Vector{String}, ampdb::Vector{Float64}, phsdeg::Vector{Float64}, id::Vector{String})
+        if length(ampdb) == length(phsdeg) == length(id)
+            return new(header, ampdb, phsdeg, id)
+        else
+            throw(ArgumentError("lengths of ampdb, phsdeg, and id are not all equal"))
+        end
+    end
 end
+
+function Base.show(io::IO, mime::MIME"text/plain", exi::Exi) 
+    println(io, "Exi")
+    if length(exi.header) == 1
+        println(io, "  header: [\"", exi.header[1], "\"]")
+    else
+        println(io, "  header: ", summary(exi.header))
+    end
+    println(io, "  ampdb:  ", summary(exi.ampdb))
+    println(io, "  phsdeg: ", summary(exi.phsdeg))
+    println(io, "  id:     ", summary(exi.id))
+    return nothing
+end
+
+Base.show(io::IO, exi::Exi) = print(io, "Exi with ", length(exi.ampdb), " elements")
 
 """
     get_header(t::Exi)
@@ -31,11 +54,25 @@ Return a vector of excitation amplitudes in dB
 amplitude_db(t::Exi) = t.ampdb
 
 """
+    get_ampdb(t::Exi)
+
+Return a vector of excitation amplitudes in dB
+"""
+get_ampdb(t::Exi) = t.ampdb
+
+"""
     phase_deg(t::Exi)
 
 Return a vector of excitation phases in degrees.
 """
 phase_deg(t::Exi) = t.phsdeg
+
+"""
+    get_phsdeg(t::Exi)
+
+Return a vector of excitation phases in degrees.
+"""
+get_phsdeg(t::Exi) = t.phsdeg
 
 """
     get_ids(t::Exi)
