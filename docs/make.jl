@@ -2,6 +2,7 @@ using Pkg: Pkg
 Pkg.activate(@__DIR__)
 using Literate, Documenter, DocumenterCitations, TicraUtilities
 
+
 bib = CitationBibliography(
     joinpath(@__DIR__, "src", "refs.bib");
     style=:numeric
@@ -24,4 +25,8 @@ makedocs(;
     ],
     sitename = "TicraUtilities",
     plugins = [bib,],
+)
+
+deploydocs(
+    repo = "github.com/simonp0420/TicraUtilities.jl.git",
 )

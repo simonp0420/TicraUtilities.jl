@@ -4,96 +4,133 @@ using Printf: @printf
 """
     Station 
 
-Contains the data for a single partition of a Ticra station file.
+A struct that contains data for a single partition of a Ticra-compatible optimization station file.
+
+
+### Fields
+* `npoint::Int`: The number of stations in the partition.
+* `u::Vector{Float64}`: A vector of length `npoint` containing the ``u`` values (unitless direction cosine along ``x``) 
+  of each of the optimization stations in the partition.
+* `v::Vector{Float64}`: A vector of length `npoint` containing the ``v`` values (unitless direction cosine along ``y``) 
+  of each of the optimization stations in the partition.
+* `goal::Vector{Float64}`: A vector of length `npoint` containing the goal values in dB 
+  for each of the optimization stations in the partition.
+* `weight::Vector{Float64}`: A vector of length `npoint` containing the optimization weights
+  for each of the optimization stations in the partition.
+* `ipol::Vector{Int}`: A vector of length `npoint` containing the polarization codes 
+  for each of the stations in the partition. The codes have the following meanings:
+    - 1:  Linear Ludwig 3 x ("copol") component.
+    - 2:  Linear Ludwig 3 y ("cxpol") component.
+    - 3:  RHCP component.
+    - 4:  LHCP component.
+    - 5:  Major axis of polarization ellipse.
+    - 6:  Minor axis of polarization ellipse.
+    - 7:  The ratio co/cx in dB.
+    - 8:  The ratio cx/co in dB.
+    - 9:  The ratio RHCP/LHCP in dB.
+    - 10:  The ratio LHCP/RHCP in dB.
+    - 11:  The ratio major/minor in dB.
+    - 12:  The ratio minor/major in dB.
+    - 13:  The total power 10*log₁₀(‖E⃗‖²) in dB.
+* `rot::Vector{Float64}`: A vector of length `npoint` containing the rotation in degrees
+  of linear polarization reference for each of the optimization stations.
+* `att::Vector{Float64}`: A vector of length `npoint` containing the attenuation in dB ≥ 0 
+  relative to the sub-satellite point.
+* `ID::Vector{String}`: A vector of length `npoint` containing the ID string
+  for each of the optimization stations in the partition. May be empty.
 """
 struct Station
-    "`npoint`: The number of stations in the partition."
     npoint::Int
-
-    """
-    `u`: A vector of length `npoint` containing the u values (unitless) 
-    of each of the optimization stations in the partition.
-    """
     u::Vector{Float64}
-
-    """
-    `v`: A vector of length `npoint` containing the v values (unitless)
-    of each of the optimization stations in the partition.
-    """
     v::Vector{Float64}
-
-    """
-    `goal`: A vector of length `npoint` containing the optimization goals
-    in dB of each of the optimization stations in the partition.
-    """
     goal::Vector{Float64}
-
-    """
-    `weight`: A vector of length `npoint` containing the optimization weights
-    of each of the optimization stations in the partition.
-    """
     weight::Vector{Float64}
-
-    """
-    `ipol`: A vector of length `npoint` containing the polarization codes 
-    for each of the stations in the partition. The codes have the following meanings:
-    * 1:  Linear Ludwig 3 x ("copol") component.
-    * 2:  Linear Ludwig 3 y ("cxpol") component.
-    * 3:  RHCP component.
-    * 4:  LHCP component.
-    * 5:  Major axis of polarization ellipse.
-    * 6:  Minor axis of polarization ellipse.
-    * 7:  The ratio co/cx in dB.
-    * 8:  The ratio cx/co in dB.
-    * 9:  The ratio RHCP/LHCP in dB.
-    * 10:  The ratio LHCP/RHCP in dB.
-    * 11:  The ratio major/minor in dB.
-    * 12:  The ratio minor/major in dB.
-    """
     ipol::Vector{Int}
-
-    """
-    `rot`: A vector of length `npoint` containing the rotation in degrees
-    of linear polarization reference for each of the optimization stations.
-    """
     rot::Vector{Float64}
-
-    """
-    `att`: A vector of length `npoint` containing the attenuation in dB ≥ 0 
-    relative to the sub-satellite point.
-    """
     att::Vector{Float64}
-
-    """
-    `ID`: A vector of length `npoint` containing the ID string
-     for each of the optimization stations in the partition. May be empty.
-    """
     ID::Vector{String}
-
-    idx_copol_eoc::Vector{Bool}  # Used by SHSPO only
-    idx_sld::Vector{Bool}  # Used by SHSPO only
-    idx_XPD_eoc::Vector{Bool}  # Used by SHSPO only
-    area_weight::Vector{Float64} # Used by SHSPO only
 end
 
-Station() = Station(0, Float64[], Float64[], Float64[], Float64[], Int[], Float64[], Float64[],
-    String[], Bool[], Bool[], Bool[], Float64[])
+Station() = Station(0, Float64[], Float64[], Float64[], Float64[], Int[], Float64[], Float64[], String[])
 
-# Define a constructor that doesn't require the `SHSPO`-specific fields:
-Station(n::Int, u::AbstractVector{Float64}, v::AbstractVector{Float64}, g::AbstractVector{Float64},
-    w::Vector{Float64}, ipol::AbstractVector{Int}, rot::AbstractVector{Float64},
-    att::AbstractVector{Float64}, ID::AbstractVector{String}) =
-    Station(n, u, v, g, w, ipol, rot, att, ID, Bool[], Bool[], Bool[], Float64[])
+"""
+    get_npoint(s::Station)
+
+Return `npoint`, the number of stations.
+"""
+get_npoint(s::Station) = s.npoint
+
+"""
+    get_u(s::Station)
+
+Return `u`, the vector of unitless station direction cosines along ``x``.
+"""
+get_u(s::Station) = s.u
+
+"""
+    get_v(s::Station)
+
+Return `v`, the vector of unitless station direction cosines along ``y``.
+"""
+get_v(s::Station) = s.v
+
+"""
+    get_goal(s::Station)
+
+Return `goal`, the vector of optimization goals in dB.
+"""
+get_goal(s::Station) = s.goal
+
+"""
+    get_weight(s::Station)
+
+Return `weight`, the vector of station optimization weights.
+"""
+get_weight(s::Station) = s.weight
+
+"""
+    get_ipol(s::Station)
+
+Return `ipol`, the vector of station polarization codes.
+"""
+get_ipol(s::Station) = s.ipol
+
+"""
+    get_rot(s::Station)
+
+Return `rot`, the vector of station polarization rotation angles in degrees.
+"""
+get_rot(s::Station) = s.rot
+
+"""
+    get_att(s::Station)
+
+Return `att`, the vector of attenuation values wrt nadir in dB.
+"""
+get_att(s::Station) = s.att
+
+"""
+    get_id(s::Station)
+
+Return `id`, the vector of station ID strings.
+"""
+get_id(s::Station) = s.ID
+
+
+function Base.show(io::IO, sta::Station)
+    print(io, "Station partition with ", length(sta.u), " stations")
+end
+
 
 
 """
-    write_station(stationfile::AbstractString, stdat::Station)
-    write_station(stationfile::AbstractString, stdat::AbstractVector{Station})
+    write_stationfile(stationfile::AbstractString, stdat::Station)
+    write_stationfile(stationfile::AbstractString, stdat::AbstractVector{Station})
     
 Write a Ticra POS4-compatible optimization station file.  Here, when `stdat` is a vector,
 its elements are the partitions in the station file. 
 """
-function write_station(stationfile::AbstractString, stadat::AbstractVector{Station})
+function write_stationfile(stationfile::AbstractString, stadat::AbstractVector{Station})
     open(stationfile, "w") do fid
         for (kpart, d) in enumerate(stadat)
             @printf(fid, "%d\n", d.npoint)
@@ -108,16 +145,16 @@ function write_station(stationfile::AbstractString, stadat::AbstractVector{Stati
     return
 end
 
-write_station(stafile::AbstractString, stadat::Station) = write_station(stafile, Station[stadat])
+write_stationfile(stafile::AbstractString, stadat::Station) = write_station(stafile, Station[stadat])
 
 
 """
-    read_station(stationfile) -> Vector{Station}
+    read_stationfile(stationfile) -> Vector{Station}
     
-Read the contents of a Ticra optimization station file. The returned value
+Read the contents of a Ticra optimization station file. The returned value is
 a vector of length `npart`, where `npart` is the number of partitions in the file.
 """
-function read_station(stafile)
+function read_stationfile(stafile)
     stadat = open(stafile, "r") do fid
         kpart = 0  # Partition counter
         stadat = Station[]

@@ -3,7 +3,7 @@ using SafeTestsets
 @safetestset "Station" begin 
     using TicraUtilities
 
-    stadat = read_station("scenario2_coverage.sta")
+    stadat = read_stationfile("scenario2_coverage.sta")
     @test  length(stadat) == 1
     @test stadat[1].npoint == 397
     npoint = stadat[1].npoint
@@ -17,8 +17,8 @@ using SafeTestsets
     @test stadat[1].ID[npoint] == ""
 
     tfile = tempname()
-    write_station(tfile, stadat)
-    junk = read_station(tfile)
+    write_stationfile(tfile, stadat)
+    junk = read_stationfile(tfile)
     @test length(junk) == 1
     @test stadat[1].npoint == junk[1].npoint
     @test stadat[1].u == junk[1].u

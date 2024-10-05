@@ -294,12 +294,20 @@ cut_julia = sph2cut(sph_julia)
 # original measured data cut file, but performed entirely using the TICRA GRASP program. The copol and 
 # crosspol comparison is shown below:
 cutfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "center_element_rhcp_excited_q.cut")
-cut_ticra = read_cutfile(cutfile)
-#using LinearAlgebra: norm
-rhcp_err =  maximum(abs, get_evec(cut_julia, 1) - get_evec(cut_ticra, 1))
-lhcp_err =  maximum(abs, get_evec(cut_julia, 2) - get_evec(cut_ticra, 2))
-@show (rhcp_err, lhcp_err)
-# Plots of the reconstructed copol and crosspol patterns confirm the quality of agreement:
+cut_grasp = read_cutfile(cutfile)
+rhcp_err_db =  10 * log10(maximum(abs2, get_evec(cut_julia, 1) - get_evec(cut_grasp, 1)))
+lhcp_err_db =  10 * log10(maximum(abs2, get_evec(cut_julia, 2) - get_evec(cut_grasp, 2)))
+@show (rhcp_err_db, lhcp_err_db)
+# As shown above, the maximum differences between the reconstructed fields via GRASP and Julia functions are 
+# extremely small, on the order of -100 dB.  We can also compare the reconstructed fields versus the original
+# measured cut data:
+using LinearAlgebra: norm
+julia_err_db = 20 * log10(maximum(norm, get_evec(cut_julia) - get_evec(cut_meas)))
+grasp_err_db = 20 * log10(maximum(norm, get_evec(cut_grasp) - get_evec(cut_meas)))
+(julia_err_db, grasp_err_db)
+# GRASP- and Julia-reconstructed patterns show similar agreement with original measured data.
+# Plots of the reconstructed copol and crosspol patterns confirm the similarity of the GRASP and
+# Julia reconstructed pattern data:
 using Plots
 plot(xlim = (0, 180),
      ylim = (-100, 15),
@@ -307,7 +315,7 @@ plot(xlim = (0, 180),
      framestyle = :box,
 )
 plot!(cut_julia, phi = 0, pol = 1, label = "RHCP sph2cut")
-plot!(cut_ticra, phi = 0, pol = 1, ls = :dash, label = "RHCP GRASP")
+plot!(cut_grasp, phi = 0, pol = 1, ls = :dash, label = "RHCP GRASP")
 #
 plot(xlim = (0, 180),
      ylim = (-100, 15),
@@ -315,7 +323,7 @@ plot(xlim = (0, 180),
      framestyle = :box,
 )
 plot!(cut_julia, phi = 0, pol = 2, label = "LHCP sph2cut")
-plot!(cut_ticra, phi = 0, pol = 2, ls = :dash, label = "LHCP GRASP")
+plot!(cut_grasp, phi = 0, pol = 2, ls = :dash, label = "LHCP GRASP")
 # The rapid dropoff at ``\phi = 90^\circ`` occurs because the original pattern data from which the 
 # spherical wave coefficients were derived was only nonzero in the forward hemisphere of the antenna.
 # Finite amplitudes in the reconstructed patterns for ``\theta > 90^\circ`` are due to the
@@ -344,10 +352,30 @@ maximum(abs, get_z(sfc3))
 
 #
 # ## Array Excitation Files
-# TBC
+# Ticra-compatible array excitation (.exi) files can be read using the [`read_exifile](@ref) function, and written to 
+# disk using the [`write_exifile`](@ref) function.  The results of reading an array excitation file are stored in an
+# object of type [`Exi`](@ref) as in the following example:
+exifile = joinpath(joinpath(dirname(pathof(TicraUtilities)), "..", "test", "beam_A14R.exi"))
+exi = read_exifile(exifile)
+# Values within the `Exi` object can be accessed via the functions
+# [`get_header`](@ref), [`get_ampdb`](@ref) (or [`amplitude_db`](@ref)), 
+# [`get_phsdeg`](@ref) (or [`phase_deg`](@ref)), and [`get_ids`](@ref).
+# For example:
+get_ampdb(exi)
+# 
+get_phsdeg(exi)
 #
 # ## Optimization Station Files
-# TBC
+# Ticra-compatible optimization station (.sta) files, also known as "Field Directions" file,
+# can be read using the [`read_stationfile](@ref) function, 
+# and written to disk using the [`write_stationfile`](@ref) function.  The results of reading a station file are 
+# stored in a vector of objects of type [`Station`](@ref) as in the following example:
+stationfile = joinpath(joinpath(dirname(pathof(TicraUtilities)), "..", "test", "scenario2_coverage.sta"))
+stations = read_stationfile(stationfile)
+# Values within a `Station` object can be accessed via the functions
+# [`get_npoint`](@ref), [`get_u`](@ref), [`get_v`](@ref),  [`get_goal`](@ref),  [`get_weight`](@ref),
+#  [`get_ipol`](@ref),  [`get_rot`](@ref),  [`get_att`](@ref),  and [`get_id`](@ref).
+#
 # ## Ticra Object Repository (TOR) Files
 # TOR files can be read and written using the functions [`read_torfile`](@ref) and [`write_torfile`](@ref), 
 # respectively.  Here is an example of reading a TOR file:

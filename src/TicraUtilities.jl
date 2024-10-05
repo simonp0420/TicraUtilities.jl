@@ -10,17 +10,22 @@ export
     eh2bor1cut,
     Exi,
     get_ampdb,
+    get_att,
     get_evec,
+    get_goal,
     get_header,
     get_icomp,
     get_icut,
+    get_id,
     get_ids,
     get_idstrg,
+    get_ipol,
     get_mmax,
     get_name,
     get_ncomp,
     get_nmax,
     get_nphi,
+    get_npoint,
     get_nthe,
     get_objtype,
     get_phi,
@@ -30,6 +35,7 @@ export
     get_propname,
     get_propval,
     get_qsmns,
+    get_rot,
     get_t4,
     get_t5,
     get_t6,
@@ -37,6 +43,9 @@ export
     get_t8,
     get_text,
     get_theta, 
+    get_u,
+    get_v,
+    get_weight,
     get_x,
     get_y,
     get_z,
@@ -48,28 +57,29 @@ export
     read_cutfile,
     read_exifile,
     read_sphfile,
-    read_station,
+    read_stationfile,
     read_surface,
     read_tabulatedrimxyold,
-    read_tfile,
+    #read_tfile,
     read_torfile,
     sor_efficiency,
     sph2cut,
     SPHQPartition,
+    Station,
     Surface,
     sym2asym,
     TorObj,
     write_cutfile,
     write_exifile,
     write_sphfile,
-    write_station,
+    write_stationfile,
     write_surface,
     write_cutfile,
     write_torfile
 
 include("Cut.jl")
 include("Station.jl")
-include("Tfile.jl")
+#include("Tfile.jl")
 include("Exi.jl")
 include("TorFile.jl")
 include("Geom.jl")
@@ -106,7 +116,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.sph")
     sph = read_sphfile(sphfile)
     stafile = joinpath(@__DIR__, "..", "test", "scenario2_coverage.sta")
-    stations = read_station(stafile)
+    stations = read_stationfile(stafile)
     sfcfile = joinpath(@__DIR__, "..", "test", "parent_parabola.sfc")
     sfc = read_surface(sfcfile)
 
