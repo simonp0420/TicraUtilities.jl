@@ -1,7 +1,8 @@
 using Pkg: Pkg
 Pkg.activate(@__DIR__)
 using Literate, Documenter, DocumenterCitations, TicraUtilities
-
+olddir = pwd()
+cd(@__DIR__)
 
 bib = CitationBibliography(
     joinpath(@__DIR__, "src", "refs.bib");
@@ -30,3 +31,5 @@ makedocs(;
 deploydocs(
     repo = "github.com/simonp0420/TicraUtilities.jl.git",
 )
+
+cd(olddir)
