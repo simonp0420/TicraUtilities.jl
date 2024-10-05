@@ -11,7 +11,7 @@ export
     Exi,
     header,
     ids,
-    parse_tor_file,
+    read_torfile,
     phase_deg,  
     phscen,
     power,
