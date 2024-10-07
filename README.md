@@ -8,7 +8,7 @@
 
 
 
-`TicraUtilities` is a package to facilitate working with Ticra-compatible files and data objects in the Julia language. TICRA is a Danish company specializing in antenna analysis and synthesis software. Their products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as standards in the antenna community. As a result, the file formats defined and used by TICRA software have also become de facto industry standards.
+`TicraUtilities` is a package to facilitate working with Ticra-compatible files and data objects in the Julia language. [TICRA](https://www.ticra.com) is a Danish company specializing in antenna analysis and synthesis software. Their products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as standards in the antenna community. As a result, the file formats defined and used by TICRA software have also become de facto industry standards.
 
 This package provides utilities in the Julia programming language for
 * Reading, writing, and plotting Ticra-compatible cut (.cut) files.
@@ -20,12 +20,6 @@ This package provides utilities in the Julia programming language for
 * And more...
 
 
-This package is still under development.  To do:
-- [x] Additional functionality
-- [x] Improve docstrings
-- [ ] Formal documentation
-
- 
 
 ## Package Installation
 You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the first character of the command prompt):
