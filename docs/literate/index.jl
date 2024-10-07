@@ -1,7 +1,7 @@
 #=
 # Introduction
-`TicraUtilities` is a package to facilitate working with Ticra-compatible files and data objects in the 
-Julia language.
+[`TicraUtilities`](https://github.com/simonp0420/TicraUtilities.jl) is a package to facilitate working 
+with Ticra-compatible files and data objects in the Julia language.
 [TICRA](https://www.ticra.com) is a Danish company specializing in antenna analysis and synthesis software. Their
 products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as
 standards in the antenna community.  As a result, the file formats defined and used by TICRA software 
