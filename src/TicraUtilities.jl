@@ -51,6 +51,7 @@ export
     get_z,
     maximum_db,
     normalize!,
+    parse_tor_xy_struct,
     phase_deg,  
     phscen,
     power,
