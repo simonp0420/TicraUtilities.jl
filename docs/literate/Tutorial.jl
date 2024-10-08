@@ -394,3 +394,28 @@ get_objtype(torobj)
 get_propname(torobj)
 #
 get_propval(torobj)
+# The [`parse_tor_struct`](@ref) function can be used to parse the Ticra struct objects listed in the final
+# two elements of `get_propval(torobj)`:
+struct1 = parse_tor_struct(get_propval(torobj)[end-1])
+#
+struct2 = parse_tor_struct(get_propval(torobj)[end])
+#
+# `struct1` and `struct2` are [`NamedTuple`](https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple)s.
+# Their field names and values can be obtained using Julia's
+# `keys` and `values` functions:
+keys(struct2)
+#
+values(struct2)
+# Note that the parsed values of numeric quantities with associated units (such as "x" and "y" in the above example)
+# are converted to [`Unitful`](https://github.com/PainterQubits/Unitful.jl) quantities.   For example:
+struct2.x
+# The purely numeric portion and the units can be extracted using functions supplied by `Unitful`:
+using Unitful: unit, ustrip
+unit(struct2.x)
+#
+ustrip(struct2.x)
+# Alternatively, both can be converted to strings, if desired:
+string(struct2.x)
+# Of the units that can occur in a TOR file, "in" is the only one which is not translated without modification to Julia.
+# In the Julia representation, "inch" is used instead of "in" to avoid confusion with the built-in Julia function 
+# [`in`](https://docs.julialang.org/en/v1/base/collections/#Base.in).
