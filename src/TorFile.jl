@@ -1,5 +1,25 @@
+using Unitful: @u_str
+
 const LP = '('
 const RP = ')'
+
+"""
+    unitdict::Dict{String,String}
+Maps unit strings used by Ticra TOR files to corresponding `Unitful` units.
+"""
+const unitdict = Dict(
+    "mm" => u"mm",
+    "cm" => u"cm",
+    "m" => u"m",
+    "km" => u"km",
+    "in" => u"inch",
+    "ft" => u"ft",
+    "Hz" => u"Hz",
+    "kHz" => u"kHz",
+    "MHz" => u"MHz",
+    "GHz" => u"GHz",
+    "THz" => u"THz",
+)
 
 
 """
@@ -278,25 +298,43 @@ function search_name_index(objs::Vector{TorObj}, name::AbstractString)
     findfirst(==(name), (o.name for o in objs))
 end
 
-"""
-    (x, y, xunit, yunit) = parse_tor_xy_struct(s::AbstractString)
 
-The input string is an entry in a TorObj propval field, consisting
-of, e.g., "struct(x: 75.9880 in, y: 0.0 in)".  This function
-parses out and returns the floating point x and y values and their 
-respective unit strings.
 """
-function parse_tor_xy_struct(s::AbstractString)
+    parse_tor_struct(s::AbstractString) -> t::NamedTuple
+
+The input string is an entry in a `TorObj` `propval` field, consisting
+of, e.g., "struct(status: automatic, x: 1 in, y:23.4  mm)".  This function
+parses out the Ticra struct and returns a `NamedTuple` `t` whose `propertynames`
+are the Ticra struct field names.  The `values` of `t` are either strings or `Unitful`
+quantities.  In the example given, `t.status == "automatic"`, `t.x == 1.0u"inch"`, and 
+`t.y == 23.4u"mm"`.
+"""
+function parse_tor_struct(s::AbstractString)
+    s[1:6] == "struct" || error("Not a Ticra struct")
+    i1 = findfirst('(', s)
+    i2 = findlast(')', s)
+    (isempty(i1) || isempty(i2)) && error("Ill-formated Ticra struct")
+
     cf = r"([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)"  # This RE captures a float
-    (x, y) = (parse(Float64, s[rng]) for rng in findall(cf, s))
-    s2 = split(s, ',')
-    indx = findfirst(str -> occursin("x:", str), s2)
-    isempty(indx) && error("Unable to find \"x:\" in string")
-    xunit = split(s2[indx])[end]
-    indx = findfirst(str -> occursin("y:", str), s2)
-    isempty(indx) && error("Unable to find \"y:\" in string")
-    yunit = split(s2[indx])[end]
-    yunit[end] == ')' && (yunit = yunit[1:end-1])
-    return (x, y, xunit, yunit)
+
+    d = Pair{Symbol, Any}[]
+    for entry in split((@view s[i1+1:i2-1]), ',')
+        k, v = split(entry, ':') |> x -> strip.(x)
+        rngs = findall(cf, v)
+        if isempty(rngs) # No numbers found
+            push!(d, Symbol(k) => v)
+        elseif length(rngs) == 1
+            rng = only(rngs)
+            numbr = parse(Float64, v[rng])
+            k1 = 1 + last(rng)
+            unitstr = strip(@view v[k1:end])
+            unitstr in keys(unitdict) || error("Unknown unit: ", unitstr)
+            push!(d, Symbol(k) => numbr*unitdict[unitstr])
+        else
+            error("Ill-formed numbers?")
+        end
+    end
+    return NamedTuple(d)
 end
+
 

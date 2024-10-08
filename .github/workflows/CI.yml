@@ -23,8 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
-          - 'nightly'
+            - '1.10'
+            - '1.11'
+            - 'nightly'
         os:
           - ubuntu-latest
         arch:
