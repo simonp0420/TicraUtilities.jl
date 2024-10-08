@@ -279,19 +279,23 @@ function search_name_index(objs::Vector{TorObj}, name::AbstractString)
 end
 
 """
-    (x, y, xunit, yunit) = _parse_tor_xy_struct(s::AbstractString)
+    (x, y, xunit, yunit) = parse_tor_xy_struct(s::AbstractString)
 
 The input string is an entry in a TorObj propval field, consisting
 of, e.g., "struct(x: 75.9880 in, y: 0.0 in)".  This function
 parses out and returns the floating point x and y values and their 
 respective unit strings.
 """
-function _parse_tor_xy_struct(s::AbstractString)
+function parse_tor_xy_struct(s::AbstractString)
     cf = r"([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)"  # This RE captures a float
     (x, y) = (parse(Float64, s[rng]) for rng in findall(cf, s))
     s2 = split(s, ',')
-    xunit = split(s2[1])[end]
-    yunit = split(s2[2])[end]
+    indx = findfirst(str -> occursin("x:", str), s2)
+    isempty(indx) && error("Unable to find \"x:\" in string")
+    xunit = split(s2[indx])[end]
+    indx = findfirst(str -> occursin("y:", str), s2)
+    isempty(indx) && error("Unable to find \"y:\" in string")
+    yunit = split(s2[indx])[end]
     yunit[end] == ')' && (yunit = yunit[1:end-1])
     return (x, y, xunit, yunit)
 end

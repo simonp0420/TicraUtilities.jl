@@ -17,6 +17,7 @@ using SafeTestsets
     @test t[2].propval ==
     ["extsub_sw.rim", "in", "360", "struct(x: 0.0 in, y: 0.0 in)",
     "struct(status: automatic, x: 0.0 in, y: 0.0 in)"]
-    @test TicraUtilities._parse_tor_xy_struct(t[2].propval[4]) == (0.0, 0.0, "in", "in")
+    @test TicraUtilities.parse_tor_xy_struct(t[1].propval[end]) == (0.0, 0.0, "in", "in")
+    @test TicraUtilities.parse_tor_xy_struct(t[2].propval[4]) == (0.0, 0.0, "in", "in")
 end
 
