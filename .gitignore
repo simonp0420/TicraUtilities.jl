@@ -7,3 +7,4 @@ docs/src/*.md
 !docs/src/references.md
 !docs/src/assets/citations.css
 docs/theorydoc/
+test/Manifest.toml
