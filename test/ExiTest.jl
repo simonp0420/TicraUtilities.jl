@@ -4,7 +4,7 @@ using SafeTestsets
     using TicraUtilities
     t = read_exifile(joinpath(@__DIR__, "beam_A14R.exi"))
     @test length(get_header(t)) == 1
-    @test get_header(t)[1] == "DirecTV-15S A14R"
+    @test get_header(t)[1] == "Beam A14R"
     @test length(get_ids(t)) == length(amplitude_db(t)) == length(phase_deg(t)) == 16
     @test get_ampdb(t) == [-22.079632, -18.455905, -13.189809, -12.546182, -20.599867,
                       -13.271168, -8.728724, -7.783794, -11.498586, -10.453275,
