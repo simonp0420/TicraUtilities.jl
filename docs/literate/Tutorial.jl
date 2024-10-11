@@ -416,6 +416,6 @@ unit(struct2.x)
 ustrip(struct2.x)
 # Alternatively, both can be converted to strings, if desired:
 string(struct2.x)
-# Of the units that can occur in a TOR file, "in" is the only one which is not translated without modification to Julia.
+# Of the units that can occur in a TOR file, "in" is the only one which is modified when translated to Julia.
 # In the Julia representation, "inch" is used instead of "in" to avoid confusion with the built-in Julia function 
 # [`in`](https://docs.julialang.org/en/v1/base/collections/#Base.in).
