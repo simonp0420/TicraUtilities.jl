@@ -35,6 +35,14 @@ end
     @test t.evec[end,end][2] ≈ -0.0022099978067 + 0.0061599938867im
 end
 
+@safetestset "sym_asym_sym" begin 
+    using TicraUtilities
+    t1 = read_cutfile(joinpath(@__DIR__, "test.cut"))
+    t2 = asym2sym(t1)
+    t3 = sym2asym(t2)
+    @test t3 ≈ t1
+end
+
 @safetestset "Cut amplitude_db" begin 
     using TicraUtilities
     t = read_cutfile(joinpath(@__DIR__, "test.cut"))

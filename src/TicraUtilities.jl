@@ -83,7 +83,7 @@ include("Station.jl")
 #include("Tfile.jl")
 include("Exi.jl")
 include("TorFile.jl")
-include("Geom.jl")
+#include("Geom.jl")
 include("SphericalWave.jl")
 include("Surface.jl")
 
