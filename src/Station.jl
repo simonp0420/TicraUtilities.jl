@@ -145,7 +145,7 @@ function write_stationfile(stationfile::AbstractString, stadat::AbstractVector{S
     return
 end
 
-write_stationfile(stafile::AbstractString, stadat::Station) = write_station(stafile, Station[stadat])
+write_stationfile(stafile::AbstractString, stadat::Station) = write_stationfile(stafile, Station[stadat])
 
 
 """
