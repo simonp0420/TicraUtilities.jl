@@ -1175,7 +1175,7 @@ function eh2bor1cut(
     kwargs...) where {F1<:Function, F2<:Function}
     fevec = [fe(t) for t in theta]
     fhvec = [fh(t) for t in theta]
-    return eh2bor1cut(theta, fevec, fhvec, kwargs...)
+    return eh2bor1cut(theta, fevec, fhvec; kwargs...)
 end
 
 

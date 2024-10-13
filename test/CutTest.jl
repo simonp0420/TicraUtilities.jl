@@ -190,4 +190,9 @@ end
     copol_amp_db = amplitude_db(cutrhcp, 1)[1,1]
     xpol_amp_db = amplitude_db(cutrhcp, 2)[1,1]
     @test copol_amp_db - xpol_amp_db ≈ 30.0
+
+    fe_func(θ) = fe[findfirst(x -> abs(x-θ) ≤ 1e-8, get_theta(cuteh))]
+    fh_func(θ) = fh[findfirst(x -> abs(x-θ) ≤ 1e-8, get_theta(cuteh))]
+    cutrhcp2 = eh2bor1cut(get_theta(cuteh), fe_func, fh_func; pol=:rhcp, xpd=-30)
+    @test cutrhcp ≈ cutrhcp2
 end
