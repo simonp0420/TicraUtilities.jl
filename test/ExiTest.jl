@@ -23,5 +23,11 @@ using SafeTestsets
     for field in fieldnames(typeof(t2))
         @test getfield(t, field) == getfield(t2, field)
     end
+
+    iobuf = IOBuffer()
+    show(iobuf, MIME"text/plain"(), t)
+    str = String(take!(iobuf))
+    str2 = "Exi\n  header: [\"Beam A14R\"]\n  ampdb:  16-element Vector{Float64}\n  phsdeg: 16-element Vector{Float64}\n  id:     16-element Vector{String}\n"
+    @test str == str2
 end
 
