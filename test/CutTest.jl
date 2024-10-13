@@ -196,3 +196,25 @@ end
     cutrhcp2 = eh2bor1cut(get_theta(cuteh), fe_func, fh_func; pol=:rhcp, xpd=-30)
     @test cutrhcp ≈ cutrhcp2
 end
+
+@safetestset "showcut" begin 
+    using TicraUtilities
+    cutfile = joinpath(@__DIR__, "ticra_hpol_horn.cut")
+    cuteh = read_cutfile(cutfile)
+    iobuf = IOBuffer()
+    show(iobuf, MIME"text/plain"(), cuteh)
+    str = String(take!(iobuf))
+    str2 = """Cut
+             ncomp\t2
+             icut \t1
+             icomp\t3
+             text
+                 \tField data in cuts
+                 \tField data in cuts
+                 \tField data in cuts
+             theta\t0.0:0.5:180.0
+             phi  \t0.0:45.0:90.0
+             evec \t361×3 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+           """
+    @test str == str2
+end
