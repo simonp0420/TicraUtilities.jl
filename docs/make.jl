@@ -13,6 +13,9 @@ literate_list = ["Contents", "index", "Tutorial", "autodocs"]
 for file in literate_list
     Literate.markdown(joinpath("literate", file*".jl"), "src")
 end
+
+#Literate.notebook(joinpath("literate", "Tutorial.jl"), "notebooks"; execute=false)
+
 makedocs(;
     format = Documenter.HTML(
         assets=String["assets/citations.css"],
