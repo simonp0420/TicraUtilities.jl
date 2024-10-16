@@ -1253,7 +1253,7 @@ end
                 y = [10 * log10(abs2(e[ipol])) - normdb for e in efield]
             elseif quantity == :power
                 y = [abs2(e[ipol]) / Esqmax for e in efield]
-            elseif quantity == :LinearIndices
+            elseif quantity == :linear
                 y = [abs2(e[ipol]) / Emax for e in efield]
             else
                 y = [rad2deg(angle(e[ipol])) - normalization for e in efield]
