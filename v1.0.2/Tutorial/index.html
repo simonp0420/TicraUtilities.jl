@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · TicraUtilities</title><meta name="title" content="Tutorial · TicraUtilities"/><meta property="og:title" content="Tutorial · TicraUtilities"/><meta property="twitter:title" content="Tutorial · TicraUtilities"/><meta name="description" content="Documentation for TicraUtilities."/><meta property="og:description" content="Documentation for TicraUtilities."/><meta property="twitter:description" content="Documentation for TicraUtilities."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/citations.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../Contents/">TicraUtilities</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../Contents/">Contents</a></li><li><a class="tocitem" href="../">Introduction</a></li><li class="is-active"><a class="tocitem" href>Tutorial</a><ul class="internal"><li><a class="tocitem" href="#Reading-and-Plotting-Cut-Files"><span>Reading and Plotting Cut Files</span></a></li><li><a class="tocitem" href="#Manipulation-and-Conversion-of-Cut-Objects"><span>Manipulation and Conversion of <code>Cut</code> Objects</span></a></li><li><a class="tocitem" href="#Spherical-Wave-Expansions-(SWEs)"><span>Spherical Wave Expansions (SWEs)</span></a></li><li><a class="tocitem" href="#Surface-Files"><span>Surface Files</span></a></li><li><a class="tocitem" href="#Array-Excitation-Files"><span>Array Excitation Files</span></a></li><li><a class="tocitem" href="#Optimization-Station-Files"><span>Optimization Station Files</span></a></li><li><a class="tocitem" href="#Ticra-Object-Repository-(TOR)-Files"><span>Ticra Object Repository (TOR) Files</span></a></li></ul></li><li><a class="tocitem" href="../autodocs/">API Reference</a></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tutorial</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tutorial</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/simonp0420/TicraUtilities.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/simonp0420/TicraUtilities.jl/blob/main/docs/literate/Tutorial.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial"><a class="docs-heading-anchor" href="#Tutorial">Tutorial</a><a id="Tutorial-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial" title="Permalink"></a></h1><h2 id="Reading-and-Plotting-Cut-Files"><a class="docs-heading-anchor" href="#Reading-and-Plotting-Cut-Files">Reading and Plotting Cut Files</a><a id="Reading-and-Plotting-Cut-Files-1"></a><a class="docs-heading-anchor-permalink" href="#Reading-and-Plotting-Cut-Files" title="Permalink"></a></h2><p>We begin by reading in an existing cut file:</p><pre><code class="language-julia hljs">using TicraUtilities
+
+cutfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;test.cut&quot;)
+cut = read_cutfile(cutfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	2
+  text: 72-element Vector{String}
+  theta	0.0:0.5:180.0
+  phi  	0.0:5.0:355.0
+  evec 	361×72 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><p>We see that <code>read_cutfile</code> returns a <code>Cut</code> object.  The information printed to the REPL shows that the <code>Cut</code> object contains 72 distinct ϕ cuts, each consisting of 361 points in the θ direction, with θ ranging from 0° to 180° in steps of 0.5°. See <a href="../autodocs/#TicraUtilities.Cut">Cut</a> for documentation on the remaining fields.</p><p>Values within the <code>Cut</code> object can be accessed via the functions <a href="../autodocs/#TicraUtilities.get_ncomp-Tuple{Cut}"><code>get_ncomp</code></a>, <a href="../autodocs/#TicraUtilities.get_icut-Tuple{Cut}"><code>get_icut</code></a>, <a href="../autodocs/#TicraUtilities.get_icomp-Tuple{Cut}"><code>get_icomp</code></a>, <a href="../autodocs/#TicraUtilities.get_text-Tuple{Cut}"><code>get_text</code></a>, <a href="../autodocs/#TicraUtilities.get_theta-Tuple{Cut}"><code>get_theta</code></a>, <a href="../autodocs/#TicraUtilities.get_phi-Tuple{Cut}"><code>get_phi</code></a>, and <a href="../autodocs/#TicraUtilities.get_evec-Tuple{Cut, Integer}"><code>get_evec</code></a>.  Some derived quantities can be obtained via the functions <a href="../autodocs/#TicraUtilities.power"><code>power</code></a>, <a href="../autodocs/#TicraUtilities.amplitude_db"><code>amplitude_db</code></a>, and <a href="../autodocs/#TicraUtilities.phase_deg"><code>phase_deg</code></a>.</p><p>This package includes a recipe for plotting a <code>Cut</code> object using the standard <a href="https://docs.juliaplots.org/stable/"><code>Plots</code></a> package.  So a plot of the cut can be generated very simply:</p><pre><code class="language-julia hljs">using Plots
+plot(cut)</code></pre><img src="5d6b26f4.svg" alt="Example block output"/><p>The default result in this case is not very satisfactory.  Note that each trace is automatically labeled according to its polarization (either LHCP or RHCP for this case) and ϕ value, but there are too many ϕ cut labels to fit in the legend.  Let&#39;s tweak the plot by just selecting a just a few ϕ values to plot.  We will also normalize the amplitudes according to the peak directivity, and print this peak value in the title of the plot.  Finally, we&#39;ll adjust the axes limits and tick locations:</p><pre><code class="language-julia hljs">peakdb = round(maximum_db(cut), digits = 3)
+plot(
+    cut,
+    normalization = :peak,
+    phi = 0:90:315,
+    title = &quot;Peak = $peakdb dB&quot;,
+    framestyle = :box,
+    xlim = (0, 180),
+    xtick = 0:20:180,
+    ylim = (-60, 0),
+    ytick = -60:5:0,
+)</code></pre><img src="19f96bcb.svg" alt="Example block output"/><p>The plot appearance is now more pleasing. We used the <a href="../autodocs/#TicraUtilities.maximum_db-Tuple{Cut}"><code>maximum_db</code></a> function to label the peak field value used for normalizing the plot.  For plotting, most of the keyword arguments that were passed to the <code>plot</code> function above come standard with the <code>Plots</code> package, but <code>phi</code> and <code>normalization</code> are custom keywords introduced by <code>TicraUtilities</code> and are supported only when plotting a <code>Cut</code> object.  The full list of custom keywords available for plotting <code>Cut</code> objects is presented in the table below:</p><h3 id="Custom-Plots-Keywords-Specific-to-Cut-Objects"><a class="docs-heading-anchor" href="#Custom-Plots-Keywords-Specific-to-Cut-Objects">Custom <code>Plots</code> Keywords Specific to <code>Cut</code> Objects</a><a id="Custom-Plots-Keywords-Specific-to-Cut-Objects-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Plots-Keywords-Specific-to-Cut-Objects" title="Permalink"></a></h3><table><tr><th style="text-align: left">Keyword</th><th style="text-align: left">Description</th><th style="text-align: left">Legal values</th></tr><tr><td style="text-align: left">phi</td><td style="text-align: left">ϕ value(s) to plot</td><td style="text-align: left">Scalar or iterable (defaults to <a href="../autodocs/#TicraUtilities.get_phi-Tuple{Cut}"><code>get_phi(cut)</code></a>)</td></tr><tr><td style="text-align: left">theta</td><td style="text-align: left">θ value(s) to plot</td><td style="text-align: left">Scalar or iterable (defaults to <a href="../autodocs/#TicraUtilities.get_theta-Tuple{Cut}"><code>get_theta(cut)</code></a>)</td></tr><tr><td style="text-align: left">pol</td><td style="text-align: left">Polarization to plot</td><td style="text-align: left"><code>:both</code>, <code>:copol</code>, <code>:xpol</code>, <code>1</code>, or <code>2</code> (defaults to <code>:both</code>)</td></tr><tr><td style="text-align: left">quantity</td><td style="text-align: left">Quantity to plot</td><td style="text-align: left"><code>:db</code> (the default), <code>:power</code>, <code>:linear</code>, or <code>:phase</code></td></tr><tr><td style="text-align: left">normalization</td><td style="text-align: left">How to normalize plot</td><td style="text-align: left"><code>:peak</code> or a scalar (defaults to <code>NaN</code> meaning don&#39;t normalize)</td></tr></table><p>Values passed in via the <code>phi</code> keyword must all be present in the <code>Cut</code> object. If the values passed via the <code>theta</code> keyword are spaced more finely than those stored in the <code>Cut</code> object, the pattern will be interpolated onto these values using a cubic spline interpolant.  This is demonstrated in the following example plot:</p><pre><code class="language-julia hljs">scatter(
+    cut,
+    label = &quot;Interpolated In θ&quot;,
+    pol = :copol,
+    normalization = :peak,
+    phi = 0,
+    theta = 0:0.1:5,
+    title = &quot;Normalized Copol (LHCP), Peak = $peakdb dB&quot;,
+    framestyle = :box,
+    xlim = (0, 5),
+    xtick = 0:0.5:10,
+    ylim=(-0.2, 0.01),
+    ytick = -10:0.05:0,
+)
+scatter!(
+    cut,
+    label = &quot;No θ Interpolation&quot;,
+    pol = :copol,
+    normalization = :peak,
+    phi = 0,
+    marker = :cross,
+    ms = 6,
+    msw = 2,
+)</code></pre><img src="f2866780.svg" alt="Example block output"/><p>The above scatter plot clearly illustrates the results of interpolating in <span>$\theta$</span>.  The example also shows that the default trace labels appearing in the legend can be overridden as desired.</p><h2 id="Manipulation-and-Conversion-of-Cut-Objects"><a class="docs-heading-anchor" href="#Manipulation-and-Conversion-of-Cut-Objects">Manipulation and Conversion of <code>Cut</code> Objects</a><a id="Manipulation-and-Conversion-of-Cut-Objects-1"></a><a class="docs-heading-anchor-permalink" href="#Manipulation-and-Conversion-of-Cut-Objects" title="Permalink"></a></h2><h3 id="Symmetric-and-Asymmetric-Cuts"><a class="docs-heading-anchor" href="#Symmetric-and-Asymmetric-Cuts">Symmetric and Asymmetric Cuts</a><a id="Symmetric-and-Asymmetric-Cuts-1"></a><a class="docs-heading-anchor-permalink" href="#Symmetric-and-Asymmetric-Cuts" title="Permalink"></a></h3><p>In the previous examples the <code>cut</code> variable contains &quot;asymmetric&quot; cuts, each beginning at <span>$\theta = 0$</span>.   A &quot;symmetric&quot; cut would cover equal extents in the positive and negative <span>$\theta$</span> directions.  Functions <a href="../autodocs/#TicraUtilities.asym2sym-Tuple{Cut}"><code>asym2sym</code></a> and <a href="../autodocs/#TicraUtilities.sym2asym-Tuple{Cut}"><code>sym2asym</code></a> can be used to convert between these types of cuts.  Continuing with the asymmetric <code>Cut</code> object from the previous examples:</p><pre><code class="language-julia hljs">scut = asym2sym(cut) # Create a symmetric cut</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	2
+  text: 36-element Vector{String}
+  theta	-180.0:0.5:180.0
+  phi  	0.0:5.0:175.0
+  evec 	721×36 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><p>Note that the symmetric cuts only extend to 175° in <span>$\phi$</span>, and that each cut covers the range <span>$-180^\circ \le \theta \le 180^\circ$</span>.  We plot the new cut below to see this alternative representation of the same data:</p><pre><code class="language-julia hljs">plot(
+    scut,
+    normalization = :peak,
+    phi = 0:45:135,
+    title = &quot;Normalized Symmetric Cut, Peak = $peakdb dB&quot;,
+    framestyle = :box,
+    xlim = (-180, 180),
+    xtick = -180:30:180,
+    ylim = (-60, 0),
+    ytick = -60:5:0,
+)</code></pre><img src="f9ac268a.svg" alt="Example block output"/><p>This type of symmetric plot can be useful for spotting pattern asymmetries.</p><h3 id="Changing-the-Polarization-Basis-of-a-Cut"><a class="docs-heading-anchor" href="#Changing-the-Polarization-Basis-of-a-Cut">Changing the Polarization Basis of a <code>Cut</code></a><a id="Changing-the-Polarization-Basis-of-a-Cut-1"></a><a class="docs-heading-anchor-permalink" href="#Changing-the-Polarization-Basis-of-a-Cut" title="Permalink"></a></h3><p>The functions <a href="../autodocs/#TicraUtilities.convert_cut-Union{Tuple{N}, Tuple{Tc}, Tuple{Cut{Tc, N}, Any}} where {Tc, N}"><code>convert_cut</code></a> and <a href="../autodocs/#TicraUtilities.convert_cut!-Union{Tuple{N}, Tuple{Tcp}, Tuple{Tct}, Tuple{Cut{Tct, Tcp, N}, Integer}} where {Tct, Tcp, N}"><code>convert_cut!</code></a> can be used to change which of the following pairs of field components</p><ol><li><span>$E_\theta$</span> and <span>$E_\phi$</span></li><li><span>$E_R$</span> and <span>$E_L$</span> (CP or Circular Polarization, right- and left-handed, resp.)</li><li><span>$E_h$</span> and <span>$E_v$</span> (L3 or Ludwig 3, directed along <span>$x$</span> and <span>$y$</span>, resp.)</li></ol><p>is used for representing the electric field vector stored in a <code>Cut</code> object. The <code>cut</code> variable used in the previous examples uses CP components, as can be verified using the <a href="../autodocs/#TicraUtilities.get_icomp-Tuple{Cut}"><code>get_icomp</code></a> function:</p><pre><code class="language-julia hljs">get_icomp(cut)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2</code></pre><p>The possible values for <code>icomp</code> and their meanings are documented in [<a href="../references/#ttools24">1</a>, Sec. 9.7, p. 3306]. Alternatively, one can request help on the <code>Cut</code> type at the Julia REPL. Note: At present, most of the functions in <code>TicraUtilities</code> support only 1, 2, or 3 as possible values for <code>icomp</code>.  In this case, the value is <code>2</code>, meaning that a circular polarization basis was used.</p><p>If we convert the polarization basis to a Ludwig 3 representation:</p><pre><code class="language-julia hljs">cut_L3 = convert_cut(cut, 3)
+peakdb_L3 = round(maximum_db(cut_L3), digits = 3)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9.393</code></pre><p>we see that the peak directivity has been reduced by about 3 dB from its previous value.  Since the boresight radiated field is nearly perfectly circularly polarized, then both L3 components will be approximately equal in magnitude as shown in the following plot:</p><pre><code class="language-julia hljs">plot(
+    cut_L3,
+    normalization = :peak,
+    phi = 0:90:315,
+    title = &quot;Ludwig 3 Components, Peak = $peakdb_L3 dB&quot;,
+    framestyle = :box,
+    xlim = (0, 180),
+    xtick = 0:20:180,
+    ylim=(-60, 0),
+    ytick = -60:5:0,
+)</code></pre><img src="d9be8bad.svg" alt="Example block output"/><h3 id="Cut-Normalization"><a class="docs-heading-anchor" href="#Cut-Normalization">Cut Normalization</a><a id="Cut-Normalization-1"></a><a class="docs-heading-anchor-permalink" href="#Cut-Normalization" title="Permalink"></a></h3><p>Typically, the fields recorded in cut files are normalized so that the total radiated power is <span>$4\pi$</span>. When this is the case, the field magnitude squared is numerically equal to directivity.  The power integral for a <code>Cut</code> object can be calculated using the <a href="../autodocs/#TicraUtilities.power"><code>power</code></a> function:</p><pre><code class="language-julia hljs">power(cut) / 4π</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.9999997733410466</code></pre><p>We see that the power in <code>cut</code> is very close to <span>$4\pi$</span>.  Although not really necessary in this case, we can modify <code>cut</code> to make the normalization more nearly exact by using the <a href="../autodocs/#TicraUtilities.normalize!"><code>normalize!</code></a> function:</p><pre><code class="language-julia hljs">normalize!(cut)
+power(cut) / 4π</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.9999999999999988</code></pre><p>After explicitly normalizing the cut, its radiated power is almost exactly equal to <span>$4\pi$</span>.</p><h3 id="Synthesizing-a-Cut-from-E-and-H-Plane-Patterns"><a class="docs-heading-anchor" href="#Synthesizing-a-Cut-from-E-and-H-Plane-Patterns">Synthesizing a Cut from E- and H-Plane Patterns</a><a id="Synthesizing-a-Cut-from-E-and-H-Plane-Patterns-1"></a><a class="docs-heading-anchor-permalink" href="#Synthesizing-a-Cut-from-E-and-H-Plane-Patterns" title="Permalink"></a></h3><p>A &quot;BOR₁&quot; horn [<a href="../references/#kildal2015">2</a>] is rotationally symmetric and contains only TE₁ₙ and TM₁ₙ waveguide modes in its radiating aperture.  Its radiated far field can therefore be expressed in terms of the E-plane and H-plane (principal plane) patterns it radiates when excited for linear polarization. The <a href="../autodocs/#TicraUtilities.eh2bor1cut-Tuple{AbstractVector, AbstractVector, AbstractVector}"><code>eh2bor1cut</code></a> function synthesizes a <code>Cut</code> object for a BOR₁ antenna from its principal plane patterns, optionally adding in a specified level of crosspol due to an imperfect feed network.</p><p>We begin by reading a cut file for a BOR₁ horn created by Ticra&#39;s CHAMP program:</p><pre><code class="language-julia hljs">using TicraUtilities
+using Plots
+cutfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;ticra_hpol_horn.cut&quot;)
+cut = read_cutfile(cutfile)
+println(&quot;Peak =  &quot;, round(maximum_db(cut), digits = 2), &quot; dB&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Peak =  24.96 dB</code></pre><pre><code class="language-julia hljs">cut</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	3
+  text
+      	Field data in cuts
+      	Field data in cuts
+      	Field data in cuts
+  theta	0.0:0.5:180.0
+  phi  	0.0:45.0:90.0
+  evec 	361×3 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><p>As seen from the above output, the cut file contains 3 cuts at <span>$\phi = 0^\circ, 45^\circ$</span>, and <span>$90^\circ$</span>.  Since the cut file was created for horizontal excitation of the horn, the dominant far-field polarization will be Ludwig 3 horizontal, which is stored in the first polarization slot of the cut. It also follows that the E-plane pattern can be extracted from the first (<span>$\phi = 0^\circ$</span>) cut and the H-plane pattern from the last (<span>$\phi = 90^\circ$</span>) cut:</p><pre><code class="language-julia hljs">fe = get_evec(cut, 1)[:, 1] # ϕ = 0° cut is E-plane for horizontal pol
+fh = get_evec(cut, 1)[:, end] # ϕ = 90° cut is H-plane for horizontal pol
+plot(xlim=(0, 180),
+     xlabel = &quot;θ (deg)&quot;,
+     ylim = (-60, 30),
+     ylabel = &quot;Amplitude (dB)&quot;,
+     framestyle = :box,
+     title = &quot;BOR₁ Horn Principal Plane Patterns&quot;,
+)
+theta = get_theta(cut)
+plot!(theta, 10 .* log10.(abs2.(fe)), label = &quot;E-Plane&quot;)
+plot!(theta, 10 .* log10.(abs2.(fh)), label = &quot;H-Plane&quot;)</code></pre><img src="357802f4.svg" alt="Example block output"/><p>Suppose now that we wish to create a <code>Cut</code> object for this horn, but assuming that it has been excited to generate a predominantly RHCP (right-hand circularly polarized) far field:</p><pre><code class="language-julia hljs">cutrhcp = eh2bor1cut(theta, fe, fh; pol = :rhcp)
+println(&quot;Peak RHCP =  &quot;, round(maximum_db(cutrhcp), digits = 2), &quot; dBi&quot;)
+println(&quot;(Radiated power)/4π = &quot;,  power(cutrhcp) / 4π)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Peak RHCP =  24.96 dBi
+(Radiated power)/4π = 0.9999997827319099</code></pre><pre><code class="language-julia hljs">cutrhcp</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	2
+  text
+      	phi = 0
+      	phi = 90
+      	phi = 180
+      	phi = 270
+  theta	0.0:0.5:180.0
+  phi  	0:90:270
+  evec 	361×4 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><p>As shown above, the maximum field magnitude is about the same as that for the principal plane cuts. And since the cut is properly power-normalized, this value is the maximum partial directivity to RHCP polarization. As stated in the documentation for <a href="../autodocs/#TicraUtilities.eh2bor1cut-Tuple{AbstractVector, AbstractVector, AbstractVector}"><code>eh2bor1cut</code></a>, <code>cutrhcp</code> contains cuts at <span>$\phi = 0^\circ, 90^\circ, 180^\circ, \text{and } 270^\circ$</span>.  Plotting the cut at <span>$\phi = 0^\circ$</span>:</p><pre><code class="language-julia hljs">plot(cutrhcp,
+     phi = 0,
+     xlim = (0, 90),
+     xtick = 0:10:90,
+     ylim = (-60, 0),
+     framestyle = :box,
+     normalization = :peak,
+     title = &quot;BOR₁ Horn Excited for RHCP, Normalized Pattern&quot;)</code></pre><img src="4981182b.svg" alt="Example block output"/><p>The plot confirms that the dominant polarization is RHCP.  The maximum crosspol level is about 45 dB below the copol peak.  To simulate the effect of an imperfect feed network that injects crosspol (LHCP) at a level 30 dB below the desired copol, we can use the <code>xpd</code> keyword argument:</p><pre><code class="language-julia hljs">cutrhcp2 = eh2bor1cut(theta, fe, fh; pol = :rhcp, xpd = -30)
+plot(cutrhcp2,
+     phi = 0,
+     xlim = (0, 90),
+     xtick = 0:10:90,
+     ylim = (-60, 0),
+     framestyle = :box,
+     normalization = :peak,
+     title = &quot;RHCP-Excited BOR₁ Horn, Normalized Pattern\n-30 dB Xpol Added\n&quot;)</code></pre><img src="e3330461.svg" alt="Example block output"/><p>As expected, the boresight crosspol level is now 30 dB below the copol peak, and the crosspol pattern resembles a scaled version of the copol pattern, at least in the vicinity of boresight.  Note that the phase of the injected crosspol can be specified using the <code>xpphase</code> keyword argument of <a href="../autodocs/#TicraUtilities.eh2bor1cut-Tuple{AbstractVector, AbstractVector, AbstractVector}"><code>eh2bor1cut</code></a>.</p><p>After creating the <code>Cut</code> object <code>cutrhcp</code> in this manner, it can be saved as a Ticra-compatible cut file using <a href="../autodocs/#TicraUtilities.write_cutfile-Union{Tuple{N}, Tuple{T2}, Tuple{T1}, Tuple{AbstractString, Cut{T1, T2, N}}, Tuple{AbstractString, Cut{T1, T2, N}, String}} where {T1&lt;:AbstractRange, T2&lt;:AbstractRange, N}"><code>write_cutfile</code></a>, or it can be converted to a spherical wave expansion using <a href="../autodocs/#TicraUtilities.cut2sph-Tuple{AbstractString}"><code>cut2sph</code></a>, as discussed below in <a href="#SWE/Cut-Conversion">SWE/Cut Conversion</a>.  The resulting <code>SPHQPartition</code> object can be saved as a spherical wave expansion (.sph) file, if desired, using <a href="../autodocs/#TicraUtilities.write_sphfile-Tuple{AbstractString, Vector{SPHQPartition}}"><code>write_sphfile</code></a>.</p><h2 id="Spherical-Wave-Expansions-(SWEs)"><a class="docs-heading-anchor" href="#Spherical-Wave-Expansions-(SWEs)">Spherical Wave Expansions (SWEs)</a><a id="Spherical-Wave-Expansions-(SWEs)-1"></a><a class="docs-heading-anchor-permalink" href="#Spherical-Wave-Expansions-(SWEs)" title="Permalink"></a></h2><p>The functions in <code>TicraUtilities</code> can read, write, and manipulate Ticra-compatible spherical wave expansion (.sph) files that employ the newer, more accurate, so-called &quot;Q&quot; modes.  To read the contents of such a file, one uses the <a href="../autodocs/#TicraUtilities.read_sphfile-Tuple{AbstractString}"><code>read_sphfile</code></a> function.  Below we demonstrate the function&#39;s use on a spherical wave expension file previously generated using GRASP:</p><pre><code class="language-julia hljs">using TicraUtilities
+sphfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;center_element_rhcp_excited_q.sph&quot;)
+sph_grasp = read_sphfile(sphfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SPHQPartition
+  prgtag   2024/06/13 at 08:14:07, Source: test01_asymmetric_tabulated_pattern, Freq [GHz]:    1.000000000
+  idstrg   SWE
+  nthe     360
+  nphi     72
+  nmax     180
+  mmax     35
+  qsmns    OffsetArray{ComplexF64}(1:2,-35:35,1:180)
+  powerms  OffsetArray{Float64}(0:35)
+</code></pre><p><code>read_sphfile</code> returns an object of type <a href="../autodocs/#TicraUtilities.SPHQPartition"><code>SPHQPartition</code></a>, containing the SWE data for a single partition (i.e., frequency) stored in a SWE file.  If the file had consisted of multiple partitions then the returned object would be a vector of such objects. A <code>SPHQPartition</code> object (or a vector of such objects) can be written to a Ticra-compatible file using <a href="../autodocs/#TicraUtilities.write_sphfile-Tuple{AbstractString, Vector{SPHQPartition}}"><code>write_sphfile</code></a>.  The values stored in the fields of a <code>SPHQPartition</code> object can be retrieved using the functions <a href="../autodocs/#TicraUtilities.get_prgtag-Tuple{SPHQPartition}"><code>get_prgtag</code></a>, <a href="../autodocs/#TicraUtilities.get_idstrg-Tuple{SPHQPartition}"><code>get_idstrg</code></a>, <a href="../autodocs/#TicraUtilities.get_nthe-Tuple{SPHQPartition}"><code>get_nthe</code></a>, <a href="../autodocs/#TicraUtilities.get_nphi-Tuple{SPHQPartition}"><code>get_nphi</code></a>, <a href="../autodocs/#TicraUtilities.get_nmax-Tuple{SPHQPartition}"><code>get_nmax</code></a>, <a href="../autodocs/#TicraUtilities.get_mmax-Tuple{SPHQPartition}"><code>get_mmax</code></a>, <a href="../autodocs/#TicraUtilities.get_qsmns-Tuple{SPHQPartition}"><code>get_qsmns</code></a>, and <a href="../autodocs/#TicraUtilities.get_powerms-Tuple{SPHQPartition}"><code>get_powerms</code></a>, along with <a href="../autodocs/#TicraUtilities.get_t4-Tuple{SPHQPartition}"><code>get_t4</code></a> through <a href="../autodocs/#TicraUtilities.get_t8-Tuple{SPHQPartition}"><code>get_t8</code></a>.</p><h3 id="SWE/Cut-Conversion"><a class="docs-heading-anchor" href="#SWE/Cut-Conversion">SWE/Cut Conversion</a><a id="SWE/Cut-Conversion-1"></a><a class="docs-heading-anchor-permalink" href="#SWE/Cut-Conversion" title="Permalink"></a></h3><h4 id="Cut-to-SWE-Conversion"><a class="docs-heading-anchor" href="#Cut-to-SWE-Conversion">Cut to SWE Conversion</a><a id="Cut-to-SWE-Conversion-1"></a><a class="docs-heading-anchor-permalink" href="#Cut-to-SWE-Conversion" title="Permalink"></a></h4><p>A <code>Cut</code> object, a vector of <code>Cut</code> objects, or a cut file can be converted to SWE representation via the <a href="../autodocs/#TicraUtilities.cut2sph-Tuple{AbstractString}"><code>cut2sph</code></a> function.  We&#39;ll demonstrate this conversion using a measured cut file for a central element of a closely spaced array of planar radiating elements.  Because of strong mutual coupling, the pattern is asymmetrical, as shown in the plot below:</p><pre><code class="language-julia hljs">using TicraUtilities
+using Plots
+cutfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;center_element_rhcp_excited.cut&quot;)
+cut_meas = read_cutfile(cutfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	2
+  text: 72-element Vector{String}
+  theta	0.0:1.0:180.0
+  phi  	0.0:5.0:355.0
+  evec 	181×72 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><pre><code class="language-julia hljs">plot(cut_meas, legend=nothing, framestyle=:box)</code></pre><img src="0a2f1fbc.svg" alt="Example block output"/><p>Note that although the cut file contains pattern data out to <span>$\theta = 180^\circ$</span>, the values for <span>$\theta &gt; 90^\circ$</span> are identially zero.  This fact and the large number of samples in the two angular directions make it an interesting and relatively difficult case for spherical wave expansion.  We generate the SWE representation as follows:</p><pre><code class="language-julia hljs">sph_julia = cut2sph(cut_meas)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SPHQPartition
+  prgtag   cut2sph 2024-10-16 23:20:27.898
+  idstrg   Spherical Wave Q-Coefficients
+  nthe     360
+  nphi     72
+  nmax     180
+  mmax     35
+  qsmns    OffsetArray{ComplexF64}(1:2,-35:35,1:180)
+  powerms  OffsetArray{Float64}(0:35)
+</code></pre><p>On a Core i7-9700 computer running Julia 1.11.0 this conversion takes about 45 msec.  The <code>sph_grasp</code> object read in the previous example was generated by the Ticra GRASP program from the same measured cut file. The maximum difference between the spherical wave &quot;Q&quot; coefficients in <code>sph_julia</code> and <code>sph_grasp</code> is</p><pre><code class="language-julia hljs">maximum(abs, get_qsmns(sph_julia) - get_qsmns(sph_grasp))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6.811512904856222e-6</code></pre><p>In the next section we show that both expansions provide similar accuracy in reconstructing the far-field pattern.</p><h4 id="SWE-to-Cut-Conversion"><a class="docs-heading-anchor" href="#SWE-to-Cut-Conversion">SWE to Cut Conversion</a><a id="SWE-to-Cut-Conversion-1"></a><a class="docs-heading-anchor-permalink" href="#SWE-to-Cut-Conversion" title="Permalink"></a></h4><p>We can reconstruct the pattern of the previous example by converting the <code>SPHQPartition</code> object <code>sph_julia</code> into a new <code>Cut</code> object  using the <a href="../autodocs/#TicraUtilities.sph2cut-Tuple{AbstractString}"><code>sph2cut</code></a> function:</p><pre><code class="language-julia hljs">cut_julia = sph2cut(sph_julia)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cut
+  ncomp	2
+  icut 	1
+  icomp	2
+  text: 72-element Vector{String}
+  theta	0.0:1.0:180.0
+  phi  	0.0:5.0:355.0
+  evec 	181×72 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+</code></pre><p>We will compare this <code>Cut</code> object to one from cut file &quot;center_element_rhcp_excited_q.cut&quot;.  This latter file is also the result of a round-trip conversion cut <span>$\rightarrow$</span> SWE <span>$\rightarrow$</span> cut, beginning with the original measured data cut file, but performed entirely using the TICRA GRASP program. The copol and crosspol comparison is shown below:</p><pre><code class="language-julia hljs">cutfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;center_element_rhcp_excited_q.cut&quot;)
+cut_grasp = read_cutfile(cutfile)
+rhcp_err_db =  10 * log10(maximum(abs2, get_evec(cut_julia, 1) - get_evec(cut_grasp, 1)))
+lhcp_err_db =  10 * log10(maximum(abs2, get_evec(cut_julia, 2) - get_evec(cut_grasp, 2)))
+@show (rhcp_err_db, lhcp_err_db)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(-98.97448160074846, -98.81598541654193)</code></pre><p>As shown above, the maximum differences between the reconstructed fields via GRASP and Julia functions are extremely small, on the order of -100 dB.  We can also compare the reconstructed fields versus the original measured cut data:</p><pre><code class="language-julia hljs">using LinearAlgebra: norm
+julia_err_db = 20 * log10(maximum(norm, get_evec(cut_julia) - get_evec(cut_meas)))
+grasp_err_db = 20 * log10(maximum(norm, get_evec(cut_grasp) - get_evec(cut_meas)))
+(julia_err_db, grasp_err_db)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(-62.35423900263196, -62.32837972326217)</code></pre><p>GRASP- and Julia-reconstructed patterns show similar agreement with original measured data. Plots of the reconstructed copol and crosspol patterns confirm the similarity of the GRASP and Julia reconstructed pattern data:</p><pre><code class="language-julia hljs">using Plots
+plot(xlim = (0, 180),
+     ylim = (-100, 15),
+     title = &quot;Copol (RHCP) Comparison&quot;,
+     framestyle = :box,
+)
+plot!(cut_julia, phi = 0, pol = 1, label = &quot;RHCP sph2cut&quot;)
+plot!(cut_grasp, phi = 0, pol = 1, ls = :dash, label = &quot;RHCP GRASP&quot;)</code></pre><img src="86e6849f.svg" alt="Example block output"/><pre><code class="language-julia hljs">plot(xlim = (0, 180),
+     ylim = (-100, 15),
+     title = &quot;Crosspol (LHCP) Comparison&quot;,
+     framestyle = :box,
+)
+plot!(cut_julia, phi = 0, pol = 2, label = &quot;LHCP sph2cut&quot;)
+plot!(cut_grasp, phi = 0, pol = 2, ls = :dash, label = &quot;LHCP GRASP&quot;)</code></pre><img src="9b9b2540.svg" alt="Example block output"/><p>The rapid dropoff at <span>$\phi = 90^\circ$</span> occurs because the original pattern data from which the spherical wave coefficients were derived was only nonzero in the forward hemisphere of the antenna. Finite amplitudes in the reconstructed patterns for <span>$\theta &gt; 90^\circ$</span> are due to the discontinuity in the fields at <span>$\theta = 90^\circ$</span>, which would require an infinite number of modes to reproduce exactly.</p><h2 id="Surface-Files"><a class="docs-heading-anchor" href="#Surface-Files">Surface Files</a><a id="Surface-Files-1"></a><a class="docs-heading-anchor-permalink" href="#Surface-Files" title="Permalink"></a></h2><p>Ticra-compatible surface (.sfc) files can be read using the <a href="../autodocs/#TicraUtilities.read_surface-Tuple{AbstractString}"><code>read_surface</code></a> function, and written to disk using the <a href="../autodocs/#TicraUtilities.write_surface-Tuple{AbstractString, Surface}"><code>write_surface</code></a> function.  The results of reading a surface file are stored in an object of type <a href="../autodocs/#TicraUtilities.Surface"><code>Surface</code></a> as in the following example:</p><pre><code class="language-julia hljs">sfcfile = joinpath(joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;parent_parabola.sfc&quot;))
+sfc = read_surface(sfcfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Surface
+  text: Surface z-values for reflector: main_reflector, with unit: in.
+     x: 19.8176:0.3446666666666667:123.2176
+     y: -51.7:0.3446666666666667:51.7
+     z: 301×301 Matrix{Float64}
+</code></pre><p>Values within the <code>Surface</code> object can be accessed via the functions <a href="../autodocs/#TicraUtilities.get_x-Tuple{Surface}"><code>get_x</code></a>, <a href="../autodocs/#TicraUtilities.get_y-Tuple{Surface}"><code>get_y</code></a>, <a href="../autodocs/#TicraUtilities.get_z-Tuple{Surface}"><code>get_z</code></a>, and <a href="../autodocs/#TicraUtilities.get_text-Tuple{Cut}"><code>get_text</code></a>.</p><p>The <code>+</code> and <code>-</code> operators have been overloaded to work on surfaces, resulting in new surfaces whose <span>$z$</span> values are the sum or difference of those of the operand surfaces:</p><pre><code class="language-julia hljs">sfc2 = sfc + sfc
+get_z(sfc2) ≈ 2 * get_z(sfc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><pre><code class="language-julia hljs">sfc3 = sfc - sfc
+maximum(abs, get_z(sfc3))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.0</code></pre><h2 id="Array-Excitation-Files"><a class="docs-heading-anchor" href="#Array-Excitation-Files">Array Excitation Files</a><a id="Array-Excitation-Files-1"></a><a class="docs-heading-anchor-permalink" href="#Array-Excitation-Files" title="Permalink"></a></h2><p>Ticra-compatible array excitation (.exi) files can be read using the <a href="../autodocs/#TicraUtilities.read_exifile-Tuple{AbstractString}">`read_exifile</a> function, and written to disk using the <a href="../autodocs/#TicraUtilities.write_exifile-Tuple{AbstractString, Exi}"><code>write_exifile</code></a> function.  The results of reading an array excitation file are stored in an object of type <a href="../autodocs/#TicraUtilities.Exi"><code>Exi</code></a> as in the following example:</p><pre><code class="language-julia hljs">exifile = joinpath(joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;beam_A14R.exi&quot;))
+exi = read_exifile(exifile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Exi
+  header: [&quot;Beam A14R&quot;]
+  ampdb:  16-element Vector{Float64}
+  phsdeg: 16-element Vector{Float64}
+  id:     16-element Vector{String}
+</code></pre><p>Values within the <code>Exi</code> object can be accessed via the functions <a href="../autodocs/#TicraUtilities.get_header-Tuple{Exi}"><code>get_header</code></a>, <a href="../autodocs/#TicraUtilities.get_ampdb-Tuple{Exi}"><code>get_ampdb</code></a> (or <a href="../autodocs/#TicraUtilities.amplitude_db"><code>amplitude_db</code></a>), <a href="../autodocs/#TicraUtilities.get_phsdeg-Tuple{Exi}"><code>get_phsdeg</code></a> (or <a href="../autodocs/#TicraUtilities.phase_deg"><code>phase_deg</code></a>), and <a href="../autodocs/#TicraUtilities.get_ids-Tuple{Exi}"><code>get_ids</code></a>. For example:</p><pre><code class="language-julia hljs">get_ampdb(exi)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
+ -22.079632
+ -18.455905
+ -13.189809
+ -12.546182
+ -20.599867
+ -13.271168
+  -8.728724
+  -7.783794
+ -11.498586
+ -10.453275
+  -8.245438
+  -9.028067
+ -17.107155
+ -22.580741
+ -17.524788
+ -13.861297</code></pre><pre><code class="language-julia hljs">get_phsdeg(exi)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16-element Vector{Float64}:
+ -21.860822
+  17.101443
+  -4.950916
+ -18.354877
+ -17.122747
+  17.979759
+   9.269317
+  -6.876699
+ -13.262062
+  17.23366
+   2.516957
+  -7.826971
+   0.33419
+  25.276105
+  10.616932
+  -7.269771</code></pre><h2 id="Optimization-Station-Files"><a class="docs-heading-anchor" href="#Optimization-Station-Files">Optimization Station Files</a><a id="Optimization-Station-Files-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-Station-Files" title="Permalink"></a></h2><p>Ticra-compatible optimization station (.sta) files, also known as &quot;Field Directions&quot; file, can be read using the <a href="../autodocs/#TicraUtilities.read_stationfile-Tuple{Any}">`read_stationfile</a> function, and written to disk using the <a href="../autodocs/#TicraUtilities.write_stationfile-Tuple{AbstractString, AbstractVector{Station}}"><code>write_stationfile</code></a> function.  The results of reading a station file are stored in a vector of objects of type <a href="../autodocs/#TicraUtilities.Station"><code>Station</code></a> as in the following example:</p><pre><code class="language-julia hljs">stationfile = joinpath(joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;scenario2_coverage.sta&quot;))
+stations = read_stationfile(stationfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Station}:
+ Station partition with 397 stations</code></pre><p>Values within a <code>Station</code> object can be accessed via the functions <a href="../autodocs/#TicraUtilities.get_npoint-Tuple{Station}"><code>get_npoint</code></a>, <a href="../autodocs/#TicraUtilities.get_u-Tuple{Station}"><code>get_u</code></a>, <a href="../autodocs/#TicraUtilities.get_v-Tuple{Station}"><code>get_v</code></a>,  <a href="../autodocs/#TicraUtilities.get_goal-Tuple{Station}"><code>get_goal</code></a>,  <a href="../autodocs/#TicraUtilities.get_weight-Tuple{Station}"><code>get_weight</code></a>,  <a href="../autodocs/#TicraUtilities.get_ipol-Tuple{Station}"><code>get_ipol</code></a>,  <a href="../autodocs/#TicraUtilities.get_rot-Tuple{Station}"><code>get_rot</code></a>,  <a href="../autodocs/#TicraUtilities.get_att-Tuple{Station}"><code>get_att</code></a>,  and <a href="../autodocs/#TicraUtilities.get_id-Tuple{Station}"><code>get_id</code></a>.</p><h2 id="Ticra-Object-Repository-(TOR)-Files"><a class="docs-heading-anchor" href="#Ticra-Object-Repository-(TOR)-Files">Ticra Object Repository (TOR) Files</a><a id="Ticra-Object-Repository-(TOR)-Files-1"></a><a class="docs-heading-anchor-permalink" href="#Ticra-Object-Repository-(TOR)-Files" title="Permalink"></a></h2><p>TOR files can be read and written using the functions <a href="../autodocs/#TicraUtilities.read_torfile-Tuple{AbstractString}"><code>read_torfile</code></a> and <a href="../autodocs/#TicraUtilities.write_torfile-Tuple{AbstractString, Vector{TorObj}}"><code>write_torfile</code></a>, respectively.  Here is an example of reading a TOR file:</p><pre><code class="language-julia hljs">torfile = joinpath(dirname(pathof(TicraUtilities)), &quot;..&quot;, &quot;test&quot;, &quot;tabulated_rim_tor_file.tor&quot;)
+torobjs = read_torfile(torfile)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{TorObj}:
+ east_9m_rim::tabulated_rim_xy
+ extsub_sw.rim::tabulated_rim_xy</code></pre><p><a href="../autodocs/#TicraUtilities.read_torfile-Tuple{AbstractString}"><code>read_torfile</code></a> returns a vector of <code>TorObj</code> objects.  Here is the first element of this vector:</p><pre><code class="language-julia hljs">torobj = torobjs[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">east_9m_rim   tabulated_rim_xy (
+   file_name : h_9m_scalloped_rim.xyz,
+   unit : in,
+   number_of_points : 112,
+   translation : struct(x: 0.0 in, y: 0.0 in),
+   polar_origin : struct(status: automatic, x: 0.0 in, y: 0.0 in))
+</code></pre><p>The name and Ticra type of the object are shown, followed by propertynames and their corresponding values. These can be extracted from the <code>TorObj</code> object using functions <a href="../autodocs/#TicraUtilities.get_name-Tuple{TorObj}"><code>get_name</code></a>, <a href="../autodocs/#TicraUtilities.get_objtype-Tuple{TorObj}"><code>get_objtype</code></a>, <a href="../autodocs/#TicraUtilities.get_propname-Tuple{TorObj}"><code>get_propname</code></a>, and <a href="../autodocs/#TicraUtilities.get_propval-Tuple{TorObj}"><code>get_propval</code></a>. For example:</p><pre><code class="language-julia hljs">get_name(torobj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;east_9m_rim&quot;</code></pre><pre><code class="language-julia hljs">get_objtype(torobj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;tabulated_rim_xy&quot;</code></pre><pre><code class="language-julia hljs">get_propname(torobj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{String}:
+ &quot;file_name&quot;
+ &quot;unit&quot;
+ &quot;number_of_points&quot;
+ &quot;translation&quot;
+ &quot;polar_origin&quot;</code></pre><pre><code class="language-julia hljs">get_propval(torobj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{String}:
+ &quot;h_9m_scalloped_rim.xyz&quot;
+ &quot;in&quot;
+ &quot;112&quot;
+ &quot;struct(x: 0.0 in, y: 0.0 in)&quot;
+ &quot;struct(status: automatic, x: 0.0 in, y: 0.0 in)&quot;</code></pre><p>The <a href="../autodocs/#TicraUtilities.parse_tor_struct-Tuple{AbstractString}"><code>parse_tor_struct</code></a> function can be used to parse the Ticra struct objects listed in the final two elements of <code>get_propval(torobj)</code>:</p><pre><code class="language-julia hljs">struct1 = parse_tor_struct(get_propval(torobj)[end-1])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 0.0 inch, y = 0.0 inch)</code></pre><pre><code class="language-julia hljs">struct2 = parse_tor_struct(get_propval(torobj)[end])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(status = &quot;automatic&quot;, x = 0.0 inch, y = 0.0 inch)</code></pre><p><code>struct1</code> and <code>struct2</code> are <a href="https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple"><code>NamedTuple</code></a>s. Their field names and values can be obtained using Julia&#39;s <code>keys</code> and <code>values</code> functions:</p><pre><code class="language-julia hljs">keys(struct2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:status, :x, :y)</code></pre><pre><code class="language-julia hljs">values(struct2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(&quot;automatic&quot;, 0.0 inch, 0.0 inch)</code></pre><p>Note that the parsed values of numeric quantities with associated units (such as &quot;x&quot; and &quot;y&quot; in the above example) are converted to <a href="https://github.com/PainterQubits/Unitful.jl"><code>Unitful</code></a> quantities.   For example:</p><pre><code class="language-julia hljs">struct2.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.0 inch</code></pre><p>The purely numeric portion and the units can be extracted using functions supplied by <code>Unitful</code>:</p><pre><code class="language-julia hljs">using Unitful: unit, ustrip
+unit(struct2.x)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">inch</code></pre><pre><code class="language-julia hljs">ustrip(struct2.x)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.0</code></pre><p>Alternatively, both can be converted to strings, if desired:</p><pre><code class="language-julia hljs">string(struct2.x)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;0.0 inch&quot;</code></pre><p>Of the units that can occur in a TOR file, &quot;in&quot; is the only one which is modified when translated to Julia. In the Julia representation, &quot;inch&quot; is used instead of &quot;in&quot; to avoid confusion with the built-in Julia function <a href="https://docs.julialang.org/en/v1/base/collections/#Base.in"><code>in</code></a>.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Introduction</a><a class="docs-footer-nextpage" href="../autodocs/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Wednesday 16 October 2024 23:21">Wednesday 16 October 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
