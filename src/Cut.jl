@@ -1254,7 +1254,7 @@ end
             elseif quantity == :power
                 y = [abs2(e[ipol]) / Esqmax for e in efield]
             elseif quantity == :linear
-                y = [abs2(e[ipol]) / Emax for e in efield]
+                y = [abs(e[ipol]) / Emax for e in efield]
             else
                 y = [rad2deg(angle(e[ipol])) - normalization for e in efield]
             end
