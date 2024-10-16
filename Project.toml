@@ -1,7 +1,7 @@
 name = "TicraUtilities"
 uuid = "97d36a8d-cc3e-473e-9421-8a7b112c16eb"
 authors = ["Peter Simon <psimon0420@gmail.com> and contributors"]
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 AssociatedLegendrePolynomials = "2119f1ac-fb78-50f5-8cc0-dda848ebdb19"
