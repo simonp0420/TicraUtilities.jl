@@ -234,7 +234,7 @@ end
 
 Write SPH coefficients to a Q-type spherical wave expansion file.
 
-In the process of writing the data, the coefficients in the file (Q) are conjugated and then
+Prior to writing the data into the file, the input coefficients (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
 """
 function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
