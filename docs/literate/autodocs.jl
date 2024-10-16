@@ -12,10 +12,10 @@
 # maximum(::Cut)
 # ```
 # ```@docs
-# +(::Surface, ::Surface)
+# +(::TicraUtilities.Surface, ::TicraUtilities.Surface)
 # ```
 # ```@docs
-# -(::Surface, ::Surface)
+# -(::TicraUtilities.Surface, ::TicraUtilities.Surface)
 # ```
 
 
