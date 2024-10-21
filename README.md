@@ -31,6 +31,7 @@ You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the fi
 (and then hitting `<Backspace>` to return to the REPL), or with `using Pkg; Pkg.add("TicraUtilities")`.
 
 ## Documentation
+- Check out the [tutorial video](https://youtu.be/rhinZ-MO9Q4?si=k9A_YCdcqahB5c0J)
 - The user manual for the current release is [here](https://simonp0420.github.io/TicraUtilities.jl/stable)
 - The user manual for the the development version is [here](https://simonp0420.github.io/TicraUtilities.jl/dev)
 
