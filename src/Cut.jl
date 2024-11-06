@@ -64,7 +64,7 @@ function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     return nothing
 end
 
-function show(io::IO, t::Cut)
+function Base.show(io::IO, t::Cut)
     print(io, "Cut with ncomp=$(t.ncomp), icomp=$(t.icomp), phi=$(t.phi), theta=$(t.theta)")
     return nothing
 end
@@ -295,10 +295,10 @@ end
 
 Read data from a possibly multi-frequency Ticra-compatible cut file.  
 
-Return a vector of one or more `Cut` structs.  Each element of the returned vector 
+Return a single `Cut` struct or a vector `Cut` structs.  Each element of the returned vector 
 corresponds to a particular operating frequency partition in the file.  If there 
 is only a single partition in the file, then instead of returning a 1-element
-vector, the single element of type `Cut` is returned as a scalar.
+vector, the single object of type `Cut` is returned as a scalar.
 """
 function read_cutfile(fname::AbstractString)
     cuts = open(fname, "r") do fid
