@@ -12,6 +12,7 @@ export
     get_ampdb,
     get_att,
     get_evec,
+    get_freqs,
     get_goal,
     get_header,
     get_icomp,
@@ -36,6 +37,10 @@ export
     get_propval,
     get_qsmns,
     get_rot,
+    get_sff,
+    get_sfr,
+    get_srf,
+    get_srr,
     get_t4,
     get_t5,
     get_t6,
@@ -43,6 +48,7 @@ export
     get_t8,
     get_text,
     get_theta, 
+    get_title,
     get_u,
     get_v,
     get_weight,
@@ -61,7 +67,7 @@ export
     read_stationfile,
     read_surface,
     read_tabulatedrimxyold,
-    #read_tfile,
+    read_tepfile,
     read_torfile,
     sor_efficiency,
     sph2cut,
@@ -69,6 +75,8 @@ export
     Station,
     Surface,
     sym2asym,
+    TEPperiodic,
+    TEPscatter,
     TorObj,
     write_cutfile,
     write_exifile,
@@ -86,6 +94,7 @@ include("TorFile.jl")
 #include("Geom.jl")
 include("SphericalWave.jl")
 include("Surface.jl")
+include("TEP.jl")
 
 
 using PrecompileTools: @setup_workload, @compile_workload
