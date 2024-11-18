@@ -11,6 +11,7 @@ export
     Exi,
     get_ampdb,
     get_att,
+    get_class,
     get_evec,
     get_freqs,
     get_goal,
