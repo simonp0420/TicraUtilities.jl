@@ -1,5 +1,6 @@
 using SafeTestsets
 
+include("TEPtest.jl")
 include("CutTest.jl")
 include("SPHTest.jl")
 include("StationTest.jl")

@@ -1,7 +1,8 @@
 # Read and write TEP files
 
 using StaticArrays: SMatrix
-using Unitful: Unitful
+using Unitful: Unitful, ustrip, unit
+using Printf: @printf
 
 abstract type TEP end
 
@@ -23,7 +24,7 @@ original definition of TEP file in use since GRASP8.)
 
 For `s` representing any of the fields `sff`, `sfr`, `srf`, and `srr`, 
 `size(s) = (2, 2, length(theta), length(phi))`, and the 2×2 matrix `s[:,:,i,j]` 
-is arranged in the order `[sθθ sϕθ; sθϕ sϕϕ]`.
+is arranged in the order `[sθθ sθϕ; sϕθ sϕϕ]`.
 
 ## See Also
 * `TEPperiodic`
@@ -75,7 +76,6 @@ TEP files containing geometrical parameter sweeps are not yet supported.
 * `class::String`: Class name of the periodic unit cell.
 * `theta`: An `AbstractRange` containing the θ values in units specified by field `atunit`.
 * `phi`: An `AbstractRange` containing the ϕ values in units specified by field `atunit`..
-* `aunit::String`: The angular units read from the TEP file.  Typically equal to `"[deg]"`.
 * `freqs`: A vector of frequencies, each element of which is a `Unitful` quantity. The elements 
   may not all share the same frequency units.
 * `sff::Array{ComplexF64, 5}`: Contains reflection coefficients for front surface incidence. 
@@ -282,7 +282,7 @@ end # function
 function _read2cstwice(fid)
     sθθ, sθϕ = _readncs(fid, 2)
     sϕθ, sϕϕ = _readncs(fid, 2)
-    return (sθθ, sθϕ, sϕθ, sϕϕ)
+    return (sθθ, sϕθ, sθϕ, sϕϕ) # Column major order for 2×2 matrix
 end
 
 # Read ncs complex numbers from next line of the opened file. Return a tuple.
@@ -330,8 +330,8 @@ function _read_tepfile_periodic(filename::AbstractString)
             freqs[ifr] = parse(Float64, fstrs[2]) * unitdict[fstrs[3][2:end-1]] # unitdict defined in Torfile.jl
             for ip in 1:np, it in 1:nt
                 tup = _readncs(fid, 8, "[SFront]") # 16 reals per line
-                sff[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[1:4])
-                srf[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[5:8])
+                sff[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[1:4]))
+                srf[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[5:8]))
                 tup = _readncs(fid, 8, "[SRear]") # 16 reals per line
                 srr[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[1:4]))
                 sfr[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[5:8]))
@@ -355,3 +355,51 @@ function _get_puc_str2(fid, str1)
     n == 2 && return strs[2]
     return strs[2:end]
 end
+
+"""
+    write_tepfile(filename::AbstractString, tep::TEP)
+    write_tepfile(filename::AbstractString, tep::Vector{TEPscatter})
+
+Write a TICRA-compatible "Tabulated Electrical Properties" (TEP) file.  If `type(tep) == TEPscatter`
+or `type(tep) == Vector{TEPscatter}`, then the file will be written in the original format 
+(scattering surface) introduced by GRASP8. If `type(tep) == TEPperiodic` then the file will be written 
+in the newer format for periodic unit cells introduced by the QUPES program.
+"""
+function write_tepfile(filename::AbstractString, tep::TEPperiodic)
+    open(filename; write=true) do fid
+        freqs = get_freqs(tep)
+        theta = get_theta(tep)
+        phi = get_phi(tep)
+        nf, nt, np = length.((freqs, theta, phi))
+        println(fid, "[Title] Electrical Properties of Periodic Unit Cell")
+        println(fid, "[Version] 1.0.0")
+        println(fid, "[Name] ", get_name(tep))
+        println(fid, "[Class] ", get_class(tep))
+        println(fid, "[Frequencies] ", length(freqs))
+        println(fid, "[ParameterSweeps] 0")
+
+        print(fid, "[IncidenceAngles] ")
+        print(fid, first(theta), " ", last(theta), " ", nt, " ")
+        println(fid, first(phi), " ", last(phi), " ", np, " [deg]")
+        println(fid)
+
+        for (ifr, f) in enumerate(freqs)
+            println(fid, "[Frequency] ", ifr, " ", float(ustrip(f)), " [", unit(f), "]")
+            for ip in 1:np, it in 1:nt
+                sff = @view get_sff(tep)[:, :, it, ip, ifr]
+                sfr = @view get_sfr(tep)[:, :, it, ip, ifr]
+                srf = @view get_srf(tep)[:, :, it, ip, ifr]
+                srr = @view get_srr(tep)[:, :, it, ip, ifr]
+                print(fid, "[SFront]")
+                rftf = (sff[1,1], sff[1,2], sff[2,1], sff[2,2], srf[1,1], srf[1,2], srf[2,1], srf[2,2])
+                foreach(s -> @printf(fid, "   %11.8f   %11.8f", real(s), imag(s)), rftf)
+                println(fid)
+                print(fid, "[SRear]")
+                rrtr = (srr[1,1], srr[1,2], srr[2,1], srr[2,2], sfr[1,1], sfr[1,2], sfr[2,1], sfr[2,2])
+                foreach(s -> @printf(fid, "   %11.8f   %11.8f", real(s), imag(s)), rrtr)
+                println(fid)
+            end # theta/phi loop
+        end # frequency loop
+    end # do closure
+    return 
+end # function

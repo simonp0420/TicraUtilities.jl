@@ -84,7 +84,7 @@ export
     write_sphfile,
     write_stationfile,
     write_surface,
-    write_cutfile,
+    write_tepfile,
     write_torfile
 
 include("Cut.jl")
