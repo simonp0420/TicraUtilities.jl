@@ -1,8 +1,9 @@
 # Read and write TEP files
 
 using StaticArrays: SMatrix
-using Unitful: Unitful, ustrip, unit
+using Unitful: Unitful, ustrip, unit, @u_str
 using Printf: @printf
+using PhysicalConstants.CODATA2018: c_0 as c₀ # vacuum light speed
 
 abstract type TEP end
 
@@ -77,7 +78,7 @@ TEP files containing geometrical parameter sweeps are not yet supported.
 * `theta`: An `AbstractRange` containing the θ values in units specified by field `atunit`.
 * `phi`: An `AbstractRange` containing the ϕ values in units specified by field `atunit`..
 * `freqs`: A vector of frequencies, each element of which is a `Unitful` quantity. The elements 
-  may not all share the same frequency units.
+  may or may not all share the same frequency units.
 * `sff::Array{ComplexF64, 5}`: Contains reflection coefficients for front surface incidence. 
 * `sfr::Array{ComplexF64, 5}`: Contains transmission coefficients for rear surface incidence. 
 * `srf::Array{ComplexF64, 5}`: Contains transmission coefficients for front surface incidence. 
@@ -115,10 +116,17 @@ TEPperiodic(; name, class, theta, phi, freqs, sff, sfr, srf, srr) =
 function Base.show(io::IO, mime::MIME"text/plain", t::TEPperiodic)
     println(io, "TEPperiodic")
     println(io, "  name \t$(t.name)")
-    println(io, "  class\t$(t.name)")
+    println(io, "  class\t$(t.class)")
     println(io, "  theta\t$(t.theta)")
     println(io, "  phi  \t$(t.phi)")
-    println(io, "  freqs\t$(summary(t.freqs))")
+    print(io, "  freqs\t")
+    if length(t.freqs) ≤ 4
+        print(io, "[", t.freqs[1])
+        foreach(i -> print(io, ", ", t.freqs[i]), 2:length(t.freqs))
+        println(io, "]")
+    else
+        println(io, "  freqs\t$(summary(t.freqs))")
+    end
     println(io, "  sff \t$(summary(t.sff))")
     println(io, "  sfr \t$(summary(t.sfr))")
     println(io, "  srf \t$(summary(t.srf))")
@@ -365,6 +373,8 @@ or `type(tep) == Vector{TEPscatter}`, then the file will be written in the origi
 (scattering surface) introduced by GRASP8. If `type(tep) == TEPperiodic` then the file will be written 
 in the newer format for periodic unit cells introduced by the QUPES program.
 """
+function write_tepfile end
+
 function write_tepfile(filename::AbstractString, tep::TEPperiodic)
     open(filename; write=true) do fid
         freqs = get_freqs(tep)
@@ -403,3 +413,89 @@ function write_tepfile(filename::AbstractString, tep::TEPperiodic)
     end # do closure
     return 
 end # function
+
+write_tepfile(filename::AbstractString, tep::TEPscatter) = write_tepfile(filename, [tep])
+
+
+function write_tepfile(filename::AbstractString, teps::AbstractVector{TEPscatter{R}}) where {R<:AbstractRange}
+    open(filename; write=true) do fid
+        println(fid, "TICRA-EL_PROP-V1.0")
+        for tep in teps
+            println(fid, get_title(tep))
+            theta = get_theta(tep)
+            phi = get_phi(tep)
+            nt, np = length.((theta, phi))
+            println(fid, nt, " ", np, " ", last(theta))
+            for ip in 1:np, it in 1:nt
+                sff = @view get_sff(tep)[:, :, it, ip]
+                sfr = @view get_sfr(tep)[:, :, it, ip]
+                srf = @view get_srf(tep)[:, :, it, ip]
+                srr = @view get_srr(tep)[:, :, it, ip]
+                rts = (
+                    (sff[1,1], sff[1,2]), (sff[2,1], sff[2,2]), (srf[1,1], srf[1,2]), (srf[2,1], srf[2,2]),
+                    (srr[1,1], srr[1,2]), (srr[2,1], srr[2,2]), (sfr[1,1], sfr[1,2]), (sfr[2,1], sfr[2,2])
+                )
+                for rt in rts
+                    for s in rt
+                        @printf(fid, "%14.6f%14.6f", real(s), imag(s))
+                    end
+                    println(fid)
+                end
+            end # theta/phi loop
+        end # tep (frequency) loop
+    end # do closure
+    return 
+end # function
+
+
+"""
+    teps2p(tep::TEPscatter, freq, d; name="tep_periodic", class="created_by_teps2p")
+
+Convert a scattering TEP object (of type `TEPscatter`) to a periodic unit cell TEP object (of type `TEPperiodic`).
+
+`freq` is the frequency, a `Unitful` quantity.  `d` is the is the distance between the front and rear reference 
+planes, also a `Unitful` quantity.  The first two arguments may be both scalars or both vectors of the same length.  
+In the latter case, each entry corresponds to a specific frequency.
+"""
+function teps2p end
+
+
+teps2p(tep::TEPscatter, freq, d; kwargs...) = teps2p([tep], [freq], d; kwargs...)
+
+function teps2p(teps::AbstractVector{<:TEPscatter}, 
+                freqs::AbstractVector{<:Unitful.Quantity{<:Real, Unitful.𝐓^-1}},
+                d::Unitful.Quantity{<:Real, Unitful.𝐋}; name="tep_periodic", class="created_by_teps2p")
+    d ≥ 0u"m" || throw(ArgumentError("d must be nonnegative"))
+    nf = length(teps)
+    length(freqs) == nf || error("teps and freqs must have the same lengths")
+    _, _, nt, np = size(get_sff(first(teps)))
+    cosθs = [cosd(θ) for θ in get_theta(first(teps))]
+    sff, sfr, srf, srr = (zeros(ComplexF64, (2, 2, nt, np, nf)) for _ in 1:4)
+    for ifr in eachindex(teps, freqs)
+        tep = teps[ifr]
+        λ = c₀ / freqs[ifr] # free-space wavelength
+        k = 2π / λ # free-space wavenumber
+        kd = convert(Float64, k * d)
+        sff_s, sfr_s, srf_s, srr_s = get_sff(tep), get_sfr(tep), get_srf(tep), get_srr(tep)
+        for it in 1:nt
+            q = cis(kd * cosθs[it])
+            qinv = inv(q)
+            qinv² = qinv * qinv
+            mff = @SMatrix [-1 1; 1 -1]
+            mrf = @SMatrix [qinv -qinv; -qinv qinv]
+            mrr = @SMatrix [-qinv² -qinv²; -qinv² -qinv²]
+            mfr = @SMatrix [qinv qinv; qinv qinv]
+            for ip in 1:np
+                sff[:,:,it,ip,ifr] .= mff .* SMatrix{2,2,ComplexF64,4}(@view sff_s[:,:,it,ip])
+                srf[:,:,it,ip,ifr] .= mrf .* SMatrix{2,2,ComplexF64,4}(@view srf_s[:,:,it,ip])
+                srr[:,:,it,ip,ifr] .= mrr .* SMatrix{2,2,ComplexF64,4}(@view srr_s[:,:,it,ip])
+                sfr[:,:,it,ip,ifr] .= mfr .* SMatrix{2,2,ComplexF64,4}(@view sfr_s[:,:,it,ip])
+            end # phi loop
+        end # theta loop
+    end # frequency loop
+
+    theta = get_theta(first(teps))
+    phi = get_phi(first(teps))
+    tep_periodic = TEPperiodic(; name, class, theta, phi, freqs, sff, sfr, srf, srr)
+    return tep_periodic
+end

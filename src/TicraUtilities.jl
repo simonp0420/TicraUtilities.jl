@@ -78,6 +78,7 @@ export
     sym2asym,
     TEPperiodic,
     TEPscatter,
+    teps2p,
     TorObj,
     write_cutfile,
     write_exifile,
