@@ -456,6 +456,20 @@ Convert a scattering TEP object (of type `TEPscatter`) to a periodic unit cell T
 `freq` is the frequency, a `Unitful` quantity.  `d` is the is the distance between the front and rear reference 
 planes, also a `Unitful` quantity.  The first two arguments may be both scalars or both vectors of the same length.  
 In the latter case, each entry corresponds to a specific frequency.
+
+## Usage Example
+    using Unitful: @u_str
+    freqs = [1u"GHz", 1.5u"GHz"] # Assumes teps is a vector of 2 TEPscatter objects
+    d = 2.3u"mm"
+    tep_periodic = teps2p(teps, freqs, d)
+
+# Extended help
+Input argument `freq` is required because the frequencies are part of the data stored in a `TEPperiodic` object, but not in
+a `TEPscatter` object.  Additionally, both `freq` and `d` arguments are required because `TEPperiodic` uses phase reference 
+planes located at the acutal front and rear surfaces of the unit cell, while `TEPscatter` uses the front surface only as the
+phase reference plane for both front and rear incidence.  Thus, these arguments are required to compute the necessary phase
+correction for rear surface incidence reflection and for both front and rear surface incidence transmission.  
+This phase correction is in addition to sign changes needed for some of the coefficients.
 """
 function teps2p end
 
@@ -498,4 +512,63 @@ function teps2p(teps::AbstractVector{<:TEPscatter},
     phi = get_phi(first(teps))
     tep_periodic = TEPperiodic(; name, class, theta, phi, freqs, sff, sfr, srf, srr)
     return tep_periodic
+end
+
+
+"""
+    tepp2s(tep::TEPperiodic, d; title="")
+
+Convert a periodic unit cell TEP object (of type `TEPperiodic`) to a scattering surface TEP object (of type `TEPscatter`),
+or to a vector of such objects if `tep` contains more than a single frequency.
+
+`d` is the is the distance between the front and rear reference planes, a `Unitful` length quantity.  The `title` keyword
+argument is used for the `title` field of the output object. If it is left blank, then it will be replaced by 
+`"TEPscatter object created by tepp2s"`.
+
+## Usage Example
+    using Unitful: @u_str
+    d = 2.3u"mm"
+    tep_scatter = tepp2s(tep_periodic, d)
+
+# Extended help
+Input argument `d` is required because `TEPperiodic` uses phase reference planes located at the acutal front and rear 
+surfaces of the unit cell, while `TEPscatter` uses the front surface only as the phase reference plane for both front and
+rear incidence.  Thus `d` is required to compute the necessary phase correction for rear surface incidence reflection and 
+for both front and rear surface incidence transmission.  This phase correction is in addition to sign changes needed for 
+some of the coefficients.
+"""
+function tepp2s(tep::TEPperiodic, d::Unitful.Quantity{<:Real, Unitful.𝐋}; title="")
+    d ≥ 0u"m" || throw(ArgumentError("d must be nonnegative"))
+    _, _, nt, np, nf = size(get_sff(tep))
+    cosθs = [cosd(θ) for θ in get_theta(tep)]
+    freqs = get_freqs(tep)
+    theta = get_theta(tep)
+    phi = get_phi(tep)
+    isempty(title) && (title = "TEPscatter object created by tepp2s")
+    sff_p, sfr_p, srf_p, srr_p = get_sff(tep), get_sfr(tep), get_srf(tep), get_srr(tep)
+    tep_scatters = TEPscatter{typeof(theta)}[]
+    for ifr in 1:nf
+        sff, sfr, srf, srr = (zeros(ComplexF64, (2, 2, nt, np)) for _ in 1:4)
+        λ = c₀ / freqs[ifr] # free-space wavelength
+        k = 2π / λ # free-space wavenumber
+        kd = convert(Float64, k * d)
+        for it in 1:nt
+            q = cis(kd * cosθs[it])
+            q² = q * q
+            mff = @SMatrix [-1 1; 1 -1]
+            mrf = @SMatrix [q -q; -q q]
+            mrr = @SMatrix [-q² -q²; -q² -q²]
+            mfr = @SMatrix [q q; q q]
+            for ip in 1:np
+                sff[:,:,it,ip] .= mff .* SMatrix{2,2,ComplexF64,4}(@view sff_p[:,:,it,ip,ifr])
+                srf[:,:,it,ip] .= mrf .* SMatrix{2,2,ComplexF64,4}(@view srf_p[:,:,it,ip,ifr])
+                srr[:,:,it,ip] .= mrr .* SMatrix{2,2,ComplexF64,4}(@view srr_p[:,:,it,ip,ifr])
+                sfr[:,:,it,ip] .= mfr .* SMatrix{2,2,ComplexF64,4}(@view sfr_p[:,:,it,ip,ifr])
+            end # phi loop
+        end # theta loop
+        tep_scatter = TEPscatter(;title, theta, phi, sff, sfr, srf, srr)
+        nf == 1 && return tep_scatter
+        push!(tep_scatters, tep_scatter)
+    end # frequency loop
+    return tep_scatters
 end
