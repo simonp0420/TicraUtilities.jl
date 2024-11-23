@@ -1,4 +1,5 @@
 using SafeTestsets
+using Test
 
 @safetestset "TEPperiodic" begin 
     using TicraUtilities
@@ -34,3 +35,23 @@ end
     @test get_title(tep_scatter) == get_title(tep_scatter2)
 end
 
+using Unitful
+@testset "tepp2s and teps2p" begin 
+    using TicraUtilities
+    tep_p1 = read_tepfile("ticra_tools_twister.tep")
+    d = 15u"mm"    
+    tep_s2 = tepp2s(tep_p1, d)
+    freqs = get_freqs(tep_p1)
+    tep_p3 = teps2p(tep_s2, d, freqs)
+    @test get_sff(tep_p1) ≈ get_sff(tep_p3)
+    @test get_srf(tep_p1) ≈ get_srf(tep_p3)
+    @test get_srr(tep_p1) ≈ get_srr(tep_p3)
+    @test get_sfr(tep_p1) ≈ get_sfr(tep_p3)
+    tep_s4 = tepp2s(tep_p3, d)
+    for i in eachindex(tep_s2, tep_s4)
+        @test get_sff(tep_s2[i]) ≈ get_sff(tep_s4[i])
+        @test get_srf(tep_s2[i]) ≈ get_srf(tep_s4[i])
+        @test get_srr(tep_s2[i]) ≈ get_srr(tep_s4[i])
+        @test get_sfr(tep_s2[i]) ≈ get_sfr(tep_s4[i])
+    end
+end

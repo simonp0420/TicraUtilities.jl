@@ -449,24 +449,25 @@ end # function
 
 
 """
-    teps2p(tep::TEPscatter, freq, d; name="tep_periodic", class="created_by_teps2p")
+    teps2p(tep::TEPscatter, d, freq; name="tep_periodic", class="created_by_teps2p")
 
 Convert a scattering TEP object (of type `TEPscatter`) to a periodic unit cell TEP object (of type `TEPperiodic`).
 
-`freq` is the frequency, a `Unitful` quantity.  `d` is the is the distance between the front and rear reference 
-planes, also a `Unitful` quantity.  The first two arguments may be both scalars or both vectors of the same length.  
+`d` is the is the distance between the front and rear reference 
+planes, a `Unitful` quantity. `freq` is the frequency, also a `Unitful` quantity.  
+`tep` and `freq` may be both scalars or both vectors of the same length.  
 In the latter case, each entry corresponds to a specific frequency.
 
 ## Usage Example
     using Unitful: @u_str
-    freqs = [1u"GHz", 1.5u"GHz"] # Assumes teps is a vector of 2 TEPscatter objects
+    freqs = [1.2u"GHz", 2u"GHz"] # Assumes teps is a vector of 2 TEPscatter objects
     d = 2.3u"mm"
-    tep_periodic = teps2p(teps, freqs, d)
+    tep_periodic = teps2p(teps, d, freqs)
 
 # Extended help
 Input argument `freq` is required because the frequencies are part of the data stored in a `TEPperiodic` object, but not in
 a `TEPscatter` object.  Additionally, both `freq` and `d` arguments are required because `TEPperiodic` uses phase reference 
-planes located at the acutal front and rear surfaces of the unit cell, while `TEPscatter` uses the front surface only as the
+planes located at the actual front and rear surfaces of the unit cell, while `TEPscatter` uses the front surface only as the
 phase reference plane for both front and rear incidence.  Thus, these arguments are required to compute the necessary phase
 correction for rear surface incidence reflection and for both front and rear surface incidence transmission.  
 This phase correction is in addition to sign changes needed for some of the coefficients.
@@ -474,11 +475,12 @@ This phase correction is in addition to sign changes needed for some of the coef
 function teps2p end
 
 
-teps2p(tep::TEPscatter, freq, d; kwargs...) = teps2p([tep], [freq], d; kwargs...)
+teps2p(tep::TEPscatter, d, freq; kwargs...) = teps2p([tep], d, [freq]; kwargs...)
 
 function teps2p(teps::AbstractVector{<:TEPscatter}, 
-                freqs::AbstractVector{<:Unitful.Quantity{<:Real, Unitful.𝐓^-1}},
-                d::Unitful.Quantity{<:Real, Unitful.𝐋}; name="tep_periodic", class="created_by_teps2p")
+                d::Unitful.Quantity{<:Real, Unitful.𝐋},
+                freqs::AbstractVector{<:Unitful.Quantity{<:Real, Unitful.𝐓^-1}};
+                name="tep_periodic", class="created_by_teps2p")
     d ≥ 0u"m" || throw(ArgumentError("d must be nonnegative"))
     nf = length(teps)
     length(freqs) == nf || error("teps and freqs must have the same lengths")
@@ -522,8 +524,8 @@ Convert a periodic unit cell TEP object (of type `TEPperiodic`) to a scattering 
 or to a vector of such objects if `tep` contains more than a single frequency.
 
 `d` is the is the distance between the front and rear reference planes, a `Unitful` length quantity.  The `title` keyword
-argument is used for the `title` field of the output object. If it is left blank, then it will be replaced by 
-`"TEPscatter object created by tepp2s"`.
+argument is used for the `title` field of the output object. If it is left at its default empty value, then it will be 
+replaced by `"TEPscatter object created by tepp2s"`.
 
 ## Usage Example
     using Unitful: @u_str
@@ -531,7 +533,7 @@ argument is used for the `title` field of the output object. If it is left blank
     tep_scatter = tepp2s(tep_periodic, d)
 
 # Extended help
-Input argument `d` is required because `TEPperiodic` uses phase reference planes located at the acutal front and rear 
+Input argument `d` is required because `TEPperiodic` uses phase reference planes located at the actual front and rear 
 surfaces of the unit cell, while `TEPscatter` uses the front surface only as the phase reference plane for both front and
 rear incidence.  Thus `d` is required to compute the necessary phase correction for rear surface incidence reflection and 
 for both front and rear surface incidence transmission.  This phase correction is in addition to sign changes needed for 

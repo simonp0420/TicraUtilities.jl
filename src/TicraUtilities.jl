@@ -134,6 +134,20 @@ using PrecompileTools: @setup_workload, @compile_workload
     sfc = read_surface(sfcfile)
 
     t1 = sor_efficiency(cutfile; F=40.0, D=18.0, Oc=0.4, pol=:l3h, dz=0.0)
+
+    tep_p1 = read_tepfile(joinpath(@__DIR__, "..", "test", "ticra_tools_twister.tep"))
+    tfile = tempname()
+    write_tepfile(tfile, tep_p1)
+    d = 15u"mm"    
+    tep_s2 = tepp2s(tep_p1, d)
+    freqs = get_freqs(tep_p1)
+    tep_p3 = teps2p(tep_s2, freqs, d)
+
+    tep_scatter = read_tepfile(joinpath(@__DIR__, "..", "test", "tepscatter1freq.tep"))
+    tfile = tempname()
+    write_tepfile(tfile, tep_scatter)
+
+    
 end
 # include("make_cut_from_eh.jl")
 
