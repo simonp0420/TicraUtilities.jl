@@ -39,9 +39,9 @@ struct TEPscatter{R<:AbstractRange} <: TEP
     srf::Array{ComplexF64, 4}
     srr::Array{ComplexF64, 4}
 end
-function TEPscatter(title, theta::AbstractRange, phi::AbstractRange, sff, sfr, srf, srr)
+function TEPscatter(title, theta::T1, phi::T2, sff, sfr, srf, srr) where {T1<:AbstractRange, T2<:AbstractRange}
     t, p = promote(theta, phi)
-    return TEPscatter(title, t, p, sff, sfr, srf, srr)
+    return TEPscatter{typeof(t)}(title, t, p, sff, sfr, srf, srr)
 end
 
 TEPscatter(; title, theta, phi, sff, sfr, srf, srr) = TEPscatter(title, theta, phi, sff, sfr, srf, srr)
