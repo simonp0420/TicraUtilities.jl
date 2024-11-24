@@ -12,8 +12,13 @@
 
 This package provides utilities in the Julia programming language for
 * Reading, writing, and plotting Ticra-compatible cut (.cut) files.
+* Reading and writing spherical wave expansion (.sph) files.
+* Converting cut files to and from spherical wave expansion files.
+* Reading and writing tabulated electrical properties (TEP) files, both
+  the original scattering surface format introduced in GRASP8, and the newer
+  periodic unit cell format, introduced in QUPES.
+* Bidirectional conversion between old and new TEP types.
 * Reading, parsing, and writing Ticra Object Repository (.tor) files.
-* Converting cut files to and from spherical wave expansion (.sph) files.
 * Reading and writing so-called "station" (.stn) files.
 * Reading and writing array excitation (.exi) files.
 * Reading and writing "surface" (.sfc) files.
