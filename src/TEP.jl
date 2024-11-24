@@ -1,6 +1,6 @@
 # Read and write TEP files
 
-using StaticArrays: SMatrix
+using StaticArrays: SMatrix, @SMatrix
 using Unitful: Unitful, ustrip, unit, @u_str
 using Printf: @printf
 using PhysicalConstants.CODATA2018: c_0 as c₀ # vacuum light speed
