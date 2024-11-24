@@ -235,7 +235,7 @@ depends on the type of TEP file encountered:
   the file may not contain swept geometrical parameters.
 """
 function read_tepfile(filename::AbstractString)
-    line = readline(filename) # Obtain title line
+    line = strip(readline(filename)) # Obtain title line
     if line == "TICRA-EL_PROP-V1.0"
         return _read_tepfile_scatter(filename)
     elseif uppercase(line) == "[TITLE] ELECTRICAL PROPERTIES OF PERIODIC UNIT CELL"
@@ -248,11 +248,11 @@ end
 
 function _read_tepfile_scatter(filename::AbstractString)
     teps = open(filename, "r") do fid
-        filev = readline(fid)
+        filev = strip(readline(fid))
         filev == "TICRA-EL_PROP-V1.0" || error("Incorrect title line: \"$filev\"")
         firstfreq = true
         while !eof(fid)
-            title = readline(fid)
+            title = strip(readline(fid))
 
             strs = split(readline(fid), x -> isspace(x) || x == ','; keepempty=false)
             nth = parse(Int, strs[1])
@@ -309,7 +309,7 @@ end
 
 function _read_tepfile_periodic(filename::AbstractString)
     tep = open(filename, "r") do fid
-        line = readline(fid)
+        line = strip(readline(fid))
         uppercase(line) == "[TITLE] ELECTRICAL PROPERTIES OF PERIODIC UNIT CELL" || error("Incorrect title line: \"$line\"")
         
         _get_puc_str2(fid, "[Version]") == "1.0.0" || error("Incorrect version string")
