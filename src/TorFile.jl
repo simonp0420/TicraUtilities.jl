@@ -27,7 +27,7 @@ const unitdict = Dict(
 
 Struct containing a single, general, TOR object.
 
-### Fields
+## Fields
 * `name::String`: The name of the TOR object. Example: "my_rim".
 * `objtype::String`: The type of the TOR object. Example: "tabulated_rim_xy".
 * `propname::Vector{String}`: Names of object properties. Example: 
@@ -38,6 +38,9 @@ Struct containing a single, general, TOR object.
 
 Note that the "values" in `propval` are simply strings that must be parsed for any numeric values
 that might be present.
+
+## See Also
+* `parse_tor_struct`
 """
 struct TorObj
     name::String  # Name of the object

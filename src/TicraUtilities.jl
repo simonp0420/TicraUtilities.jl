@@ -11,7 +11,9 @@ export
     Exi,
     get_ampdb,
     get_att,
+    get_class,
     get_evec,
+    get_freqs,
     get_goal,
     get_header,
     get_icomp,
@@ -36,6 +38,10 @@ export
     get_propval,
     get_qsmns,
     get_rot,
+    get_sff,
+    get_sfr,
+    get_srf,
+    get_srr,
     get_t4,
     get_t5,
     get_t6,
@@ -43,6 +49,7 @@ export
     get_t8,
     get_text,
     get_theta, 
+    get_title,
     get_u,
     get_v,
     get_weight,
@@ -61,7 +68,7 @@ export
     read_stationfile,
     read_surface,
     read_tabulatedrimxyold,
-    #read_tfile,
+    read_tepfile,
     read_torfile,
     sor_efficiency,
     sph2cut,
@@ -69,13 +76,17 @@ export
     Station,
     Surface,
     sym2asym,
+    TEPperiodic,
+    TEPscatter,
+    tepp2s,
+    teps2p,
     TorObj,
     write_cutfile,
     write_exifile,
     write_sphfile,
     write_stationfile,
     write_surface,
-    write_cutfile,
+    write_tepfile,
     write_torfile
 
 include("Cut.jl")
@@ -86,6 +97,7 @@ include("TorFile.jl")
 #include("Geom.jl")
 include("SphericalWave.jl")
 include("Surface.jl")
+include("TEP.jl")
 
 
 using PrecompileTools: @setup_workload, @compile_workload
@@ -122,6 +134,20 @@ using PrecompileTools: @setup_workload, @compile_workload
     sfc = read_surface(sfcfile)
 
     t1 = sor_efficiency(cutfile; F=40.0, D=18.0, Oc=0.4, pol=:l3h, dz=0.0)
+
+    tep_p1 = read_tepfile(joinpath(@__DIR__, "..", "test", "ticra_tools_twister.tep"))
+    tfile = tempname()
+    write_tepfile(tfile, tep_p1)
+    d = 15u"mm"    
+    tep_s2 = tepp2s(tep_p1, d)
+    freqs = get_freqs(tep_p1)
+    tep_p3 = teps2p(tep_s2, d, freqs)
+
+    tep_scatter = read_tepfile(joinpath(@__DIR__, "..", "test", "tepscatter1freq.tep"))
+    tfile = tempname()
+    write_tepfile(tfile, tep_scatter)
+
+    
 end
 # include("make_cut_from_eh.jl")
 
