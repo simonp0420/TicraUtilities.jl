@@ -141,7 +141,7 @@ using PrecompileTools: @setup_workload, @compile_workload
     d = 15u"mm"    
     tep_s2 = tepp2s(tep_p1, d)
     freqs = get_freqs(tep_p1)
-    tep_p3 = teps2p(tep_s2, freqs, d)
+    tep_p3 = teps2p(tep_s2, d, freqs)
 
     tep_scatter = read_tepfile(joinpath(@__DIR__, "..", "test", "tepscatter1freq.tep"))
     tfile = tempname()
