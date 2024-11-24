@@ -45,3 +45,6 @@ You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the fi
   [issue](https://github.com/simonp0420/TicraUtilities.jl/issues).
 * Pull Requests (PRs) are also welcome!
 
+## News
+* Version 1.1: Added functions to read and write TEP files, and convert between old and new TEP file formats.
+
