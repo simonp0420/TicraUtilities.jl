@@ -1,4 +1,4 @@
-# TicraUtilities - Tools for working with Ticra-compatible files and data objects in the Julia language
+# TicraUtilities - Tools for working with TICRA-compatible files and data objects in the Julia language
 
 
 | **Documentation**   |  **Tests**     | **CodeCov**  |
@@ -8,17 +8,17 @@
 
 
 
-`TicraUtilities` is a package to facilitate working with Ticra-compatible files and data objects in the Julia language. [TICRA](https://www.ticra.com) is a Danish company specializing in antenna analysis and synthesis software. Their products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as standards in the antenna community. As a result, the file formats defined and used by TICRA software have also become de facto industry standards.
+`TicraUtilities` is a package to facilitate working with TICRA-compatible files and data objects in the Julia language. [TICRA](https://www.ticra.com) is a Danish company specializing in antenna analysis and synthesis software. Their products for analysis and design of reflector antennas (and associated feed structures) are widely regarded as standards in the antenna community. As a result, the file formats defined and used by TICRA software have also become de facto industry standards.
 
 This package provides utilities in the Julia programming language for
-* Reading, writing, and plotting Ticra-compatible cut (.cut) files.
+* Reading, writing, and plotting TICRA-compatible cut (.cut) files.
 * Reading and writing spherical wave expansion (.sph) files.
 * Converting cut files to and from spherical wave expansion files.
 * Reading and writing tabulated electrical properties (TEP) files, both
   the original scattering surface format introduced in GRASP8, and the newer
   periodic unit cell format, introduced in QUPES.
 * Bidirectional conversion between old and new TEP types.
-* Reading, parsing, and writing Ticra Object Repository (.tor) files.
+* Reading, parsing, and writing TICRA Object Repository (.tor) files.
 * Reading and writing so-called "station" (.stn) files.
 * Reading and writing array excitation (.exi) files.
 * Reading and writing "surface" (.sfc) files.
