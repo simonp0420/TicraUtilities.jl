@@ -86,7 +86,7 @@ TEP files containing geometrical parameter sweeps are not yet supported.
 
 For `s` representing any of the fields `sff`, `sfr`, `srf`, and `srr`, 
 `size(s) = (2, 2, length(theta), length(phi), length(freqs))`, and the 2×2 matrix `s[:,:,i,j,k]` 
-is arranged in the order `[sTETE sTMTE; sTETM sTMTM]`.
+is arranged in the order `[sTETE sTETM; sTMTE sTMTM]`.
 
 ## See Also
 * `TEPscatter`
@@ -338,11 +338,11 @@ function _read_tepfile_periodic(filename::AbstractString)
             freqs[ifr] = parse(Float64, fstrs[2]) * unitdict[fstrs[3][2:end-1]] # unitdict defined in Torfile.jl
             for ip in 1:np, it in 1:nt
                 tup = _readncs(fid, 8, "[SFront]") # 16 reals per line
-                sff[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[1:4]))
-                srf[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[5:8]))
+                sff[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[1:4])
+                srf[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[5:8])
                 tup = _readncs(fid, 8, "[SRear]") # 16 reals per line
-                srr[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[1:4]))
-                sfr[:, :, it, ip, ifr] .= permutedims(SMatrix{2, 2, ComplexF64, 4}(tup[5:8]))
+                srr[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[1:4])
+                sfr[:, :, it, ip, ifr] .= SMatrix{2, 2, ComplexF64, 4}(tup[5:8])
             end
         end
         return TEPperiodic(; name, class, theta, phi, freqs, sff, sfr, srf, srr)
@@ -401,11 +401,11 @@ function write_tepfile(filename::AbstractString, tep::TEPperiodic)
                 srf = @view get_srf(tep)[:, :, it, ip, ifr]
                 srr = @view get_srr(tep)[:, :, it, ip, ifr]
                 print(fid, "[SFront]")
-                rftf = (sff[1,1], sff[1,2], sff[2,1], sff[2,2], srf[1,1], srf[1,2], srf[2,1], srf[2,2])
+                rftf = (sff[1,1], sff[2,1], sff[1,2], sff[2,2], srf[1,1], srf[2,1], srf[1,2], srf[2,2])
                 foreach(s -> @printf(fid, "   %11.8f   %11.8f", real(s), imag(s)), rftf)
                 println(fid)
                 print(fid, "[SRear]")
-                rrtr = (srr[1,1], srr[1,2], srr[2,1], srr[2,2], sfr[1,1], sfr[1,2], sfr[2,1], sfr[2,2])
+                rrtr = (srr[1,1], srr[2,1], srr[1,2], srr[2,2], sfr[1,1], sfr[2,1], sfr[1,2], sfr[2,2])
                 foreach(s -> @printf(fid, "   %11.8f   %11.8f", real(s), imag(s)), rrtr)
                 println(fid)
             end # theta/phi loop
