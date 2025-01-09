@@ -24,7 +24,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [compat]
 AssociatedLegendrePolynomials = "1.0"
 DSP = "0.7, 0.8"
-DataInterpolations = "6.1"
+DataInterpolations = "6.1, 7"
 Dates = "1.10"
 Dierckx = "0.5.3"
 FFTW = "1.8"
