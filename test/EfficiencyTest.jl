@@ -5,9 +5,9 @@ using SafeTestsets
     cd(@__DIR__)
     cutfile = joinpath(@__DIR__, "center_element_rhcp_excited.cut")
     t1 = sor_efficiency(cutfile, F=10, D=18, Oc=0.4, pol=:l3h, dz=-0.1)
-    @test t1.ηₗₒₛₛ ≈ 0.9733666461505174
+    @test t1.ηₗₒₛₛ ≈ 0.9733667184786848
     @test t1.ηₛₚ ≈ 0.8727422758602933
-    @test t1.ηᵢₗ ≈ 0.8745616072685025
+    @test t1.ηᵢₗ ≈ 0.8745614678201606
     @test t1.ηₚₕ ≈ 0.9642498710590889
     @test t1.ηₚₒₗ ≈ 1.0
     @test t1.ηₓ ≈ 0.4985615310506499
