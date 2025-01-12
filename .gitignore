@@ -3,6 +3,7 @@
 /docs/theorydoc
 docs/Manifest.toml
 docs/build/
+docs/notebooks
 docs/src/*.md
 !docs/src/references.md
 !docs/src/assets/citations.css
