@@ -1,6 +1,5 @@
 using Printf: @printf
 using DSP: unwrap
-using Dierckx: Spline1D, integrate
 using DataInterpolations: CubicSpline
 using QuadGK: quadgk
 using StaticArrays: @SVector, @SMatrix, SVector
@@ -283,9 +282,9 @@ function power(cut::Cut, θmax=180)::Float64
     end
     phimult = deg2rad(dphi)  # Factor for trap. int. over phi
     theta = deg2rad.(get_theta(cut))
-    p = p .* abs.(sin.(theta)) # sintheta weighting
-    spl = Spline1D(theta, p)
-    pwr = phimult * integrate(spl, theta[1], min(theta[end], deg2rad(θmax)))
+    p .*= abs.(sin.(theta)) # sintheta weighting
+    spl = CubicSpline(p, theta; assume_linear_t=true)
+    pwr = phimult * first(quadgk(spl, first(theta), min(last(theta), deg2rad(θmax)); atol=1e-12))
     return pwr
 end
 
