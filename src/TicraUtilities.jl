@@ -102,7 +102,7 @@ include("TEP.jl")
 
 using PrecompileTools: @setup_workload, @compile_workload
 @compile_workload begin
-    cutfile = joinpath(@__DIR__, "..", "test", "test.cut")
+    cutfile = joinpath(pkgdir(@__MODULE__), "test", "test.cut")
     cut = read_cutfile(cutfile)
     adb = amplitude_db(cut)
     scut = asym2sym(cut)
@@ -117,25 +117,26 @@ using PrecompileTools: @setup_workload, @compile_workload
     text = get_text(cut)
     theta = get_theta(cut)
     mdb = maximum_db(cut)
+    #=
     normalize!(cut)
-    torfile = joinpath(@__DIR__, "..", "test", "tabulated_rim_tor_file.tor")
+    torfile = joinpath(pkgdir(@__MODULE__), "test", "tabulated_rim_tor_file.tor")
     torparsed = read_torfile(torfile)
     pdeg = phase_deg(cut, 1)
     pcen = phscen(cutfile)
     p = power(scut)
     cuts = read_cutfile(cutfile)
-    exifile = joinpath(@__DIR__, "..", "test", "beam_A14R.exi")
+    exifile = joinpath(pkgdir(@__MODULE__), "test", "beam_A14R.exi")
     exi = read_exifile(exifile)
-    sphfile = joinpath(@__DIR__, "..", "test", "center_element_rhcp_excited_q.sph")
+    sphfile = joinpath(pkgdir(@__MODULE__), "test", "center_element_rhcp_excited_q.sph")
     sph = read_sphfile(sphfile)
-    stafile = joinpath(@__DIR__, "..", "test", "scenario2_coverage.sta")
+    stafile = joinpath(pkgdir(@__MODULE__), "test", "scenario2_coverage.sta")
     stations = read_stationfile(stafile)
-    sfcfile = joinpath(@__DIR__, "..", "test", "parent_parabola.sfc")
+    sfcfile = joinpath(pkgdir(@__MODULE__), "test", "parent_parabola.sfc")
     sfc = read_surface(sfcfile)
 
     t1 = sor_efficiency(cutfile; F=40.0, D=18.0, Oc=0.4, pol=:l3h, dz=0.0)
 
-    tep_p1 = read_tepfile(joinpath(@__DIR__, "..", "test", "ticra_tools_twister.tep"))
+    tep_p1 = read_tepfile(joinpath(pkgdir(@__MODULE__), "test", "ticra_tools_twister.tep"))
     tfile = tempname()
     write_tepfile(tfile, tep_p1)
     d = 15u"mm"    
@@ -143,12 +144,12 @@ using PrecompileTools: @setup_workload, @compile_workload
     freqs = get_freqs(tep_p1)
     tep_p3 = teps2p(tep_s2, d, freqs)
 
-    tep_scatter = read_tepfile(joinpath(@__DIR__, "..", "test", "tepscatter1freq.tep"))
+    tep_scatter = read_tepfile(joinpath(pkgdir(@__MODULE__), "..", "test", "tepscatter1freq.tep"))
     tfile = tempname()
     write_tepfile(tfile, tep_scatter)
-
-    
+=#    
 end
+
 # include("make_cut_from_eh.jl")
 
 
