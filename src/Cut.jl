@@ -347,11 +347,11 @@ function read_cutfile(fname::AbstractString)
             end
             # Check consistency
             cut = cuts[end]
-            @assert (icomp, icut, ncomp) == (cut.icomp, cut.icut, cut.ncomp)
-            dthnew = cut.theta[2] - cut.theta[1]
-            thsnew = first(cut.theta)
-            nthnew = length(cut.theta)
-            @assert all(x -> isapprox(x[1], x[2], atol=1e-7), zip((ths, dth, nth), (thsnew, dthnew, nthnew)))
+            (icomp, icut, ncomp) == (cut.icomp, cut.icut, cut.ncomp) || error("Inconsistent cuts")
+            ths == first(cut.theta) || error("Inconsistent ths")
+            nth == length(cut.theta) || error("Inconsistent nth")
+            isapprox(dth, cut.theta[2] - cut.theta[1], atol=1e-7) || error("Inconsistent dth")
+
             append!(evecallphi, evecnext)
             evecthisphi = @view evecallphi[end-nth+1:end]
 
