@@ -20,6 +20,7 @@ using SafeTestsets
     @test t2[1].ncomp == t2[2].ncomp == t2[3].ncomp == 2
     @test t2[1].icut == t2[2].icut == t2[3].icut == 1
 
+    @test read_cutfile(joinpath(@__DIR__, "single_cut.cut")) isa Cut # Issue #17
 end
 
 @safetestset "read_cutfile_2" begin 
