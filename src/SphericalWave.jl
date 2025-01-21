@@ -598,7 +598,9 @@ the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 
 The single positional input argument can be either a string containing the name 
 of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
-that results from reading such a file with `read_cutfile`.  The output of this function
+(or a vector of `Cut` objects) that results from reading such a file with `read_cutfile`.  
+The input cut object must be "asymmetrical", i.e. each ϕ cut must start at θ = 0.  A symmetrical
+cut can be converted to an asymmetrical cut using `sym2asym`.  The output of this function
 can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
 spherical wave coefficients.
 

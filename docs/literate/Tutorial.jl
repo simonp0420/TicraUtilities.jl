@@ -296,7 +296,7 @@ plot(cutrhcp2,
 # The functions in `TicraUtilities` can read, write, and manipulate TICRA-compatible spherical wave 
 # expansion (.sph) files that employ the newer, more accurate, so-called "Q" modes.  To read the 
 # contents of such a file, one uses the 
-# [`read_sphfile`](@ref) function.  Below we demonstrate the function's use on a spherical wave expension
+# [`read_sphfile`](@ref) function.  Below we demonstrate the function's use on a spherical wave expansion
 # file previously generated using GRASP:
 #-
 #nb %% [code] {"slideshow": {"slide_type": "slide"}}
