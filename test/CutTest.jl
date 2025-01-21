@@ -42,6 +42,9 @@ end
     t2 = asym2sym(t1)
     t3 = sym2asym(t2)
     @test t3 ≈ t1
+
+    t4 = read_cutfile(joinpath(@__DIR__, "single_cut.cut"))
+    @test sym2asym(t4) isa Cut
 end
 
 @safetestset "Cut amplitude_db" begin 
