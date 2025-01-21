@@ -984,8 +984,13 @@ function sym2asym(cut::Cut)
     iszero(first(theta)) && return deepcopy(cut)
     first(theta) == -last(theta) || error("Not a symmetrical cut")
     0 in theta || error("cut does not include θ=0")
-    dphi = phi[2] - phi[1]
-    last(phi) + dphi ≈ first(phi) + 180 || error("cut phi values not properly distributed")
+    if length(phi) > 1
+        dphi = phi[2] - phi[1]
+        last(phi) + dphi ≈ first(phi) + 180 || error("cut phi values not properly distributed")
+    else
+        dphi = oftype(phi[1], 180)
+    end
+
     np1 = length(phi)
     nt1 = length(theta)
 
@@ -1000,8 +1005,8 @@ function sym2asym(cut::Cut)
     # Set up the new cut2, also in θ/ϕ components
     phi2 = first(phi):dphi:(360-dphi)
     np2 = length(phi2)
-    theta2 = 0:dtheta:last(theta)
-    nt2 = length(theta2)
+    nt2 = 1 + round(Int, last(theta) / dtheta)
+    theta2 = range(start = 0.0, stop = last(theta), length = nt2)
     evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
     text2 = ["phi = $p" for p in phi2]
     for ip1 in 1:np1
@@ -1057,8 +1062,8 @@ function asym2sym(cut::Cut)
     # Set up the new cut2, also in θ/ϕ components
     phi2 = phi[1:np1÷2]
     np2 = length(phi2)
-    theta2 = -last(theta):dtheta:last(theta)
-    nt2 = length(theta2)
+    nt2 = 1 + round(Int, 2*last(theta) / dtheta)
+    theta2 = range(start = -last(theta), stop = last(theta), length = nt2)
     evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
     text2 = ["phi = $p" for p in phi2]
     for ip2 in 1:np2
