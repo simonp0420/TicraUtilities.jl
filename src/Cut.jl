@@ -341,7 +341,7 @@ function read_cutfile(fname::AbstractString)
             else
                 # Begin an additional phi cut at current frequency:
                 cut = cuts[end]
-                cutphi = first(cut.phi):(phi-last(cut.phi)):phi
+                cutphi = range(start = first(cut.phi), stop = phi, length = 1 + length(cut.phi))
                 push!(cut.text, textline)
                 cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cutphi, cut.evec)
             end
@@ -1003,7 +1003,7 @@ function sym2asym(cut::Cut)
     it0 = findfirst(iszero, theta)
 
     # Set up the new cut2, also in θ/ϕ components
-    phi2 = first(phi):dphi:(360-dphi)
+    phi2 = range(start = first(phi), stop = 360 - dphi, length = round(Int, 360/dphi))
     np2 = length(phi2)
     nt2 = 1 + round(Int, last(theta) / dtheta)
     theta2 = range(start = 0.0, stop = last(theta), length = nt2)
@@ -1054,10 +1054,8 @@ function asym2sym(cut::Cut)
     icut = get_icut(cut)
     ncomp = get_ncomp(cut)
     convert_cut!(cut, 1) # Convert to θ/ϕ components
-    it0 = findfirst(iszero, theta)
     nt1 = length(theta)
     np1 = length(phi)
-    np1o2 = length(phi) ÷ 2
 
     # Set up the new cut2, also in θ/ϕ components
     phi2 = phi[1:np1÷2]
