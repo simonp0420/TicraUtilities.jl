@@ -56,6 +56,7 @@ export
     get_x,
     get_y,
     get_z,
+    issym,
     maximum_db,
     normalize!,
     parse_tor_struct,
@@ -76,6 +77,7 @@ export
     Station,
     Surface,
     sym2asym,
+    symsqueeze,
     TEPperiodic,
     TEPscatter,
     tepp2s,
@@ -101,6 +103,7 @@ include("TEP.jl")
 
 
 using PrecompileTools: @setup_workload, @compile_workload
+using Logging: with_logger, NullLogger
 @compile_workload begin
     cutfile = joinpath(pkgdir(@__MODULE__), "test", "test.cut")
     cut = read_cutfile(cutfile)
@@ -117,6 +120,11 @@ using PrecompileTools: @setup_workload, @compile_workload
     text = get_text(cut)
     theta = get_theta(cut)
     mdb = maximum_db(cut)
+    t5 = read_cutfile(joinpath(pkgdir(@__MODULE__), "test", "issue20_cut.cut"))
+    at5 = with_logger(() -> sym2asym(t5), NullLogger()) 
+    st5 = asym2sym(at5)
+    at6 = sym2asym(st5)
+
     #=
     normalize!(cut)
     torfile = joinpath(pkgdir(@__MODULE__), "test", "tabulated_rim_tor_file.tor")

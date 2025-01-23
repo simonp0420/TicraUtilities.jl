@@ -87,6 +87,14 @@ function Base.isapprox(c1::Cut, c2::Cut; kwargs...)
 end
 
 """
+    issym(cut::Cut) -> tf::Bool
+
+Check if a cut has a symmetrical range in theta that includes zero.
+"""
+issym(cut::Cut) = (first(cut.theta) ≈ -last(cut.theta)) && isodd(length(cut.theta))
+
+
+"""
     maximum(cut::Cut) -> maxE
 
 Return the maximum amplitude for any polarization component stored in the `Cut` object.
@@ -267,7 +275,7 @@ function power(cut::Cut, θmax=180)::Float64
     # cubic spline interpolant in the theta direction.
     get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     get_ncomp(cut) == 3 && error("Cut has 3 field components.  Only 2 allowed.")
-    sym = get_theta(cut)[begin] < 0  # Symmetrical cut
+    sym = issym(cut)
     phifullmax = sym ? 180.0 : 360.0
     phi = get_phi(cut)
     nphi = length(phi)
@@ -687,8 +695,7 @@ for `icomp` and their meanings:
 function convert_cut!(cut::Cut{Tct, Tcp, N}, icomp::Integer) where {Tct, Tcp, N}
     (icomp < 1 || icomp > 3) && throw(ArgumentError("icomp is not 1, 2, or 3"))
     outpol = icomp
-    get_ncomp(cut) == 2 || error("Only ncomp == 2 allowed")
-    (inpol = get_icomp(cut)) == outpol && return
+    (inpol = get_icomp(cut)) == outpol && return cut
     evec = get_evec(cut)
     @inbounds for (col, phi) in enumerate(get_phi(cut))
         p̂s = _pol_basis_vectors(phi)
@@ -976,47 +983,72 @@ begins at θ = 0, while a symmetrical cut covers equal extents of negative and
 positive angles.  If the input `cut` is already asymmetrical, then return a copy of 
 this input as the output.
 """
-function sym2asym(cut::Cut)
+function sym2asym(cut::Cut{Tt,Tp,N}) where {Tt<:AbstractRange, Tp<:AbstractRange, N}
     # Check validity of input cut
     get_icut(cut) == 1 || error("Not a standard polar spherical cut")
-    phi = get_phi(cut)
+
     theta = get_theta(cut)
-    iszero(first(theta)) && return deepcopy(cut)
-    first(theta) == -last(theta) || error("Not a symmetrical cut")
-    0 in theta || error("cut does not include θ=0")
+    nt1 = length(theta)
+    iszero(first(theta)) && return deepcopy(cut) # already asymmetrical
+    issym(cut) || error("Not a symmetrical cut")
+
+    phi = get_phi(cut)
+    phitol = 1e-6 # tolerance for comparing phi values
+    if length(phi) > 1 && abs(mod(last(phi) - first(phi), 180)) < phitol
+        @warn "Final ϕ cut is redundant and is discarded"
+        cut = _discard_last_phi(cut)
+        phi = get_phi(cut)
+    else
+        cut = deepcopy(cut) # Avoid mutating input cut
+    end
+    np1 = length(phi)
+
     if length(phi) > 1
         dphi = phi[2] - phi[1]
-        last(phi) + dphi ≈ first(phi) + 180 || error("cut phi values not properly distributed")
+        if mod((last(phi) + dphi) - (first(phi) + 180), 360) |> abs < phitol
+            # Do nothing--This is the correct setup
+        elseif isodd(np1) && abs(mod(last(phi) + dphi - first(phi), 360)) < phitol
+            # nonredundant cuts spaced over all phi values in [0,360).  Squeeze into [0,180)
+            cut = symsqueeze(cut)
+            phi = get_phi(cut)
+            dphi = phi[2] - phi[1]
+            np1 = length(phi)
+            theta = get_theta(cut)
+            nt1 = length(theta)
+        else
+            error("cut phi values not properly distributed")
+        end
     else
+        # Only a single phi value is present
         dphi = oftype(phi[1], 180)
     end
 
-    np1 = length(phi)
-    nt1 = length(theta)
-
-    cut = deepcopy(cut) # Avoid mutating the input argument
     dtheta = theta[2] - theta[1]
     icomp = get_icomp(cut)
     icut = get_icut(cut)
-    ncomp = get_ncomp(cut)
     convert_cut!(cut, 1) # Convert to θ/ϕ components
     it0 = findfirst(iszero, theta)
 
     # Set up the new cut2, also in θ/ϕ components
-    phi2 = range(start = first(phi), stop = 360 - dphi, length = round(Int, 360/dphi))
-    np2 = length(phi2)
+    np2 = 2 * np1
+    phi2 = range(start = first(phi), stop = first(phi) + 360 - dphi, length = np2)
     nt2 = 1 + round(Int, last(theta) / dtheta)
-    theta2 = range(start = 0.0, stop = last(theta), length = nt2)
-    evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
-    text2 = ["phi = $p" for p in phi2]
-    for ip1 in 1:np1
+    theta2 = range(start = theta[it0], stop = last(theta), length = nt2)
+    evec2 = similar(get_evec(cut), nt2, np2)
+    text2 = ["Field data in cuts for phi = $p" for p in phi2]
+    for ip1 in 1:np1 # loop over original cut phi indices
         ip2 = ip1 + np1
         for (it2, it) in enumerate(it0:nt1)
             evec2[it2, ip1] = cut.evec[it, ip1]
-            evec2[it2, ip2] = -cut.evec[it0-it2+1, ip1]
+            ev = cut.evec[it0-it2+1, ip1]
+            if N == 2 # test should compile away
+                evec2[it2, ip2] = -ev
+            elseif N == 3 # this test too
+                evec2[it2, ip2] = SVector(-ev[1], -ev[2], ev[3]) # r component unchanged
+            end
         end
     end
-    cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
+    cut2 = Cut(ncomp = N, icut = icut, icomp = 1, text = text2, theta = theta2, phi = phi2, evec = evec2)
     convert_cut!(cut2, icomp) # Restore polarization basis
     return cut2
 end
@@ -1034,13 +1066,14 @@ function asym2sym(cut::Cut)
     get_icut(cut) == 1 || error("Not a standard polar spherical cut")
     phi = get_phi(cut)
     theta = get_theta(cut)
-    (first(theta) == -last(theta)) && return deepcopy(cut)
+    issym(cut) && return deepcopy(cut)
     iszero(first(theta)) || error("cut does begin at θ=0")
     iseven(length(phi)) || error("Number of ϕ cuts is not even")
+    phitol = 1e-6 # tolerance for phi comparison
     for ϕ in phi
         found = false
         for ϕ′ in ϕ
-            if iszero(mod(ϕ - ϕ′, 360))
+            if abs(mod(ϕ - ϕ′, 360)) < phitol
                 found = true
                 break
             end
@@ -1062,18 +1095,110 @@ function asym2sym(cut::Cut)
     np2 = length(phi2)
     nt2 = 1 + round(Int, 2*last(theta) / dtheta)
     theta2 = range(start = -last(theta), stop = last(theta), length = nt2)
-    evec2 = Array{SVector{2,ComplexF64}}(undef, nt2, np2)
+    evec2 = similar(cut.evec, nt2, np2)
     text2 = ["phi = $p" for p in phi2]
     for ip2 in 1:np2
-        for i in 1:nt1
-            evec2[end-i+1, ip2] = cut.evec[end-i+1, ip2]
-            evec2[i, ip2] = -cut.evec[end-i+1, ip2+np2]
+        if ncomp == 2
+            for i in 1:nt1
+                evec2[end-i+1, ip2] = cut.evec[end-i+1, ip2]
+                evec2[i, ip2] = -cut.evec[end-i+1, ip2+np2]
+            end
+        elseif ncomp == 3
+            for i in 1:nt1
+                evec2[end-i+1, ip2] = cut.evec[end-i+1, ip2]
+                ev = cut.evec[end-i+1, ip2+np2]
+                evec2[i, ip2] = SVector(-ev[1], -ev[2], ev[3])
+            end
         end
     end
     cut2 = Cut(ncomp, icut, 1, text2, theta2, phi2, evec2)
     convert_cut!(cut2, icomp) # Restore polarization basis
     return cut2
 end
+
+"""
+    _discard_last_phi(cut::Cut) -> newcut::Cut
+
+Create a copy of `cut` but discard the final phi cut.
+"""
+function _discard_last_phi(cut::Cut)
+    phi = get_phi(cut)
+    length(phi) == 1 && error("cut contains only a single phi value")
+    phi2 = range(start = first(phi), stop = phi[end-1], length = length(phi) - 1)
+    cut2 = Cut(ncomp = get_ncomp(cut), 
+               icut = get_icut(cut),
+               icomp = get_icomp(cut),
+               text = get_text(cut)[begin:end-1],
+               theta = get_theta(cut),
+               phi = phi2,
+               evec = get_evec(cut)[:, begin:end-1])
+    return cut2
+end
+
+"""
+    symsqueeze(cut::Cut) -> cut2::Cut
+
+Squeeze a symmetric cut with ϕ values equally distributed in [0,360) into [0, 180].
+
+The ϕ values must define nonredundant cuts.  I.e., `cut.phi` must be equivalent to the vector
+`[0, Δϕ, 2Δϕ, 3Δϕ, ..., (360 - Δϕ)]`, with `length(cut.phi)` being an odd number, so that 180
+is excluded.
+
+`cut2` will have Δϕ/2 as its ϕ increment, and it's maximum ϕ value will be `180 - Δϕ/2`.
+"""
+function symsqueeze(cut::Cut{T1, T2, N}) where {T1<:AbstractRange, T2<:AbstractRange, N}
+    issym(cut) || error("Not a symmetrical cut")
+    phi = get_phi(cut)
+    length(phi) == 1 && (return deepcopy(cut)) # nothing to squeeze
+    dphi = phi[2] - phi[1]
+    phitol = 1e-6 # tolerance for comparing phi
+    if mod(last(phi) - first(phi), 360) < phitol 
+        @warn "Final ϕ cut is redundant and is discarded"
+        cut = _discard_last_phi(cut)
+        phi = get_phi(cut)
+    end
+    np = length(phi)
+    (isodd(np) && mod(last(phi) + dphi - first(phi), 360) < phitol) || 
+                  error("phi values not distributed appropriately for squeezing")
+    # Set up new cut
+    dphi2 = dphi / 2
+    phi2 = range(start = first(phi), stop = 180 + first(phi) - dphi2, length = np)
+    theta2 = copy(get_theta(cut))
+    nt = length(theta2)
+    icomp = get_icomp(cut)
+    cut = convert_cut(cut, 1) # E_theta, E_phi components
+    evec = get_evec(cut)
+    evec2 = similar(evec)
+
+    lastorig = (np + 1) ÷ 2
+    for ip1 in 1:lastorig # Loop over unchanged ϕ cuts
+        ip2 = 2ip1 - 1 
+        evec2[:, ip2] .= @view evec[:, ip1]
+    end
+
+    for ip1 in 1+lastorig:np # Loop over ϕ cuts needing reversal
+        ip2 = mod1(2ip1 - 1, np)
+        for it1 in 1:nt
+            it2 = nt - it1 + 1
+            if N == 2 # This test should be compiled away
+                evec2[it2, ip2] = -evec[it1, ip1]
+            elseif N == 3 # as should this test
+                ev = evec[it1, ip1]
+                evec2[it2, ip2] = SVector(-ev[1], -ev[2], ev[3])
+            end
+        end
+    end
+    cut2 = Cut(ncomp = N,
+               icut = get_icut(cut),
+               icomp = 1,
+               text = ["Field data in cuts for phi = $(p)°" for p in phi2],
+               theta = theta2,
+               phi = phi2,
+               evec = evec2)
+    convert_cut!(cut2, icomp) # Restore orig polarization basis
+    return cut2
+end
+
 
 """
     eh2bor1cut(theta, fe, fh; kwargs...) -> cut::Cut
