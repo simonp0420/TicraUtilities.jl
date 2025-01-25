@@ -48,4 +48,5 @@ You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the fi
 ## News
 * Version 1.1: Added functions to read and write TEP files, and convert between old and new TEP file formats.
 * Version 1.2: Added functions `issym` and `symsqueeze`.  Several bug fixes.
+* Version 1.3: Added function `discard_pol3`. `cut2sph` now accepts symmetric cuts and cuts with 3 polarization slots.
 
