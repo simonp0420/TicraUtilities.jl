@@ -39,7 +39,7 @@ end
 @safetestset "cut2sph" begin 
     using TicraUtilities
     using Logging: with_logger, NullLogger
-    cutfile = joinpath(@__DIR__, "Issue20_cut.cut")
+    cutfile = joinpath(@__DIR__, "issue20_cut.cut")
     
     @test with_logger(() -> cut2sph(cutfile), NullLogger()) isa SPHQPartition
 end
