@@ -7,6 +7,7 @@ export
     convert_cut!,
     Cut,
     cut2sph, 
+    discard_pol3,
     eh2bor1cut,
     Exi,
     get_ampdb,

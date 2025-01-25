@@ -599,10 +599,9 @@ the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
 The single positional input argument can be either a string containing the name 
 of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
 (or a vector of `Cut` objects) that results from reading such a file with `read_cutfile`.  
-The input cut object must be "asymmetrical", i.e. each ϕ cut must start at θ = 0.  A symmetrical
-cut can be converted to an asymmetrical cut using `sym2asym`.  The output of this function
-can be passed to `write_sphfile` to create a Ticra-compatible file of Q-type 
-spherical wave coefficients.
+The output of this function can be passed to `write_sphfile` to create a Ticra-compatible 
+file of Q-type spherical wave coefficients. If the input cut contains 3 polarization slots,
+the third slot will be discarded before performing the transformation.
 
 If the input cuts extend in θ only to θ₀ < 180°, then it will be assumed that
 the fields are identically zero for θ₀ < θ ≤ 180°.
@@ -626,8 +625,12 @@ end
 cut2sph(cuts::AbstractVector{<:Cut}; kwargs...) = [cut2sph(cut; kwargs...) for cut in cuts]
 
 function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
-    get_ncomp(cut) == 2 || error("Cut must have only 2 polarization components")
     cutθϕ = deepcopy(cut)
+    if get_ncomp(cutθϕ) == 3
+        @warn "Cut contains 3 polarization slots.  Discarding 3rd slot."
+        cutθϕ = discard_pol3(cutθϕ)
+    end
+    issym(cutθϕ) && (cutθϕ = sym2asym(cutθϕ))
     convert_cut!(cutθϕ, 1) # Convert to Eθ and Eϕ
     θs = get_theta(cutθϕ)
     Nθ = length(θs)

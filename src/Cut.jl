@@ -1136,6 +1136,24 @@ function _discard_last_phi(cut::Cut)
 end
 
 """
+    discard_pol3(cut::Cut) -> cut2::Cut
+
+Create a copy of `cut` but discard the third polarization slot, if present.
+"""
+function discard_pol3(cut::Cut{Tt, Tp, N}) where {Tt<:AbstractRange, Tp<:AbstractRange, N}
+    N == 3 || return deepcopy(cut2)
+    evec = [SVector(t[1], t[2]) for t in get_evec(cut)]
+    cut2 = Cut{Tt,Tp,2}(icut = get_icut(cut),
+                        icomp = get_icomp(cut),
+                        ncomp = 2,
+                        theta = get_theta(cut),
+                        phi = get_phi(cut),
+                        text = get_text(cut),
+                        evec = evec)
+    return cut2
+end
+
+"""
     symsqueeze(cut::Cut) -> cut2::Cut
 
 Squeeze a symmetric cut with ϕ values equally distributed in [0,360) into [0, 180).
