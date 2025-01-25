@@ -36,6 +36,14 @@ end
     @test Eϕ_err < 1e-9
 end
 
+@safetestset "cut2sph" begin 
+    using TicraUtilities
+    using Logging: with_logger, NullLogger
+    cutfile = joinpath(@__DIR__, "Issue20_cut.cut")
+    
+    @test with_logger(() -> cut2sph(cutfile), NullLogger()) isa SPHQPartition
+end
+
 @safetestset "Deltas" begin 
     using TicraUtilities
     @test TicraUtilities._Δⁿₙₘ(4,5) ≈ sqrt(10) / 32
