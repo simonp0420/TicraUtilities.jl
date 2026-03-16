@@ -24,3 +24,72 @@ using SafeTestsets
 
 end
 
+@safetestset "write_ffdfile" begin
+    using TicraUtilities
+
+    # Single-frequency file
+    ffd1 = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_findep.ffd"))
+    tfile = joinpath(tempdir(), "temp.ffd")
+    write_ffdfile(tfile, ffd1)
+    ffd1b = read_ffdfile(tfile)
+    @test ffd1b.frequency == ffd1.frequency
+    @test ffd1b.theta == ffd1.theta
+    @test ffd1b.phi == ffd1.phi
+    @test ffd1b.evec ≈ ffd1.evec
+
+    # Multi-frequency file (vector input)
+    ffds = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd"))
+    tfile = joinpath(tempdir(), "temp2.ffd")
+    write_ffdfile(tfile, ffds)
+    ffds_b = read_ffdfile(tfile)
+    @test length(ffds_b) == length(ffds)
+    for (ffd, ffd_b) in zip(ffds, ffds_b)
+        @test ffd_b.frequency == ffd.frequency
+        @test ffd_b.theta == ffd.theta
+        @test ffd_b.phi == ffd.phi
+        @test ffd_b.evec ≈ ffd.evec
+    end
+
+    # Writing a vector of length 1 should round-trip as a single Ffd
+    tfile = joinpath(tempdir(), "temp3.ffd")
+    write_ffdfile(tfile, [ffd1])
+    ffd1c = read_ffdfile(tfile)
+    @test ffd1c isa Ffd
+    @test ffd1c.frequency == ffd1.frequency
+    @test ffd1c.theta == ffd1.theta
+    @test ffd1c.phi == ffd1.phi
+    @test ffd1c.evec ≈ ffd1.evec
+end
+
+@safetestset "ffd2cut" begin
+    using TicraUtilities
+
+    # Convert from file and write cut file
+    ffdfile = joinpath(@__DIR__, "ffd", "dipole_findep.ffd")
+    cutfile = joinpath(tempdir(), "temp.cut")
+    cut = ffd2cut(ffdfile, cutfile)
+    cut2 = read_cutfile(cutfile)
+    @test isapprox(cut, cut2)
+
+    # Default behaviour should reorder phi cuts to start at 0
+    @test cut.phi[1] == 0.0
+    @test cut.phi[end] == 358.0
+    @test length(cut.phi) == 180
+
+    # phi0=false should preserve original phi ordering
+    ffd = read_ffdfile(ffdfile)
+    cut_no_phi0 = ffd2cut(ffd; phi0=false)
+    @test cut_no_phi0.phi == ffd.phi
+
+    # Converting a vector of Ffd objects should return a vector of Cut objects
+    ffds = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd"))
+    cuts = ffd2cut(ffds; phi0=false)
+    @test length(cuts) == length(ffds)
+    for (ffd, cut) in zip(ffds, cuts)
+        @test occursin(string(ffd.frequency), cut.text[1])
+    end
+
+    # Calling with same input/output file should throw
+    @test_throws ArgumentError ffd2cut(ffdfile, ffdfile)
+end
+
