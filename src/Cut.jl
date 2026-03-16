@@ -406,7 +406,11 @@ function write_cutfile(
 ) where {T1<:AbstractRange, T2<:AbstractRange, N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
-            @printf(fid, "%s, phi = %8.3f\n", title, phi)
+            if isempty(cut.text) || isempty(cut.text[n])
+                @printf(fid, "%s, phi = %8.3f\n", title, phi)
+            else
+                println(fid, cut.text[n])
+            end
             @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
                 cut.theta[1], cut.theta[2] - cut.theta[1],
                 length(cut.theta), phi, cut.icomp, cut.icut,
@@ -438,7 +442,11 @@ function write_cutfile(
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
-                @printf(fid, "%s, phi = %8.3f\n", title, phi)
+                if isempty(cut.text) || isempty(cut.text[n])
+                    @printf(fid, "%s, phi = %8.3f\n", title, phi)
+                else
+                    println(fid, cut.text[n])
+                end
                 @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
                     cut.theta[1], cut.theta[2] - cut.theta[1], length(cut.theta),
                     phi, cut.icomp, cut.icut, cut.ncomp)
