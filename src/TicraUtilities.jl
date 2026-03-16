@@ -10,6 +10,8 @@ export
     discard_pol3,
     eh2bor1cut,
     Exi,
+    Ffd,
+    ffd2cut,
     get_ampdb,
     get_att,
     get_class,
@@ -66,6 +68,7 @@ export
     power,
     read_cutfile,
     read_exifile,
+    read_ffdfile,
     read_sphfile,
     read_stationfile,
     read_surface,
@@ -86,6 +89,7 @@ export
     TorObj,
     write_cutfile,
     write_exifile,
+    write_ffdfile,
     write_sphfile,
     write_stationfile,
     write_surface,
@@ -98,6 +102,7 @@ include("Station.jl")
 include("Exi.jl")
 include("TorFile.jl")
 #include("Geom.jl")
+include("FfdFile.jl")
 include("SphericalWave.jl")
 include("Surface.jl")
 include("TEP.jl")
