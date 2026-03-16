@@ -143,7 +143,14 @@ function write_ffdfile(fname::AbstractString, ffds::AbstractVector{<:Ffd})
         println(fid, first(ts), " ", last(ts), " ", length(ts))
         ps = ffds[1].phi
         println(fid, first(ps), " ", last(ps), " ", length(ps))
-        println(fid, "Frequencies ", length(ffds))
+
+        # HFSS .ffd files are frequency-independent when there is a single frequency
+        # and that frequency is zero, in which case the "Frequencies" line is omitted.
+        freq_dependent = length(ffds) > 1 || !iszero(ffds[1].frequency)
+        if freq_dependent
+            println(fid, "Frequencies ", length(ffds))
+        end
+
         foreach(ffd -> write_ffd_1freq(fid, ffd), ffds)
     end
     return
