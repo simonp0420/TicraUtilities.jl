@@ -758,8 +758,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     M = last(axes(qsmn, 2))
     N = last(axes(qsmn, 3))
     nphi = Nϕ
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
+    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, qsmns=qsmn, powerms)
 end
 
 function _filter_qmodes_by_power(qsmns, pwrtol)
@@ -781,7 +780,7 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
             mretain = mtest
             qpwr - sum(powerms[m] for m in 0:mretain) < pwrtol && break
         end
-        qpwr = sum(powerms[m] for m in 1:mretain)
+        qpwr = sum(powerms[m] for m in 0:mretain)
     end
 
     # Retain only n modes with nonnegligible power
