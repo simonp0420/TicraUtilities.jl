@@ -34,6 +34,9 @@ in the File Formats section of the Ticra official documentation.
   that some of the entries (those with `n < abs(m)`) are always zero.
 * `powerms::OffsetArray{Float64, 1}`: The vector has axes `(0:mmax)` and the `m`th element
   contains the total power (one-half the sum of the magnitude squared) of all modes with `±m` as the m index.
+* `frequency::Float64=0.0`: The frequency in Hz.  Not used for Ticra-style spherical mode files, for which the
+  value is taken to be 0.0 (the default).  Used for HFSS-style "*.swef" files, which contain an extra 9'th line
+  containing the string "Frequency" followed by the frequency in Hz.
 """
 @kwdef struct SPHQPartition
     prgtag::String
@@ -50,6 +53,7 @@ in the File Formats section of the Ticra official documentation.
     qsmns::OffsetArray{ComplexF64,3,Array{ComplexF64,3}} =
         OffsetArray(zeros(ComplexF64, (2, 2mmax + 1, nmax)), 1:2, -mmax:mmax, 1:nmax)
     powerms::OffsetVector{Float64,Vector{Float64}} = OffsetArray(zeros(mmax + 1), 0:mmax)
+    frequency::Float64 = 0.0
 end
 
 """
@@ -148,14 +152,21 @@ with integers `m` ranging from `0` to `mmax`) and its `m`th element contains the
 """
 get_powerms(s::SPHQPartition) = s.powerms
 
+"""
+    get_frequency(s::SPHQPartition)
+Return the frequency in Hz stored in `s`.
+"""
+get_frequency(s::SPHQPartition) = s.frequency
+
 function Base.show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
     println(io, "SPHQPartition")
-    println(io, "  prgtag   $(sph.prgtag)")
-    println(io, "  idstrg   $(sph.idstrg)")
-    println(io, "  nthe     $(sph.nthe)")
-    println(io, "  nphi     $(sph.nphi)")
-    println(io, "  nmax     $(sph.nmax)")
-    println(io, "  mmax     $(sph.mmax)")
+    sph.frequency > 0 && println(io, "  frequency $(sph.frequency)")
+    println(io, "  prgtag    $(sph.prgtag)")
+    println(io, "  idstrg    $(sph.idstrg)")
+    println(io, "  nthe      $(sph.nthe)")
+    println(io, "  nphi      $(sph.nphi)")
+    println(io, "  nmax      $(sph.nmax)")
+    println(io, "  mmax      $(sph.mmax)")
     println(io, string("  qsmns    OffsetArray{ComplexF64}(",
         first(axes(sph.qsmns, 1)), ":", last(axes(sph.qsmns, 1)), ",",
         first(axes(sph.qsmns, 2)), ":", last(axes(sph.qsmns, 2)), ",",
@@ -193,6 +204,17 @@ function read_sphfile(fname::AbstractString)
             prgtag, idstrg = (readline(io) for _ in 1:2)
             nthe, nphi, nmax, mmax = parse.(Int, split(readline(io)))
             t4, t5, t6, t7, t8 = (readline(io) for _ in 4:8)
+            mark(io) # For re-reading line if Ticra-style file
+            line = readline(io)
+            words = split(line, x -> isspace(x) || x == ',' || x == ';'; keepempty = false)
+            if lowercase(words[1]) == "frequency"
+                # HFSS-style ".swef" file
+                frequency = parse(Float64, words[2])
+            else
+                # Ticra-style ".sph" file
+                frequency = 0.0
+                reset(io)
+            end
 
             qsmns = OffsetArray(zeros(ComplexF64, 2, 2mmax + 1, nmax), 1:2, -mmax:mmax, 1:nmax)
             powerms = OffsetArray(zeros(mmax + 1), 0:mmax)
@@ -216,7 +238,7 @@ function read_sphfile(fname::AbstractString)
                     end
                 end
             end
-            push!(sps, SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms))
+            push!(sps, SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms, frequency))
         end
         if length(sps) > 1
             return sps
@@ -232,7 +254,9 @@ end
     write_sphfile(fname, qs::Vector{SPHQPartition})
     write_sphfile(fname, qs::SPHQPartition)
 
-Write SPH coefficients to a Q-type spherical wave expansion file.
+Write SPH coefficients to a Q-type spherical wave expansion file, either a Ticra-style "*.sph" file (if the SPHQPartition
+object(s) contain zero in their `frequency` field), or an HFSS-style "*.swef" file, containing an additional line 9 with
+frequency information (if the SPHQPartition object(s) contain positive values in their `frequency` field).
 
 Prior to writing the data into the file, the input coefficients (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
@@ -240,16 +264,19 @@ multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with
 function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
+    all(iszero, (s.frequency for s in sps)) || all(>(0), (s.frequency for s in sps)) || error("Inconsistent partition frequencies")
     open(fname, "w") do io
         for sp in sps # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
             (; t4, t5, t6, t7, t8, qsmns, powerms) = sp
+            frequency = sp.frequency
 
             # Write header info of next partition:
             println(io, prgtag)
             println(io, idstrg)
             @printf(io, "%6i %5i %5i %5i\n", nthe, nphi, nmax, mmax)
             foreach(t -> println(io, t), (t4, t5, t6, t7, t8))
+            !iszero(frequency) && println(io, "Frequency ", frequency)
 
             for absm in 0:mmax
                 miszero = iszero(absm)
