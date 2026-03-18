@@ -32,6 +32,7 @@ contains all of the cuts for a single frequency.
     evec::Matrix{SVector{N,ComplexF64}}
 end
 
+Base.length(::Cut) = 1
 
 function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     println(io, "Cut")
