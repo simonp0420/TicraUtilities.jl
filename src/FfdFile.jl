@@ -151,12 +151,12 @@ function write_ffdfile(fname::AbstractString, ffds::AbstractVector{<:Ffd})
             println(fid, "Frequencies ", length(ffds))
         end
 
-        foreach(ffd -> write_ffd_1freq(fid, ffd), ffds)
+        foreach(ffd -> _write_ffd_1freq(fid, ffd), ffds)
     end
     return
 end
 
-function write_ffd_1freq(fid, ffd)
+function _write_ffd_1freq(fid, ffd)
     !iszero(ffd.frequency) && println(fid, "Frequency ", ffd.frequency)
     for t in 1:length(ffd.theta), p in 1:length(ffd.phi)
         e = ffd.evec[t, p]
@@ -253,4 +253,116 @@ function ffd2cut(ffd::Ffd; phi0 = true)
     
 end
 
+"""
+    ffd2sph(ffd::Ffd; keywords...) -> sph::SPHQPartition
 
+    ffd2sph(ffds::AbstractVector{Ffd}; keywords...) -> sphs::Vector{SPHQPartition}
+
+    ffd2sph(ffdfile::AbstractString; kwargs...) -> s::SPHQPartition
+
+    ffd2sph(ffdfile::AbstractString, sphfile::AbstractString; kwargs...) -> s::SPHQPartition
+
+Convert a `Ffd` object to a `SPHQPartition` using recursive FFT/IFFT methods from
+the Hansen 1988 book "Spherical Near-Field Antenna Measurements.
+
+The first positional input argument can be either a string containing the name 
+of an HFSS-compatible, ASCII text .ffd file, or the returned value of type `Ffd` 
+(or a vector of `Ffd` objects) that results from reading such a file with `read_ffdfile`.  
+The output of this function can be passed to `write_sphfile` to create a Ticra-compatible 
+file of Q-type spherical wave coefficients.  This is done automatically if the second positional
+argument is provided as shown above.
+
+If the input data extend in θ only to θ₀ < 180°, then it will be assumed that
+the fields are identically zero for θ₀ < θ ≤ 180°.
+
+## Keyword Arguments (and their default values)
+* `mmax=1000`: An upper limit for the `m` (azimuthal) mode index to be included.
+  The actual limit will be set to `min(Nϕ÷2, mmax)` for odd `Nϕ`, and `min(Nϕ÷2-1, mmax)`
+  for even `Nϕ`, where `Nϕ` is the number of ϕ = constant polar cuts in the cut object.
+* `nmax=1000`: An upper limit for the `n` (polar) mode index to be included.
+  The actual limit will be the lesser of `nmax` and `Nθ-1` where `Nθ` is the number of 
+  θ values included in each ϕ = constant polar cut.
+* `pwrtol=1e-6`: The power tolerance.  Spherical modes are included until the excluded
+  modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
+  precludes removal of any modes. A small, nonzero value here prevents the inclusion of many
+  insignificant modes when the far-field sphere is over-sampled.
+"""
+function ffd2sph(ffd::Ffd; pwrtol = 1e-6, kwargs...)
+    cut = ffd2cut(ffd)
+    sph = cut2sph(cut; pwrtol, kwargs...)
+    return sph
+end
+
+ffd2sph(ffds::AbstractVector{Ffd}; keywords...) = [ffd2sph(ffd) for ffd in ffds]
+
+ffd2sph(ffdfile::AbstractString; kwargs...) = ffd2sph(read_ffdfile(ffdfile))
+
+function ffd2sph(ffdfile::AbstractString, sphfile::AbstractString; kwargs...)
+    ffdfile == sphfile && error("ffdfile and sphfile must be distinct")
+    sph = ffd2sph(read_ffdfile(ffdfile); kwargs...)
+    write_sphfile(sphfile, sph)
+    return sph
+end
+
+"""
+    cut2ffd(cut::Cut; frequency = 0.0) -> ffd::Ffd
+
+    cut2ffd(cuts::AbstractVector{Cut}; frequencies) -> ffds::Vector{Ffd}
+
+    cut2ffd(cutfile::AbstractString; frequencies) -> ffd::Ffd
+
+    cut2ffd(cutfile::AbstractString, ffdfile::AbstractString; frequencies) -> ffd::Ffd
+
+Convert a Ticra-compatible `Cut` object to an HFSS-compatible `Ffd` object.
+
+The first positional input argument can be either a string containing the name 
+of a Ticra-compatible, spherical polar cut file, or the returned value of type `Cut` 
+(or a vector of `Cut` objects) that results from reading such a file with `read_cutfile`.  
+
+The second positional argument, if present, is the name of an HFSS-compatible ffd file to 
+which the generated `Ffd` object(s) should be written.
+
+## Keyword Arguments
+- `frequency::Float64 = 0.0`: When converting a single `Cut` object, the default value is 0.0, implying that
+  a frequency-independent `Ffd` object is desired. If a positive value is provided (in Hz), a frequency-dependent
+  `Ffd` is created containing that single frequency.
+
+- `frequencies`: When the input consists of a vector of multiple `Cut` objects (or is 
+  a file containing multiple `Cut`s), then an abstract vector containing the same number
+  of frequencies (in Hz) is required here to create the multiple-frequency output `Ffd` vector
+  (or file). If the input file contains only a single frequency, then frequencies can be a scalar,
+  or can be totally omitted, in which case a frequency-independent `Ffd` will be created.
+"""
+function cut2ffd end
+
+function cut2ffd(c::Cut; frequency::Float64 = 0.0)
+    get_ncomp(c) == 2 || error("Cut must contain only 2 polarization components")
+    get_icut(c) == 1 || error("Cut.icut ≠ 1.  Only constant ϕ (polar) cuts are allowed.")
+    c = convert_cut(c, 1) # Copy cut and ensure Eθ/Eϕ decomposition
+    theta = get_theta(c)
+    phi = get_phi(c)
+    evec = get_evec(c)
+    ffd = Ffd(; frequency, theta, phi, evec)
+    return ffd
+end
+
+function cut2ffd(cuts::AbstractVector{<:Cut}; frequency::AbstractVector{<:Real})
+    length(cuts) == length(frequency) || error("Unequal lengths for cuts and frequencies vectors")
+    ffds = [cut2ffd(cut; frequency=f) for (cut, f) in zip(cuts, frequency)]
+    return ffds
+end
+
+function cut2ffd(cutfile::AbstractString; frequency = 0.0)
+    cuts = read_cutfile(cutfile)
+    nf = length(frequency)
+    nc = length(cuts)
+    nf == nc || error("# frequencies $nf does not equal # cuts $nf read from $cutfile")
+    ffds = cut2ffd(cuts; frequency)
+    return ffds
+end
+
+function cut2ffd(cutfile::AbstractString, ffdfile::AbstractString; frequency = 0.0)
+    ffds = cut2ffd(cutfile; frequency)
+    write_ffdfile(ffdfile, ffds)
+    return ffds
+end
