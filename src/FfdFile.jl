@@ -366,3 +366,56 @@ function cut2ffd(cutfile::AbstractString, ffdfile::AbstractString; frequency = 0
     write_ffdfile(ffdfile, ffds)
     return ffds
 end
+
+
+"""
+    sph2ffd(sphfile::AbstractString; theta, phi) -> ffd::Ffd
+
+    sph2ffd(sph:SPHQPartition; theta, phi) -> ffd::Ffd
+
+    sph2ffd(sphs:Vector{SPHQPartition}; theta, phi) -> ffds::Vector{Ffd}
+
+Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
+values, returned as a `Ffd` object. 
+
+The single positional input argument can be either a string containing the name 
+of a Ticra-compatible Q-type spherical wave file, or the returned value from reading 
+such a file with `read_sphfile`.
+
+## Optional Keyword Arguments:
+- `theta`: An abstract range denoting the desired polar angles (colattitudes) 
+  in degrees at which the field should be evaluated. If an empty range is provided (the default), then
+  the values will be determined automatically by examining the modal content in `sph`.
+- `phi`: An abstract range denoting the desired azimuthal angles in degrees at 
+  which the field should be evaluated.  If an empty range is provided (the default), then
+  the values will be determined automatically by examining the modal content in `sph`.
+-`frequency`: The frequency in Hz.  If zero (the default value), then the frequency will be 
+  determined by `sph.frequency`. If positive, then this value will be used in preference to 
+  `sph.frequency`.  For the case of a vector of `SPHQPartition` objects (or a file containing
+  multiple partitions) then this argument should be an iterable of the same length.
+
+## Usage Example
+    ffd = sph2ffd("testfile.sph"; phi=0:5:355, theta=0:1:180)
+"""
+function sph2ffd(sphfile::AbstractString; kwargs...)
+    sph = read_sphfile(sphfile)
+    ffd = sph2ffd(sph; kwargs...)
+    return ffd
+end
+
+sph2ffd(sphs::AbstractVector{SPHQPartition}; frequencies::AbstractVector{<:Real}=zeros(length(sphs)), kwargs...) = 
+    [sph2ffd(sph; frequency, kwargs...) for (sph, frequency) in zip(sphs, frequencies)]
+
+function sph2ffd(sph::SPHQPartition;
+    theta::AbstractRange=0.0:-1.0:1.0,
+    phi::AbstractRange=0.0:-1.0:1.0,
+    frequency = 0.0)
+
+    ipol = 1 # Eθ/Eϕ decomposition
+    cut = sph2cut(sph; theta, phi, ipol)
+    if iszero(frequency)
+        frequency = get_frequency(sph)
+    end
+    ffd = cut2ffd(cut; frequency)
+    return ffd
+end
