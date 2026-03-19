@@ -650,6 +650,7 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
 * `pwrtol=0.0`: The power tolerance.  Spherical modes are included until the excluded
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes.
+* `frequency = 0.0`: Frequency (Hz) assigned to this output object.
 """
 function cut2sph(cutfile::AbstractString; kwargs...)
     cut = read_cutfile(cutfile)
@@ -658,7 +659,7 @@ end
 
 cut2sph(cuts::AbstractVector{<:Cut}; kwargs...) = [cut2sph(cut; kwargs...) for cut in cuts]
 
-function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
+function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000, frequency::Real = 0.0)
     cutθϕ = deepcopy(cut)
     if get_ncomp(cutθϕ) == 3
         @warn "Cut contains 3 polarization slots.  Discarding 3rd slot."
@@ -792,7 +793,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     M = last(axes(qsmn, 2))
     N = last(axes(qsmn, 3))
     nphi = Nϕ
-    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, qsmns=qsmn, powerms)
+    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, qsmns=qsmn, powerms, frequency)
 end
 
 function _filter_qmodes_by_power(qsmns, pwrtol)
