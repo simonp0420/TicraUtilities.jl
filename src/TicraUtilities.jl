@@ -79,6 +79,7 @@ export
     read_torfile,
     sor_efficiency,
     sph2cut,
+    sph2ffd,
     SPHQPartition,
     Station,
     Surface,
