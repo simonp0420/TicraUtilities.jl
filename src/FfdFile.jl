@@ -291,7 +291,7 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
 """
 function ffd2sph(ffd::Ffd; pwrtol = 1e-6, kwargs...)
     cut = ffd2cut(ffd)
-    sph = cut2sph(cut; pwrtol, kwargs...)
+    sph = cut2sph(cut; pwrtol, frequency = ffd.frequency, kwargs...)
     return sph
 end
 
@@ -299,10 +299,10 @@ ffd2sph(ffds::AbstractVector{Ffd}; keywords...) = [ffd2sph(ffd) for ffd in ffds]
 
 ffd2sph(ffdfile::AbstractString; kwargs...) = ffd2sph(read_ffdfile(ffdfile))
 
-function ffd2sph(ffdfile::AbstractString, sphfile::AbstractString; kwargs...)
+function ffd2sph(ffdfile::AbstractString, sphfile::AbstractString; style::Symbol = :ticra, kwargs...)
     ffdfile == sphfile && error("ffdfile and sphfile must be distinct")
     sph = ffd2sph(read_ffdfile(ffdfile); kwargs...)
-    write_sphfile(sphfile, sph)
+    write_sphfile(sphfile, sph; style)
     return sph
 end
 
@@ -390,7 +390,7 @@ file, or or the returned value from reading such a file with `read_sphfile`.
 - `phi`: An abstract range denoting the desired azimuthal angles in degrees at 
   which the field should be evaluated.  If an empty range is provided (the default), then
   the values will be determined automatically by examining the input spherical mode content.
--`frequency`: The frequency in Hz.  If zero (the default value), then the frequency stored in the
+- `frequency`: The frequency in Hz.  If zero (the default value), then the frequency stored in the
   output will be determined from the positional input argument. However, if the `frequency` 
   argument is positive, then this value will be used in preference to the value determined from
   examining the positional argument.  For the case when `sphs` is a vector of `SPHQPartition` objects
