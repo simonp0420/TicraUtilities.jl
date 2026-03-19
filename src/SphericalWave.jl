@@ -56,6 +56,8 @@ in the File Formats section of the Ticra official documentation.
     frequency::Float64 = 0.0
 end
 
+Base.length(::SPHQPartition) = 1
+
 """
     get_prgtag(s::SPHQPartition)
 
@@ -251,20 +253,25 @@ end
 
 
 """
-    write_sphfile(fname, qs::Vector{SPHQPartition})
-    write_sphfile(fname, qs::SPHQPartition)
+    write_sphfile(fname, qs::Vector{SPHQPartition}; style = :ticra)
+    write_sphfile(fname, qs::SPHQPartition; style = :ticra)
 
 Write SPH coefficients to a Q-type spherical wave expansion file, either a Ticra-style "*.sph" file (if the SPHQPartition
-object(s) contain zero in their `frequency` field), or an HFSS-style "*.swef" file, containing an additional line 9 with
-frequency information (if the SPHQPartition object(s) contain positive values in their `frequency` field).
+object(s) contain zero in their `frequency` field or `style = :ticra`), or an HFSS-style "*.swef" file containing an 
+additional line 9 with frequency information (if the SPHQPartition object(s) contain positive values in their `frequency`
+field(s) and `style = :hfss`).
 
 Prior to writing the data into the file, the input coefficients (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
 """
-function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
+function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition}; style::Symbol = :ticra)
+    style == :ticra || style == :hfss || error("Illegal value $(style) for style. Must be :hfss or :ticra")
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
-    all(iszero, (s.frequency for s in sps)) || all(>(0), (s.frequency for s in sps)) || error("Inconsistent partition frequencies")
+    allzeros = all(iszero, (s.frequency for s in sps))
+    allpositive = all(>(0), (s.frequency for s in sps))
+    allzeros || allpositive || error("Inconsistent partition frequencies. Must have all 0 or all > 0")
+    style == :hfss && allzeros && error("Can't use style = :hfss with zero frequencies in sps")
     open(fname, "w") do io
         for sp in sps # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
@@ -276,7 +283,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
             println(io, idstrg)
             @printf(io, "%6i %5i %5i %5i\n", nthe, nphi, nmax, mmax)
             foreach(t -> println(io, t), (t4, t5, t6, t7, t8))
-            !iszero(frequency) && println(io, "Frequency ", frequency)
+            style == :hfss && println(io, "Frequency ", frequency)
 
             for absm in 0:mmax
                 miszero = iszero(absm)
@@ -299,7 +306,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
     return
 end
 
-write_sphfile(fname::AbstractString, qs::SPHQPartition) = write_sphfile(fname, [qs])
+write_sphfile(fname::AbstractString, qs::SPHQPartition; kwargs...) = write_sphfile(fname, [qs]; kwargs...)
 
 
 
