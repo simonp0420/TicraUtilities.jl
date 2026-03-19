@@ -22,6 +22,8 @@ contains the field data for a single frequency.
     evec::Matrix{SVector{2,ComplexF64}}
 end
 
+Base.length(::Ffd) = 1
+
 function Base.show(io::IO, mime::MIME"text/plain", t::Ffd)
     println(io, "Ffd")
     println(io, "  frequency  $(t.frequency) [Hz]")
@@ -307,11 +309,11 @@ end
 """
     cut2ffd(cut::Cut; frequency = 0.0) -> ffd::Ffd
 
-    cut2ffd(cuts::AbstractVector{Cut}; frequencies) -> ffds::Vector{Ffd}
+    cut2ffd(cuts::AbstractVector{Cut}; frequency::AbstractVector{<:Real}) -> ffds::Vector{Ffd}
 
-    cut2ffd(cutfile::AbstractString; frequencies) -> ffd::Ffd
+    cut2ffd(cutfile::AbstractString; frequency) -> ffd::Ffd
 
-    cut2ffd(cutfile::AbstractString, ffdfile::AbstractString; frequencies) -> ffd::Ffd
+    cut2ffd(cutfile::AbstractString, ffdfile::AbstractString; frequency) -> ffd::Ffd
 
 Convert a Ticra-compatible `Cut` object to an HFSS-compatible `Ffd` object.
 
@@ -323,19 +325,19 @@ The second positional argument, if present, is the name of an HFSS-compatible ff
 which the generated `Ffd` object(s) should be written.
 
 ## Keyword Arguments
-- `frequency::Float64 = 0.0`: When converting a single `Cut` object, the default value is 0.0, implying that
-  a frequency-independent `Ffd` object is desired. If a positive value is provided (in Hz), a frequency-dependent
-  `Ffd` is created containing that single frequency.
-
-- `frequencies`: When the input consists of a vector of multiple `Cut` objects (or is 
-  a file containing multiple `Cut`s), then an abstract vector containing the same number
-  of frequencies (in Hz) is required here to create the multiple-frequency output `Ffd` vector
-  (or file). If the input file contains only a single frequency, then frequencies can be a scalar,
-  or can be totally omitted, in which case a frequency-independent `Ffd` will be created.
+- `frequency`: When converting a single `Cut` object, the default value is 0.0, implying that
+  a frequency-independent `Ffd` object is desired. If a positive value is provided (in Hz), a
+  frequency-dependent `Ffd` is created containing that single frequency.
+  When the positional input argument consists of a vector of multiple `Cut` objects (or is 
+  a file name containing multiple `Cut`s), then `frequency` must be an abstract vector 
+  containing the same number of positive frequencies (in Hz), as needed to create the multiple-frequency
+  output `Ffd` vector (or file). If the input file contains only a single frequency, then `frequency` 
+  can be a scalar, or can be totally omitted, in which case a frequency-independent `Ffd` will be created.
 """
 function cut2ffd end
 
 function cut2ffd(c::Cut; frequency::Float64 = 0.0)
+    frequency ≥ 0 || throw(ArgumentError("frequency must be ≥ 0"))
     get_ncomp(c) == 2 || error("Cut must contain only 2 polarization components")
     get_icut(c) == 1 || error("Cut.icut ≠ 1.  Only constant ϕ (polar) cuts are allowed.")
     c = convert_cut(c, 1) # Copy cut and ensure Eθ/Eϕ decomposition
@@ -347,16 +349,15 @@ function cut2ffd(c::Cut; frequency::Float64 = 0.0)
 end
 
 function cut2ffd(cuts::AbstractVector{<:Cut}; frequency::AbstractVector{<:Real})
-    length(cuts) == length(frequency) || error("Unequal lengths for cuts and frequencies vectors")
+    nf, nc = length.((frequency, cuts))
+    nf == nc || error("# frequencies $nf does not equal # cuts $nc")
+    all(>(0), frequency) || throw(ArgumentError("frequency must be all positive numbers"))
     ffds = [cut2ffd(cut; frequency=f) for (cut, f) in zip(cuts, frequency)]
     return ffds
 end
 
 function cut2ffd(cutfile::AbstractString; frequency = 0.0)
     cuts = read_cutfile(cutfile)
-    nf = length(frequency)
-    nc = length(cuts)
-    nf == nc || error("# frequencies $nf does not equal # cuts $nf read from $cutfile")
     ffds = cut2ffd(cuts; frequency)
     return ffds
 end
@@ -369,30 +370,32 @@ end
 
 
 """
-    sph2ffd(sphfile::AbstractString; theta, phi) -> ffd::Ffd
+    sph2ffd(sphfile::AbstractString; kwargs...) -> ffd::Ffd
 
-    sph2ffd(sph:SPHQPartition; theta, phi) -> ffd::Ffd
+    sph2ffd(sph:SPHQPartition; kwargs...) -> ffd::Ffd
 
-    sph2ffd(sphs:Vector{SPHQPartition}; theta, phi) -> ffds::Vector{Ffd}
+    sph2ffd(sphs:Vector{SPHQPartition}; kwargs...) -> ffds::Vector{Ffd}
 
 Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
 values, returned as a `Ffd` object. 
 
 The single positional input argument can be either a string containing the name 
-of a Ticra-compatible Q-type spherical wave file, or the returned value from reading 
-such a file with `read_sphfile`.
+of a Ticra-compatible (*.sph) or HFSS-compatible (*.swef) Q-type spherical wave 
+file, or or the returned value from reading such a file with `read_sphfile`.
 
-## Optional Keyword Arguments:
+## Keyword Arguments (all are optional):
 - `theta`: An abstract range denoting the desired polar angles (colattitudes) 
   in degrees at which the field should be evaluated. If an empty range is provided (the default), then
-  the values will be determined automatically by examining the modal content in `sph`.
+  the values will be determined automatically by examining the input spherical mode content.
 - `phi`: An abstract range denoting the desired azimuthal angles in degrees at 
   which the field should be evaluated.  If an empty range is provided (the default), then
-  the values will be determined automatically by examining the modal content in `sph`.
--`frequency`: The frequency in Hz.  If zero (the default value), then the frequency will be 
-  determined by `sph.frequency`. If positive, then this value will be used in preference to 
-  `sph.frequency`.  For the case of a vector of `SPHQPartition` objects (or a file containing
-  multiple partitions) then this argument should be an iterable of the same length.
+  the values will be determined automatically by examining the input spherical mode content.
+-`frequency`: The frequency in Hz.  If zero (the default value), then the frequency stored in the
+  output will be determined from the positional input argument. However, if the `frequency` 
+  argument is positive, then this value will be used in preference to the value determined from
+  examining the positional argument.  For the case when `sphs` is a vector of `SPHQPartition` objects
+  (or a file containing multiple partitions), then the `frequency` argument should be set to a vector
+  of the same length.
 
 ## Usage Example
     ffd = sph2ffd("testfile.sph"; phi=0:5:355, theta=0:1:180)
@@ -403,8 +406,21 @@ function sph2ffd(sphfile::AbstractString; kwargs...)
     return ffd
 end
 
-sph2ffd(sphs::AbstractVector{SPHQPartition}; frequencies::AbstractVector{<:Real}=zeros(length(sphs)), kwargs...) = 
-    [sph2ffd(sph; frequency, kwargs...) for (sph, frequency) in zip(sphs, frequencies)]
+function sph2ffd(sphs::AbstractVector{SPHQPartition};
+        frequency::AbstractVector{<:Real} = zeros(length(sphs)),
+        kwargs...)
+
+    length(sphs) == length(frequency) || throw(ArgumentError("sphs and frequency have different lengths"))
+    if length(sphs) > 1
+        for (sph, f) in zip(sphs, frequency)
+            if iszero(sph.frequency) && iszero(f)
+                error("Zero frequency not allowed in multifrequency vector{Ffd}")
+            end
+        end
+    end
+    ffds = [sph2ffd(sph; frequency = f, kwargs...) for (sph, f) in zip(sphs, frequency)]
+    return ffds
+end
 
 function sph2ffd(sph::SPHQPartition;
     theta::AbstractRange=0.0:-1.0:1.0,
