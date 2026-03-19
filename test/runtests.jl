@@ -1,4 +1,6 @@
+using Test
 using SafeTestsets
+using Accessors: @reset
 
 include("TEPTest.jl")
 include("CutTest.jl")

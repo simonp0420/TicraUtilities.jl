@@ -93,3 +93,162 @@ end
     @test_throws ArgumentError ffd2cut(ffdfile, ffdfile)
 end
 
+@safetestset "cut2ffd" begin
+    using TicraUtilities
+
+    # Single Cut to frequency-independent Ffd
+    cut = read_cutfile(joinpath(@__DIR__, "test.cut"))
+    ffd = cut2ffd(cut)
+    @test ffd.frequency == 0.0
+    @test ffd.theta == cut.theta
+    @test ffd.phi == cut.phi
+    @test size(ffd.evec) == size(cut.evec)
+
+    # Single Cut to frequency-dependent Ffd
+    ffd_freq = cut2ffd(cut; frequency=1e9)
+    @test ffd_freq.frequency == 1e9
+    @test ffd_freq.theta == cut.theta
+    @test ffd_freq.phi == cut.phi
+    @test size(ffd_freq.evec) == size(cut.evec)
+
+    # Vector of Cuts to vector of Ffds (multifrequency)
+    cuts = [cut, cut, cut]  # Use same cut for simplicity
+    frequencies = [1e9, 2e9, 3e9]
+    ffds = cut2ffd(cuts; frequency=frequencies)
+    @test length(ffds) == length(cuts)
+    for (ffd, f) in zip(ffds, frequencies)
+        @test ffd.frequency == f
+        @test ffd.theta == cut.theta
+        @test ffd.phi == cut.phi
+        @test size(ffd.evec) == size(cut.evec)
+    end
+
+    # File-based tests
+
+    # Create freq-dependent Ffd
+    cutfile = joinpath(@__DIR__, "test.cut")
+    ffdfile = joinpath(tempdir(), "temp.ffd")
+    ffds_file = cut2ffd(cutfile, ffdfile; frequency=1e9)
+    ffd_read = read_ffdfile(ffdfile)
+    @test ffd_read.frequency == 1e9
+    @test ffd_read.theta == cut.theta
+    @test ffd_read.phi == cut.phi
+    @test size(ffd_read.evec) == size(cut.evec)
+
+    # Create freq-independent Ffd
+    cutfile = joinpath(@__DIR__, "test.cut")
+    ffdfile = joinpath(tempdir(), "temp.ffd")
+    ffds_file = cut2ffd(cutfile, ffdfile)
+    for (lcount, line) in enumerate(eachline(ffdfile))
+        if lcount == 9
+            @test !occursin("Frequency", line)
+            break
+        end
+    end
+    ffd_read = read_ffdfile(ffdfile)
+    @test ffd_read.frequency == 0.0
+    @test ffd_read.theta == cut.theta
+    @test ffd_read.phi == cut.phi
+    @test size(ffd_read.evec) == size(cut.evec)
+
+    # Multifrequency file - create a temp cut file with multiple cuts
+    cuts_temp = [cut, cut, cut]
+    cutfile_multi = joinpath(tempdir(), "temp_multi.cut")
+    write_cutfile(cutfile_multi, cuts_temp)
+    ffdfile_multi = joinpath(tempdir(), "temp_multi.ffd")
+    @test_throws TypeError cut2ffd(cutfile_multi, ffdfile_multi)
+    ffds_file_multi = cut2ffd(cutfile_multi, ffdfile_multi; frequency=frequencies)
+    ffds_read_multi = read_ffdfile(ffdfile_multi)
+    @test length(ffds_read_multi) == length(ffds_file_multi)
+    for (ffd, f) in zip(ffds_read_multi, frequencies)
+        @test ffd.frequency == f
+    end
+end
+
+@safetestset "ffd2sph" begin
+    using TicraUtilities
+
+    # Single Ffd to SPH
+    ffd = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_findep.ffd"))
+    sph = ffd2sph(ffd)
+    @test sph isa SPHQPartition
+    @test sph.frequency == 0.0
+
+    # Multifrequency Ffds to vector of SPHs
+    ffds = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd"))
+    sphs = ffd2sph(ffds)
+    @test length(sphs) == length(ffds)
+    for (sph, ffd) in zip(sphs, ffds)
+        @test sph.frequency == ffd.frequency
+    end
+
+    # File-based tests with style :ticra
+    ffdfile = joinpath(@__DIR__, "ffd", "dipole_findep.ffd")
+    sphfile_ticra = joinpath(tempdir(), "temp_ticra.sph")
+    sph_file = ffd2sph(ffdfile, sphfile_ticra; style=:ticra)
+    open(sphfile_ticra, "r") do fid
+        foreach((i) -> readline(fid), 1:8)
+        line9 = readline(fid)
+        @test !occursin("Frequency", line9)
+    end
+    sph_read = read_sphfile(sphfile_ticra)
+    @test sph_read.frequency == 0.0
+
+    # File-based tests with style :hfss (frequency-dependent)
+    ffd_freq = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_1freq.ffd"))
+    ffd_temp_file = joinpath(tempdir(), "temp_freq.ffd")
+    write_ffdfile(ffd_temp_file, ffd_freq)
+    sphfile_hfss = joinpath(tempdir(), "temp_hfss.swef")
+    sph_file_hfss = ffd2sph(ffd_temp_file, sphfile_hfss; style=:hfss)
+    open(sphfile_hfss, "r") do fid
+        foreach((i) -> readline(fid), 1:8)
+        line9 = readline(fid)
+        @test occursin("Frequency", line9)
+    end
+    sph_read_hfss = read_sphfile(sphfile_hfss)
+    @test sph_read_hfss.frequency == ffd_freq.frequency
+end
+
+@testset "sph2ffd" begin
+    using TicraUtilities
+
+    # Single SPH to Ffd
+    sph = read_sphfile(joinpath(@__DIR__, "tc4p506_champ3.sph")) |> first
+    ffd = sph2ffd(sph)
+    @test ffd isa Ffd
+    @test ffd.frequency == sph.frequency
+
+    # SPH with custom theta/phi
+    ffd_custom = sph2ffd(sph; theta=0:2:180, phi=0:5:355)
+    @test ffd_custom.theta == 0:2:180
+    @test ffd_custom.phi == 0:5:355
+
+    # Vector of SPHs to vector of Ffds
+    # For multifrequency, we can create from the 3freq ffd, convert to sph, then back
+    ffds_orig = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd"))
+    sphs_multi = ffd2sph(ffds_orig)
+    ffds_back = sph2ffd(sphs_multi)
+    @test length(ffds_back) == length(ffds_orig)
+    for (ffd_back, ffd_orig) in zip(ffds_back, ffds_orig)
+        @test ffd_back.frequency == ffd_orig.frequency
+        @test ffd_back.theta == ffd_orig.theta
+        @test length(ffd_back.phi) + 1 == length(ffd_orig.phi)
+    end
+
+    # File-based tests with Ticra style
+    sphfile_ticra = joinpath(@__DIR__, "tc4p506_champ3.sph")
+    ffds_from_file = sph2ffd(sphfile_ticra; frequency = (1:10) * 1e9)
+    @test [ffd.frequency for ffd in ffds_from_file] == (1:10) * 1e9
+
+    # For HFSS style, create a temp file
+    sph_temp_hfss = joinpath(tempdir(), "temp_hfss.swef")
+    @reset sph.frequency = 1e9
+    write_sphfile(sph_temp_hfss, sph; style=:hfss)
+    ffd_hfss = sph2ffd(sph_temp_hfss)
+    @test ffd_hfss.frequency == 1e9
+
+    # Test with frequency override
+    ffd_override = sph2ffd(sph; frequency=2e9)
+    @test ffd_override.frequency == 2e9
+end
+
