@@ -63,12 +63,18 @@ of the returned matrix will be a 2-vector.
 """
 get_evec(ffd::Ffd) = ffd.evec
 
+function Base.isapprox(f1::Ffd, f2::Ffd; kwargs...)
+    f1.frequency == f2.frequency || return false
+    f1.theta == f2.theta || return false
+    f1.phi == f2.phi || return false
+    return isapprox(f1.evec, f2.evec; kwargs...)
+end
 
 """
-    split_ffd_line(line::AbstractString)::Vector{String}
+    _split_ffd_line(line::AbstractString)::Vector{String}
 Split an input line from a "*.ffd" file into tokens.
 """
-function split_ffd_line(line::AbstractString)
+function _split_ffd_line(line::AbstractString)
     split(line, x -> isspace(x) || x == ',' || x == ';'; keepempty = false)
 end
 
@@ -87,16 +93,16 @@ one for each frequency in the file.
 function read_ffdfile(fname::AbstractString)
     ffds = open(fname, "r") do fid
         ffds = Ffd[]
-        lsplit = split_ffd_line(readline(fid))[1:3]
+        lsplit = _split_ffd_line(readline(fid))[1:3]
         tstart, tstop, nt = (parse(Float64, ls) for ls in lsplit)
         thetas = range(tstart, tstop, round(Int, nt))
-        lsplit = split_ffd_line(readline(fid))[1:3]
+        lsplit = _split_ffd_line(readline(fid))[1:3]
         pstart, pstop, np = (parse(Float64, ls) for ls in lsplit)
         phis = range(pstart, pstop, round(Int, np))
 
         # 3rd line determines whether frequency-dependent or independent
         mark(fid) # So we can "unread" the line later
-        lsplit = split_ffd_line(readline(fid))
+        lsplit = _split_ffd_line(readline(fid))
         if lowercase(lsplit[1]) == "frequencies"
             fdependent = true
             nfreqs = parse(Int, lsplit[2])
@@ -108,7 +114,7 @@ function read_ffdfile(fname::AbstractString)
 
         for nf in 1:nfreqs
             if fdependent
-                lsplit = split_ffd_line(readline(fid))
+                lsplit = _split_ffd_line(readline(fid))
                 lowercase(lsplit[1]) == "frequency" || error("bad frequency line")
                 frequency = parse(Float64, lsplit[2])
             else
@@ -117,7 +123,7 @@ function read_ffdfile(fname::AbstractString)
 
             evec = [SVector(0.0im, 0.0im) for theta in thetas, phi in phis]
             for nt in 1:length(thetas), np in 1:length(phis)
-                lsplit = split_ffd_line(readline(fid))[1:4]
+                lsplit = _split_ffd_line(readline(fid))[1:4]
                 etr, eti, epr, epi = (parse(Float64, es) for es in lsplit)
                 evec[nt, np] = SVector(complex(etr, eti), complex(epr, epi))
             end
