@@ -60,7 +60,8 @@ function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     else
         println(io, "  phi  \tEmpty range")
     end
-    println(io, "  evec \t$(summary(t.evec))")
+    evec_summary = replace(summary(t.evec), "StaticArraysCore." => "")
+    println(io, "  evec \t", evec_summary)
     return nothing
 end
 
@@ -76,7 +77,8 @@ Compare two `Cut` objects for approximate equality.
 
 Compares most fields for perfect equality except `text` and `evec`.
 The `text` fields are not compared at all, and the `evec` fields 
-(`Matrix` types) are compared for approximate equality using `isapprox`.
+(`Matrix` types) are compared for approximate equality using `isapprox`, to 
+which any provided keyword arguments are passed.
 """
 function Base.isapprox(c1::Cut, c2::Cut; kwargs...)
     c1.ncomp == c2.ncomp || return false
