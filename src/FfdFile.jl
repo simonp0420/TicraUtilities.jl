@@ -27,10 +27,10 @@ Base.length(::Ffd) = 1
 function Base.show(io::IO, mime::MIME"text/plain", t::Ffd)
     println(io, "Ffd")
     println(io, "  frequency  $(t.frequency) [Hz]")
-    println(io, "  theta      $(t.theta) [°]")
-    println(io, "  phi        $(t.phi) [°]")
+    println(io, "  theta      $(t.theta)")
+    println(io, "  phi        $(t.phi)")
     evec_summary = replace(summary(t.evec), "StaticArraysCore." => "")
-    println(io, "  evec       " * evec_summary * " [V]")
+    println(io, "  evec       ", evec_summary)
     return nothing
 end
 
@@ -63,6 +63,23 @@ of the returned matrix will be a 2-vector.
 """
 get_evec(ffd::Ffd) = ffd.evec
 
+"""
+    get_frequency(ffd::Ffd)
+
+Return the frequency (in Hz) stored in the `FFd` object.  A zero value indicates a 
+frequency-independent `Ffd`.
+"""
+get_frequency(ffd::Ffd) = ffd.frequency
+
+"""
+    isapprox(f1::Ffd, f2::Ffd; kwargs...) -> tf::Bool
+
+Compare two `Ffd` objects for approximate equality.
+
+Compares most fields for perfect equality except `evec`.
+The `evec` fields (`Matrix` types) are compared for approximate equality using `isapprox`,
+to which any provided keyword arguments are passed.
+"""
 function Base.isapprox(f1::Ffd, f2::Ffd; kwargs...)
     f1.frequency == f2.frequency || return false
     f1.theta == f2.theta || return false
@@ -329,6 +346,9 @@ of a Ticra-compatible, spherical polar cut file, or the returned value of type `
 
 The second positional argument, if present, is the name of an HFSS-compatible ffd file to 
 which the generated `Ffd` object(s) should be written.
+
+Note: The `Cut` object (or file) need not be in Eθ/Eϕ format (`icomp = 1`).  If needed,
+polarization basis conversion to Eθ/Eϕ will be performed automatically.
 
 ## Keyword Arguments
 - `frequency`: When converting a single `Cut` object, the default value is 0.0, implying that
