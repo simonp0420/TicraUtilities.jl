@@ -9,6 +9,9 @@
 # isapprox(::Cut, ::Cut)
 # ```
 # ```@docs
+# isapprox(::Ffd, ::Ffd)
+# ```
+# ```@docs
 # maximum(::Cut)
 # ```
 # ```@docs
