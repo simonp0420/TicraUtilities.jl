@@ -253,37 +253,64 @@ end
 
 
 """
-    write_sphfile(fname, qs::Vector{SPHQPartition}; style = :ticra)
-    write_sphfile(fname, qs::SPHQPartition; style = :ticra)
+    write_sphfile(fname, qs::Vector{SPHQPartition}; style = :ticra, frequency = nothing)
+    write_sphfile(fname, qs::SPHQPartition; style = :ticra, frequency = nothing)
 
-Write SPH coefficients to a Q-type spherical wave expansion file, either a Ticra-style "*.sph" file (if the SPHQPartition
-object(s) contain zero in their `frequency` field or `style = :ticra`), or an HFSS-style "*.swef" file containing an 
-additional line 9 with frequency information (if the SPHQPartition object(s) contain positive values in their `frequency`
+Write SPH coefficients to a Q-type spherical wave expansion file, either a Ticra-style 
+"*.sph" file (if the SPHQPartition object(s) contain zero in their `frequency` field or if 
+`style = :ticra`), or an HFSS-style "*.swef" file containing an additional line 9 with frequency
+information (if the SPHQPartition object(s) contain positive values in their `frequency`
 field(s) and `style = :hfss`).
 
 Prior to writing the data into the file, the input coefficients (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
+
+## Required Positional Input Arguments
+- `fname`:  The name of the file to be written. By convention, should end in ".sph" for a Ticra-style file
+  and ".swef" for an HFSS-style file.
+- `qs`: An `SPHQPartition` object or a vector of such objects.
+
+## Optional Keyword Arguments
+- `style`: A Symbol which is either `:ticra` (the default) or `:hfss`.  If `:ticra`, then a standard,
+  Ticra-compatible, Q-type, spherical wave expansion file will be written.  If `:hfss`, then an extra
+  9th line will be inserted for each partition, indicating the frequency (in Hz) associated with that
+  partition.  
+- `frequency`: A Float64 scalar or vector of frequencies (in Hz) of the same length as `qs`. By default
+  `frequency = nothing` which is the required value if `style` takes its default value of `:ticra`.  If
+  `style = :hfss` then `frequency` will be used in preference to any frequencies stored in `qs`.  If
+  `frequency` is other than `nothing` and `style = :hfss` then the frequency value(s) in `frequency` will be 
+  used when writing the output file.
 """
-function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition}; style::Symbol = :ticra)
+function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition}; 
+    style::Symbol = :ticra,
+    frequency::Union{Nothing, Vector{Float64}} = nothing)
+
     style == :ticra || style == :hfss || error("Illegal value $(style) for style. Must be :hfss or :ticra")
+    !isnothing(frequency) && style == :ticra && throw(ArgumentError("frequency argument requires style = :hfss"))
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
     allzeros = all(iszero, (s.frequency for s in sps))
-    allpositive = all(>(0), (s.frequency for s in sps))
-    allzeros || allpositive || error("Inconsistent partition frequencies. Must have all 0 or all > 0")
+    if isnothing(frequency)
+        allpositive = all(>(0), (s.frequency for s in sps))
+        allzeros || allpositive || error("Inconsistent partition frequencies. Must have all 0 or all > 0")
+    else
+        length(frequency) == length(sps) || error("length(frequency) ≠ length(sps)")
+        allpositive = all(>(0), frequency)
+        allpositive || error("Bad frequencies. Each must be > 0")
+    end
     style == :hfss && allzeros && error("Can't use style = :hfss with zero frequencies in sps")
     open(fname, "w") do io
-        for sp in sps # Loop over partitions
+        for (i, sp) in pairs(sps) # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
             (; t4, t5, t6, t7, t8, qsmns, powerms) = sp
-            frequency = sp.frequency
+            freq = isnothing(frequency) ?  sp.frequency : frequency[i]
 
             # Write header info of next partition:
             println(io, prgtag)
             println(io, idstrg)
             @printf(io, "%6i %5i %5i %5i\n", nthe, nphi, nmax, mmax)
             foreach(t -> println(io, t), (t4, t5, t6, t7, t8))
-            style == :hfss && println(io, "Frequency ", frequency)
+            style == :hfss && println(io, "Frequency ", freq)
 
             for absm in 0:mmax
                 miszero = iszero(absm)
