@@ -19,6 +19,7 @@ export
     get_class,
     get_evec,
     get_freqs,
+    get_frequency,
     get_goal,
     get_header,
     get_icomp,
