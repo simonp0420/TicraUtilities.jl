@@ -283,28 +283,28 @@ multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with
 """
 function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition}; 
     style::Symbol = :ticra,
-    frequency::Union{Nothing, Vector{Float64}} = nothing)
+    frequency::Union{Nothing, Float64, AbstractVector{Float64}} = nothing)
 
     style == :ticra || style == :hfss || error("Illegal value $(style) for style. Must be :hfss or :ticra")
     !isnothing(frequency) && style == :ticra && throw(ArgumentError("frequency argument requires style = :hfss"))
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
-    allzeros = all(iszero, (s.frequency for s in sps))
-    if isnothing(frequency)
-        allpositive = all(>(0), (s.frequency for s in sps))
-        allzeros || allpositive || error("Inconsistent partition frequencies. Must have all 0 or all > 0")
-    else
-        length(frequency) == length(sps) || error("length(frequency) ≠ length(sps)")
-        allpositive = all(>(0), frequency)
+    if style == :hfss
+        if isnothing(frequency)
+            allpositive = all(>(0), (s.frequency for s in sps))
+        else
+            length(frequency) == length(sps) || error("length(frequency) ≠ length(sps)")
+            allpositive = all(>(0), frequency)
+        end
         allpositive || error("Bad frequencies. Each must be > 0")
     end
-    style == :hfss && allzeros && error("Can't use style = :hfss with zero frequencies in sps")
     open(fname, "w") do io
         for (i, sp) in pairs(sps) # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
             (; t4, t5, t6, t7, t8, qsmns, powerms) = sp
-            freq = isnothing(frequency) ?  sp.frequency : frequency[i]
-
+            if style == :hfss
+                freq = isnothing(frequency) ?  sp.frequency : frequency[i]
+            end
             # Write header info of next partition:
             println(io, prgtag)
             println(io, idstrg)
