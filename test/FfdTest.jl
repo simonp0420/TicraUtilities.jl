@@ -252,3 +252,65 @@ end
     @test ffd_override.frequency == 2e9
 end
 
+@safetestset "additional_hfss_interop" begin
+    using TicraUtilities
+    using LinearAlgebra: norm
+
+    # Test get_frequency on vector of Ffds
+    ffds = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd"))
+    ffd_freqs = get_frequency.(ffds)
+    @test ffd_freqs == [1e10, 2e10, 3e10]
+
+    # Test get_frequency on single Ffd
+    ffd_single = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_findep.ffd"))
+    @test get_frequency(ffd_single) == 0.0
+
+    # Test reading SWEF file
+    swef_file = joinpath(@__DIR__, "ffd", "center_element_rhcp_excited_q.swef")
+    swef = read_sphfile(swef_file)
+    @test swef isa SPHQPartition
+    @test get_frequency(swef) > 0.0  # Should have frequency
+
+    # Test writing SPH file with style=:hfss and frequency
+    sph = read_sphfile(joinpath(@__DIR__, "tc4p506_champ3.sph")) |> first
+    new_swef_file = joinpath(tempdir(), "temp_hfss_freq.swef")
+    write_sphfile(new_swef_file, sph, style=:hfss, frequency=1e9)
+    # Check that line 9 contains frequency
+    open(new_swef_file, "r") do fid
+        foreach((i) -> readline(fid), 1:8)
+        line9 = readline(fid)
+        @test occursin("Frequency", line9)
+    end
+    swef_read = read_sphfile(new_swef_file)
+    @test get_frequency(swef_read) == 1e9
+
+    # Test ffd2sph file-to-file with style=:hfss
+    ffds_file = joinpath(@__DIR__, "ffd", "dipole_fdep_3freqs.ffd")
+    swef_file_out = joinpath(tempdir(), "temp_multi.swef")
+    ffd2sph(ffds_file, swef_file_out, style=:hfss)
+    # Check that it has frequency lines
+    open(swef_file_out, "r") do fid
+        lines = readlines(fid)
+        @test any(occursin("Frequency", line) for line in lines)
+    end
+
+    # Test sph2ffd file-to-file
+    new_ffds_file = joinpath(tempdir(), "temp_from_swef.ffd")
+    sph2ffd(swef_file_out, new_ffds_file)
+    ffds_from_swef = read_ffdfile(new_ffds_file)
+    @test length(ffds_from_swef) == 3
+    @test all(ffd -> get_frequency(ffd) > 0, ffds_from_swef)
+
+    # Test maximum norm difference between orig and reconstructed Ffd objects using get_evec
+    ffd_orig = read_ffdfile(joinpath(@__DIR__, "ffd", "dipole_findep.ffd"))
+    sph_from_ffd = ffd2sph(ffd_orig)
+    ffd_reconstructed = sph2ffd(sph_from_ffd, phi=get_phi(ffd_orig))
+    max_diff = maximum(norm, get_evec(ffd_reconstructed) - get_evec(ffd_orig))
+    @test max_diff < 1e-3  # Should be small due to default pwrtol
+    sph_from_ffd = ffd2sph(ffd_orig, pwrtol=0)
+    ffd_reconstructed = sph2ffd(sph_from_ffd, phi=get_phi(ffd_orig))
+    max_diff = maximum(norm, get_evec(ffd_reconstructed) - get_evec(ffd_orig))
+    @test max_diff < 1e-14  # Should be small due to default pwrtol
+
+end
+
