@@ -6,15 +6,20 @@ export
     convert_cut,
     convert_cut!,
     Cut,
+    cut2ffd,
     cut2sph, 
     discard_pol3,
     eh2bor1cut,
     Exi,
+    Ffd,
+    ffd2cut,
+    ffd2sph,
     get_ampdb,
     get_att,
     get_class,
     get_evec,
     get_freqs,
+    get_frequency,
     get_goal,
     get_header,
     get_icomp,
@@ -66,6 +71,7 @@ export
     power,
     read_cutfile,
     read_exifile,
+    read_ffdfile,
     read_sphfile,
     read_stationfile,
     read_surface,
@@ -74,6 +80,7 @@ export
     read_torfile,
     sor_efficiency,
     sph2cut,
+    sph2ffd,
     SPHQPartition,
     Station,
     Surface,
@@ -86,6 +93,7 @@ export
     TorObj,
     write_cutfile,
     write_exifile,
+    write_ffdfile,
     write_sphfile,
     write_stationfile,
     write_surface,
@@ -99,6 +107,7 @@ include("Exi.jl")
 include("TorFile.jl")
 #include("Geom.jl")
 include("SphericalWave.jl")
+include("FfdFile.jl")
 include("Surface.jl")
 include("TEP.jl")
 

@@ -230,7 +230,7 @@ end
                  \tField data in cuts
              theta\t0.0:0.5:180.0
              phi  \t0.0:45.0:90.0
-             evec \t361×3 Matrix{StaticArraysCore.SVector{2, ComplexF64}}
+             evec \t361×3 Matrix{SVector{2, ComplexF64}}
            """
     @test str == str2
 end

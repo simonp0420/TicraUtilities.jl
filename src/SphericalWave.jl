@@ -34,6 +34,9 @@ in the File Formats section of the Ticra official documentation.
   that some of the entries (those with `n < abs(m)`) are always zero.
 * `powerms::OffsetArray{Float64, 1}`: The vector has axes `(0:mmax)` and the `m`th element
   contains the total power (one-half the sum of the magnitude squared) of all modes with `±m` as the m index.
+* `frequency::Float64=0.0`: The frequency in Hz.  Not used for Ticra-style spherical mode files, for which the
+  value is taken to be 0.0 (the default).  Used for HFSS-style "*.swef" files, which contain an extra 9'th line
+  containing the string "Frequency" followed by the frequency in Hz.
 """
 @kwdef struct SPHQPartition
     prgtag::String
@@ -50,7 +53,10 @@ in the File Formats section of the Ticra official documentation.
     qsmns::OffsetArray{ComplexF64,3,Array{ComplexF64,3}} =
         OffsetArray(zeros(ComplexF64, (2, 2mmax + 1, nmax)), 1:2, -mmax:mmax, 1:nmax)
     powerms::OffsetVector{Float64,Vector{Float64}} = OffsetArray(zeros(mmax + 1), 0:mmax)
+    frequency::Float64 = 0.0
 end
+
+Base.length(::SPHQPartition) = 1
 
 """
     get_prgtag(s::SPHQPartition)
@@ -148,14 +154,21 @@ with integers `m` ranging from `0` to `mmax`) and its `m`th element contains the
 """
 get_powerms(s::SPHQPartition) = s.powerms
 
+"""
+    get_frequency(s::SPHQPartition)
+Return the frequency in Hz stored in `s`.
+"""
+get_frequency(s::SPHQPartition) = s.frequency
+
 function Base.show(io::IO, mime::MIME"text/plain", sph::SPHQPartition)
     println(io, "SPHQPartition")
-    println(io, "  prgtag   $(sph.prgtag)")
-    println(io, "  idstrg   $(sph.idstrg)")
-    println(io, "  nthe     $(sph.nthe)")
-    println(io, "  nphi     $(sph.nphi)")
-    println(io, "  nmax     $(sph.nmax)")
-    println(io, "  mmax     $(sph.mmax)")
+    sph.frequency > 0 && println(io, "  frequency $(sph.frequency)")
+    println(io, "  prgtag    $(sph.prgtag)")
+    println(io, "  idstrg    $(sph.idstrg)")
+    println(io, "  nthe      $(sph.nthe)")
+    println(io, "  nphi      $(sph.nphi)")
+    println(io, "  nmax      $(sph.nmax)")
+    println(io, "  mmax      $(sph.mmax)")
     println(io, string("  qsmns    OffsetArray{ComplexF64}(",
         first(axes(sph.qsmns, 1)), ":", last(axes(sph.qsmns, 1)), ",",
         first(axes(sph.qsmns, 2)), ":", last(axes(sph.qsmns, 2)), ",",
@@ -193,6 +206,17 @@ function read_sphfile(fname::AbstractString)
             prgtag, idstrg = (readline(io) for _ in 1:2)
             nthe, nphi, nmax, mmax = parse.(Int, split(readline(io)))
             t4, t5, t6, t7, t8 = (readline(io) for _ in 4:8)
+            mark(io) # For re-reading line if Ticra-style file
+            line = readline(io)
+            words = split(line, x -> isspace(x) || x == ',' || x == ';'; keepempty = false)
+            if lowercase(words[1]) == "frequency"
+                # HFSS-style ".swef" file
+                frequency = parse(Float64, words[2])
+            else
+                # Ticra-style ".sph" file
+                frequency = 0.0
+                reset(io)
+            end
 
             qsmns = OffsetArray(zeros(ComplexF64, 2, 2mmax + 1, nmax), 1:2, -mmax:mmax, 1:nmax)
             powerms = OffsetArray(zeros(mmax + 1), 0:mmax)
@@ -216,7 +240,7 @@ function read_sphfile(fname::AbstractString)
                     end
                 end
             end
-            push!(sps, SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms))
+            push!(sps, SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax, mmax, t4, t5, t6, t7, t8, qsmns, powerms, frequency))
         end
         if length(sps) > 1
             return sps
@@ -229,27 +253,64 @@ end
 
 
 """
-    write_sphfile(fname, qs::Vector{SPHQPartition})
-    write_sphfile(fname, qs::SPHQPartition)
+    write_sphfile(fname, qs::Vector{SPHQPartition}; style = :ticra, frequency = nothing)
+    write_sphfile(fname, qs::SPHQPartition; style = :ticra, frequency = nothing)
 
-Write SPH coefficients to a Q-type spherical wave expansion file.
+Write SPH coefficients to a Q-type spherical wave expansion file, either a Ticra-style 
+"*.sph" file (if the SPHQPartition object(s) contain zero in their `frequency` field or if 
+`style = :ticra`), or an HFSS-style "*.swef" file containing an additional line 9 with frequency
+information (if the SPHQPartition object(s) contain positive values in their `frequency`
+field(s) and `style = :hfss`).
 
 Prior to writing the data into the file, the input coefficients (Q) are conjugated and then
 multiplied by the factor 1/sqrt(8π) to become Q′ and achieve consistency with Ticra-standard normalization.  
+
+## Required Positional Input Arguments
+- `fname`:  The name of the file to be written. By convention, should end in ".sph" for a Ticra-style file
+  and ".swef" for an HFSS-style file.
+- `qs`: An `SPHQPartition` object or a vector of such objects.
+
+## Optional Keyword Arguments
+- `style`: A Symbol which is either `:ticra` (the default) or `:hfss`.  If `:ticra`, then a standard,
+  Ticra-compatible, Q-type, spherical wave expansion file will be written.  If `:hfss`, then an extra
+  9th line will be inserted for each partition, indicating the frequency (in Hz) associated with that
+  partition.  
+- `frequency`: A Float64 scalar or vector of frequencies (in Hz) of the same length as `qs`. By default
+  `frequency = nothing` which is the required value if `style` takes its default value of `:ticra`.  If
+  `style = :hfss` then `frequency` will be used in preference to any frequencies stored in `qs`.  If
+  `frequency` is other than `nothing` and `style = :hfss` then the frequency value(s) in `frequency` will be 
+  used when writing the output file.
 """
-function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
+function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition}; 
+    style::Symbol = :ticra,
+    frequency::Union{Nothing, Float64, AbstractVector{Float64}} = nothing)
+
+    style == :ticra || style == :hfss || error("Illegal value $(style) for style. Must be :hfss or :ticra")
+    !isnothing(frequency) && style == :ticra && throw(ArgumentError("frequency argument requires style = :hfss"))
     ipwrnormfactor = inv(8π)
     inormfactor = sqrt(ipwrnormfactor)
+    if style == :hfss
+        if isnothing(frequency)
+            allpositive = all(>(0), (s.frequency for s in sps))
+        else
+            length(frequency) == length(sps) || error("length(frequency) ≠ length(sps)")
+            allpositive = all(>(0), frequency)
+        end
+        allpositive || error("Bad frequencies. Each must be > 0")
+    end
     open(fname, "w") do io
-        for sp in sps # Loop over partitions
+        for (i, sp) in pairs(sps) # Loop over partitions
             (; prgtag, idstrg, nthe, nphi, nmax, mmax) = sp
             (; t4, t5, t6, t7, t8, qsmns, powerms) = sp
-
+            if style == :hfss
+                freq = isnothing(frequency) ?  sp.frequency : frequency[i]
+            end
             # Write header info of next partition:
             println(io, prgtag)
             println(io, idstrg)
             @printf(io, "%6i %5i %5i %5i\n", nthe, nphi, nmax, mmax)
             foreach(t -> println(io, t), (t4, t5, t6, t7, t8))
+            style == :hfss && println(io, "Frequency ", freq)
 
             for absm in 0:mmax
                 miszero = iszero(absm)
@@ -272,7 +333,7 @@ function write_sphfile(fname::AbstractString, sps::Vector{SPHQPartition})
     return
 end
 
-write_sphfile(fname::AbstractString, qs::SPHQPartition) = write_sphfile(fname, [qs])
+write_sphfile(fname::AbstractString, qs::SPHQPartition; kwargs...) = write_sphfile(fname, [qs]; kwargs...)
 
 
 
@@ -616,6 +677,7 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
 * `pwrtol=0.0`: The power tolerance.  Spherical modes are included until the excluded
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes.
+* `frequency = 0.0`: Frequency (Hz) assigned to this output object.
 """
 function cut2sph(cutfile::AbstractString; kwargs...)
     cut = read_cutfile(cutfile)
@@ -624,7 +686,7 @@ end
 
 cut2sph(cuts::AbstractVector{<:Cut}; kwargs...) = [cut2sph(cut; kwargs...) for cut in cuts]
 
-function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
+function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000, frequency::Real = 0.0)
     cutθϕ = deepcopy(cut)
     if get_ncomp(cutθϕ) == 3
         @warn "Cut contains 3 polarization slots.  Discarding 3rd slot."
@@ -758,8 +820,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000)
     M = last(axes(qsmn, 2))
     N = last(axes(qsmn, 3))
     nphi = Nϕ
-    t4 = t5 = t6 = t7 = "Dummy Text"
-    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, t4, t5, t6, t7, qsmns=qsmn, powerms)
+    return SPHQPartition(; prgtag, idstrg, nthe, nphi, nmax=N, mmax=M, qsmns=qsmn, powerms, frequency)
 end
 
 function _filter_qmodes_by_power(qsmns, pwrtol)
@@ -781,7 +842,7 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
             mretain = mtest
             qpwr - sum(powerms[m] for m in 0:mretain) < pwrtol && break
         end
-        qpwr = sum(powerms[m] for m in 1:mretain)
+        qpwr = sum(powerms[m] for m in 0:mretain)
     end
 
     # Retain only n modes with nonnegligible power

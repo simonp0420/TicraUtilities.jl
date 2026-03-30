@@ -1,7 +1,10 @@
+using Test
 using SafeTestsets
+using Accessors: @reset
 
 include("TEPTest.jl")
 include("CutTest.jl")
+include("FfdTest.jl")
 include("SPHTest.jl")
 include("StationTest.jl")
 #include("TfileTest.jl")

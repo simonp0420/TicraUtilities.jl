@@ -392,6 +392,181 @@ plot!(cut_grasp, phi = 0, pol = 2, ls = :dash, label = "LHCP GRASP")
 #!nb # Finite amplitudes in the reconstructed patterns for ``\theta > 90^\circ`` are due to the
 #!nb # discontinuity in the fields at ``\theta = 90^\circ``, which would require an infinite number of 
 #!nb # modes to reproduce exactly.
+#nb %% [code] {"slideshow": {"slide_type": "slide"}}
+#!nb using TicraUtilities
+# ## Interoperability with HFSS Format Files
+# The developers of HFSS have adopted file formats that are slight variations on Ticra-style cut files and 
+# spherical wave files.  TicraUtilities provides functions, described in this section, to read and write
+# such files, and to convert between HFSS format and Ticra format.
+#-
+# To assist with the following demonstrations, we define a convenience function named `head` 
+# which displays the first few lines of a file: 
+head(fname, n=6) = foreach((il) -> println(il[2]), zip(1:n, eachline(fname)))
+#nb %% [code] {"slideshow": {"slide_type": "slide"}}
+# ### FFD Files
+# FFD files (which have extensions ".ffd") are used by HFSS to specify "Far Field Incident Wave" sources.
+# The data contained in such a file is essentially the same as that in a Ticra-compatible spherical polar cut
+# file, but stored in a different order.  Another difference is that FFD files always use an Eθ/Eϕ field
+# decomposition, as opposed to the several choices for polarization basis vectors allowed for cut files.
+#
+# The `TicraUtilities` package provides functions [`read_ffdfile`](@ref) and [`write_ffdfile`](@ref) to read
+# and write FFD files (both "frequency-independent" and "frequency-dependent" files).  Here is an example of 
+# such a file:  
+#-
+ffdfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ffd", "dipole_findep.ffd")
+head(ffdfile)
+# As seen from the first few lines shown above, this file contains no frequency information,
+# hence it is a "frequency-independent" FFD file. Below, we read it into Julia using [`read_ffdfile`](@ref):
+ffd = read_ffdfile(ffdfile)
+#nb # %% [markdown] {"slideshow": {"slide_type": "fragment"}}
+#!nb # `read_ffdfile` returns an object of type [`Ffd`](@ref), containing the far-field data
+#!nb # stored in the  file.  Note that the frequency field of the resulting structure is set to 0, 
+#!nb # indicating that the input file was frequency-independent.  Only a single `Ffd` object was 
+#!nb # returned because the file consisted of a single frequency-independent "partition".  Here
+#!nb # are the first few lines of a multi-frquency FFD file: 
+ffdsfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ffd", "dipole_fdep_3freqs.ffd")
+head(ffdsfile)
+#-
+#!nb # Note that the third line describes the number of frequency partitions contained
+#!nb # in the file and the fourth line (which is repeated for each partition) contains
+#!nb # the frequency (in Hz) for this particular partition.
+#!nb # If we read in this file we obtain a vector of `Ffd` objects, as shown below:
+ffds = read_ffdfile(ffdsfile)
+# The values stored in the fields of a `Ffd` object can be retrieved using the 
+# functions [`get_theta`](@ref), [`get_phi`](@ref), [`get_evec`](@ref) and [`get_frequency`](@ref).
+#-
+#nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
+#!nb # ### `Ffd`/`Cut` Conversion
+# `Ffd` objects (or vectors of same) can be converted to/from `Cut` objects (or vectors of same) using 
+# functions [`ffd2cut`](@ref) and [cut2ffd](@ref). For example:
+cuts_from_ffds = ffd2cut(ffds)
+# Note that the frequency information stored in `ffds` will be lost when creating `cuts_from_ffds`, since
+# `Cut` objects do not contain any frequency information.  One can easily gather up a vector of the
+# `Ffd` frequencies using, e.g.
+ffd_freqs = get_frequency.(ffds)
+#-
+#nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
+#!nb # ### FFD File/Cut File Conversion
+# The functions [`ffd2cut`](@ref) and [`cut2ffd`](@ref) can also be used to directly create a file of
+# one type from a file of the other, by specifying two (`String`) positional arguments.  For example
+ffdsfile = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ffd", "dipole_fdep_3freqs.ffd")
+cutsfile = joinpath(tempdir(), "cuts_from_ffds.cut")
+ffd2cut(ffdsfile, cutsfile)
+head(cutsfile)
+# Similarly, one can create a new FFD file from the recently created cut file:
+new_ffds_file = joinpath(tempdir(), "new_ffds.ffd")
+cut2ffd(cutsfile, new_ffds_file, frequency=ffd_freqs)
+head(new_ffds_file)
+# The `frequency` keyword argument is required above in this multi-frequency case, as discussed
+# in the documentation of [`cut2ffd`](@ref).
+#-
+#nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
+#!nb # ### `FFd`/`SPHQPartition` Conversion
+# The functions [`ffd2sph`](@ref) and [`sph2ffd`](@ref) can be used to convert between sampled
+# far-field data in a [`Ffd`](@ref) object (or vector of such objects) to Q-type spherical wave 
+# coefficients in a  [`SPHQPartition`](@ref) object (or vector of such objects).  For example:
+ffd
+#-
+sph_from_ffd = ffd2sph(ffd)
+# Note that even though `ffd` contains fields sampled every 2° in both θ and ϕ, the maximum
+# spherical mode indices in `sph_from_ffd` are `nmax = 6` and `mmax = 4`.  This is because
+# [`ffd2sph`](@ref) includes spherical modes only until the excluded modes' power is less
+# than `pwrtol` times the total modal power, and the default value of `pwrtol` is `1e-6`.
+#
+# We can reconstruct an `Ffd` object using [`sph2ffd`](@ref):
+ffd2 = sph2ffd(sph_from_ffd)
+# Note that the range of ϕ for `ffd2` begins at 0, not at -180, as in `ffd`. This rearrangement
+# is the default behavior because Ticra-compatible cut files should generally begin at ϕ = 0.  
+# For comparison purposes, we can force the ϕ values to be the same as in `ffd` by using the 
+# `phi` keyword argumment of [`sph2ffd`](@ref):
+ffd3 = sph2ffd(sph_from_ffd, phi = get_phi(ffd))
+#-
+# Now we can examine the maximum difference in the electric field vectors between original and reconstructed
+# `Ffd` objects:
+using LinearAlgebra: norm
+maximum(norm, get_evec(ffd3) - get_evec(ffd))
+# This relatively large value is due to the default modal truncation in `ffd2sph` with `pwrtol = 1e-6`.
+# If we had specified `pwrtol  = 0.0`, then many more spherical modes would be included (determined by
+# the field sampling density in the `Ffd` object), so that the maximum norm above would have been on 
+# the order of `1e-15`, limited only by `Float64` precision.
+
+
+
+# ### SWEF File/SPH File Conversion
+# HFSS has introduced a slightly modified version of Ticra's spherical mode (Q) file format. HFSS-compatible
+# files include frequency information within each partition in an extra 9th line, and use the ".swef" file
+# extension, in contrast to Ticra's choice of ".sph" extension.  TicraUtilities functions [`read_sphfile`](@ref)
+# and  [`write_sphfile`](@ref) can read and write both Ticra and HFSS format spherical wave files.
+# Here is an example of an HFSS-format spherical wave file:
+swef_file = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ffd", "center_element_rhcp_excited_q.swef")
+head(swef_file, 12)
+# Note the frequency information in line 9 above.  We now read in this file:
+swef = read_sphfile(swef_file)
+# The frequency is displayed on the first line of the above printout.  The type of the object
+# returned by the above call is [`SPHQPartition`](@ref), just as for reading in a Ticra-format
+# spherical wave file. The difference is that the object's `frequency` field is set to a nonzero
+# value in the case of an HFSS-format file, but is zero In the case of a Ticra-format file.
+#
+# It is easy to create a Ticra-format (.sph) spherical wave file from an HFSS-format (.swef)
+# file.  Simply use `style = :ticra` in the call to [`write_sphfile`](@ref):
+sph_file = joinpath(tempdir(), "temp.sph")
+write_sphfile(sph_file, swef, style = :ticra)
+head(sphfile, 12)
+# As seen above, the newly created `sph_file` lacks the extra 9th line containing frequency information.
+#-
+# To create an HFSS-format (.swef) spherical wave file from a Ticra-format (.sph) file,
+# one must specify both `style = :hfss` and assign a value for the `frequency` argument:
+sph = read_sphfile(sph_file)
+new_swef_file = joinpath(tempdir(), "temp.swef")
+write_sphfile(new_swef_file, sph, style = :hfss, frequency = 1e9)
+head(new_swef_file, 12)
+#!nb # ### `FFd`/`SPHQPartition` Conversion
+# The functions [`ffd2sph`](@ref) and [`sph2ffd`](@ref) can be used to convert between sampled
+# far-field data in a [`Ffd`](@ref) object (or vector of such objects) to spherical wave 
+# coefficients in a  [`SPHQPartition`](@ref) object (or vector of such objects).  For example:
+ffd
+#-
+sph_from_ffd = ffd2sph(ffd)
+# Note that even though `ffd` contains fields sampled every 2° in both θ and ϕ, the maximum
+# spherical mode indices are `nmax = 6` and `mmax = 4`.  This is because [`ffd2sph`](@ref) includes
+# spherical modes until the excluded modes' power is less than `pwrtol` times the total modal power,
+# and the default value of `pwrtol` is `1e-6`.
+#
+# We can reconstruct an `Ffd` object using [`sph2ffd`](@ref):
+ffd2 = sph2ffd(sph_from_ffd)
+# Note that the range of ϕ for `ffd2` begins at 0, not at -180, as in `ffd`. This is the default because
+# Ticra-compatible cut files should generally begin at ϕ = 0.  For comparison purposes, we can force 
+# the ϕ values to be the same as in `ffd`:
+ffd3 = sph2ffd(sph_from_ffd, phi = get_phi(ffd))
+#-
+# Now we can examine the maximum difference in the electric field vectors between original and reconstructed
+# `Ffd` objects:
+using LinearAlgebra: norm
+maximum(norm, get_evec(ffd3) - get_evec(ffd))
+# This relatively large value is due to the default modal truncation in `ffd2sph` with `pwrtol = 1e-6`.
+# If we had specified `pwrtol  = 0.0`, then the maximum norm above would have been on the order of `1e-15`.
+
+
+#nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
+#!nb # ### `FFD`/`SWEF` File Conversion
+# The functions [`ffd2sph`](@ref) and [`sph2ffd`](@ref) can also be used to directly convert between FFD
+# and SWEF files. For example:
+ffds_file = joinpath(dirname(pathof(TicraUtilities)), "..", "test", "ffd", "dipole_fdep_3freqs.ffd")
+swef_file = joinpath(tempdir(), "temp_file.swef")
+ffd2sph(ffds_file, swef_file, style = :hfss)
+#-
+head(swef_file, 12)
+#-
+#nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
+# Creating an FFD file from a SWEF file is equally simple:
+new_ffds_file = joinpath(tempdir(), "temp.ffd")
+sph2ffd(swef_file, new_ffds_file)
+#-
+head(new_ffds_file)
+
+
+
+
 #nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
 # ## Tabulated Electrical Properties (TEP) Files
 # There are two styles of TEP files:

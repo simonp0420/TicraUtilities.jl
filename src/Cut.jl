@@ -32,6 +32,7 @@ contains all of the cuts for a single frequency.
     evec::Matrix{SVector{N,ComplexF64}}
 end
 
+Base.length(::Cut) = 1
 
 function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     println(io, "Cut")
@@ -59,7 +60,8 @@ function Base.show(io::IO, mime::MIME"text/plain", t::Cut)
     else
         println(io, "  phi  \tEmpty range")
     end
-    println(io, "  evec \t$(summary(t.evec))")
+    evec_summary = replace(summary(t.evec), "StaticArraysCore." => "")
+    println(io, "  evec \t", evec_summary)
     return nothing
 end
 
@@ -75,7 +77,8 @@ Compare two `Cut` objects for approximate equality.
 
 Compares most fields for perfect equality except `text` and `evec`.
 The `text` fields are not compared at all, and the `evec` fields 
-(`Matrix` types) are compared for approximate equality using `isapprox`.
+(`Matrix` types) are compared for approximate equality using `isapprox`, to 
+which any provided keyword arguments are passed.
 """
 function Base.isapprox(c1::Cut, c2::Cut; kwargs...)
     c1.ncomp == c2.ncomp || return false
@@ -406,7 +409,11 @@ function write_cutfile(
 ) where {T1<:AbstractRange, T2<:AbstractRange, N}
     open(fname, "w") do fid
         for (n, phi) in enumerate(cut.phi)
-            @printf(fid, "%s, phi = %8.3f\n", title, phi)
+            if isempty(cut.text) || isempty(cut.text[n])
+                @printf(fid, "%s, phi = %8.3f\n", title, phi)
+            else
+                println(fid, cut.text[n])
+            end
             @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
                 cut.theta[1], cut.theta[2] - cut.theta[1],
                 length(cut.theta), phi, cut.icomp, cut.icut,
@@ -438,7 +445,11 @@ function write_cutfile(
     open(fname, "w") do fid
         for cut in cuts
             for (n, phi) in enumerate(cut.phi)
-                @printf(fid, "%s, phi = %8.3f\n", title, phi)
+                if isempty(cut.text) || isempty(cut.text[n])
+                    @printf(fid, "%s, phi = %8.3f\n", title, phi)
+                else
+                    println(fid, cut.text[n])
+                end
                 @printf(fid, "%8.3f %8.3f %d %8.3f %d %d %d\n",
                     cut.theta[1], cut.theta[2] - cut.theta[1], length(cut.theta),
                     phi, cut.icomp, cut.icut, cut.ncomp)

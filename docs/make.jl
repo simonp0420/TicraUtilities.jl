@@ -16,6 +16,13 @@ end
 
 #Literate.notebook(joinpath("literate", "Tutorial.jl"), "notebooks"; execute=false)
 
+# Define the local path to package source
+#package_root = abspath(joinpath(@__DIR__, ".."))
+
+# Define the remote repository information using a Documenter.Remotes type (e.g., 
+#remote_repo = Documenter.Remotes.GitHub("simonp0420", "TicraUtilities.jl") 
+
+
 makedocs(;
     format = Documenter.HTML(
         assets=String["assets/citations.css"],
@@ -29,6 +36,8 @@ makedocs(;
     ],
     sitename = "TicraUtilities",
     plugins = [bib,],
+#    repo = remote_repo,
+#    remotes = nothing # Dict(package_root => remote_repo),
 )
 
 deploydocs(
