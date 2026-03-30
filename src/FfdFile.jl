@@ -26,7 +26,7 @@ Base.length(::Ffd) = 1
 
 function Base.show(io::IO, mime::MIME"text/plain", t::Ffd)
     println(io, "Ffd")
-    println(io, "  frequency  $(t.frequency) [Hz]")
+    println(io, "  frequency  $(t.frequency)")
     println(io, "  theta      $(t.theta)")
     println(io, "  phi        $(t.phi)")
     evec_summary = replace(summary(t.evec), "StaticArraysCore." => "")
@@ -311,6 +311,11 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes. A small, nonzero value here prevents the inclusion of many
   insignificant modes when the far-field sphere is over-sampled.
+* `style = :hfss`: This argument (a `Symbol`) is only relevant for the 2-argument method of `ffd2sph` (i.e. 
+  when a spherical wave file is to be written.) In that case, the default value of `:hfss` ensures
+  that an HFSS-compatible spherical wave file containing frequency information is created. When
+  `style = :ticra` (the only other legal value), then a standard, Ticra-compatible, Q-type, spherical
+   wave expansion file will be created, one that does not contain any frequency information.
 """
 function ffd2sph(ffd::Ffd; pwrtol = 1e-6, kwargs...)
     cut = ffd2cut(ffd)
@@ -402,14 +407,20 @@ end
 
     sph2ffd(sphs:Vector{SPHQPartition}; kwargs...) -> ffds::Vector{Ffd}
 
+    sph2ffd(sphfile::AbstractString, ffdfile::AbstractString; kwargs...) -> ffd::Ffd
+
 Convert a set of Q-type spherical wave modal coefficients to far-field electric field 
 values, returned as a `Ffd` object. 
 
-The single positional input argument can be either a string containing the name 
+The first positional input argument can be either a string containing the name 
 of a Ticra-compatible (*.sph) or HFSS-compatible (*.swef) Q-type spherical wave 
 file, or or the returned value from reading such a file with `read_sphfile`.
+The output of this function can be passed to `write_ffdfile` to create an HFSS-compatible 
+far-field data file (.ffd file).  This is done automatically if the second positional
+argument is provided as shown above.
 
-## Keyword Arguments (all are optional):
+
+## Keyword Arguments (all are optional, except possibly `frequency`):
 - `theta`: An abstract range denoting the desired polar angles (colattitudes) 
   in degrees at which the field should be evaluated. If an empty range is provided (the default), then
   the values will be determined automatically by examining the input spherical mode content.
@@ -421,7 +432,9 @@ file, or or the returned value from reading such a file with `read_sphfile`.
   argument is positive, then this value will be used in preference to the value determined from
   examining the positional argument.  For the case when `sphs` is a vector of `SPHQPartition` objects
   (or a file containing multiple partitions), then the `frequency` argument should be set to a vector
-  of the same length.
+  of the same length.  Note that a nondefault value is required when the input consists of multiple 
+  partitions where each partition has zero in its `frequency` field.  This case arises when the input
+  partitions arise from reading Ticra-compatible spherical wave files.
 
 ## Usage Example
     ffd = sph2ffd("testfile.sph"; phi=0:5:355, theta=0:1:180)
@@ -429,6 +442,13 @@ file, or or the returned value from reading such a file with `read_sphfile`.
 function sph2ffd(sphfile::AbstractString; kwargs...)
     sph = read_sphfile(sphfile)
     ffd = sph2ffd(sph; kwargs...)
+    return ffd
+end
+
+function sph2ffd(sphfile::AbstractString, ffdfile::AbstractString; kwargs...)
+    sph = read_sphfile(sphfile)
+    ffd = sph2ffd(sph; kwargs...)
+    write_ffdfile(ffdfile, ffd)
     return ffd
 end
 
