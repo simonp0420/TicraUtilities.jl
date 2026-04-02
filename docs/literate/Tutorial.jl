@@ -52,7 +52,7 @@ peakdb = round(maximum_db(cut), digits = 3)
 plot(
     cut, 
     normalization = :peak,
-    phi = 0:90:315, 
+    phi = 0:90:270, 
     title = "Peak = $peakdb dB",
     framestyle = :box,
     xlim = (0, 180),
