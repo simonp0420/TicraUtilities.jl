@@ -406,8 +406,9 @@ head(fname, n=6) = foreach((il) -> println(il[2]), zip(1:n, eachline(fname)))
 # ### FFD Files
 # FFD files (which have extensions ".ffd") are used by HFSS to specify "Far Field Incident Wave" sources.
 # The data contained in such a file is essentially the same as that in a Ticra-compatible spherical polar cut
-# file, but stored in a different order.  Another difference is that FFD files always use an Eθ/Eϕ field
-# decomposition, as opposed to the several choices for polarization basis vectors allowed for cut files.
+# file, but stored in a different order.  Another difference is that FFD files always use an ``E_\theta`` and
+# ``E_\phi`` field decomposition, as opposed to the several choices for polarization basis vectors allowed
+# for cut files.
 #
 # The `TicraUtilities` package provides functions [`read_ffdfile`](@ref) and [`write_ffdfile`](@ref) to read
 # and write FFD files (both "frequency-independent" and "frequency-dependent" files).  Here is an example of 
@@ -520,33 +521,7 @@ sph = read_sphfile(sph_file)
 new_swef_file = joinpath(tempdir(), "temp.swef")
 write_sphfile(new_swef_file, sph, style = :hfss, frequency = 1e9)
 head(new_swef_file, 12)
-#!nb # ### `FFd`/`SPHQPartition` Conversion
-# The functions [`ffd2sph`](@ref) and [`sph2ffd`](@ref) can be used to convert between sampled
-# far-field data in a [`Ffd`](@ref) object (or vector of such objects) to spherical wave 
-# coefficients in a  [`SPHQPartition`](@ref) object (or vector of such objects).  For example:
-ffd
 #-
-sph_from_ffd = ffd2sph(ffd)
-# Note that even though `ffd` contains fields sampled every 2° in both θ and ϕ, the maximum
-# spherical mode indices are `nmax = 6` and `mmax = 4`.  This is because [`ffd2sph`](@ref) includes
-# spherical modes until the excluded modes' power is less than `pwrtol` times the total modal power,
-# and the default value of `pwrtol` is `1e-6`.
-#
-# We can reconstruct an `Ffd` object using [`sph2ffd`](@ref):
-ffd2 = sph2ffd(sph_from_ffd)
-# Note that the range of ϕ for `ffd2` begins at 0, not at -180, as in `ffd`. This is the default because
-# Ticra-compatible cut files should generally begin at ϕ = 0.  For comparison purposes, we can force 
-# the ϕ values to be the same as in `ffd`:
-ffd3 = sph2ffd(sph_from_ffd, phi = get_phi(ffd))
-#-
-# Now we can examine the maximum difference in the electric field vectors between original and reconstructed
-# `Ffd` objects:
-using LinearAlgebra: norm
-maximum(norm, get_evec(ffd3) - get_evec(ffd))
-# This relatively large value is due to the default modal truncation in `ffd2sph` with `pwrtol = 1e-6`.
-# If we had specified `pwrtol  = 0.0`, then the maximum norm above would have been on the order of `1e-15`.
-
-
 #nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
 #!nb # ### `FFD`/`SWEF` File Conversion
 # The functions [`ffd2sph`](@ref) and [`sph2ffd`](@ref) can also be used to directly convert between FFD
