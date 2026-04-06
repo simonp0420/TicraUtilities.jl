@@ -14,6 +14,11 @@ This package provides utilities in the Julia programming language for
 * Reading, writing, and plotting TICRA-compatible cut (.cut) files.
 * Reading and writing spherical wave expansion (.sph) files.
 * Converting cut files to and from spherical wave expansion files.
+* Bidirectional conversion between any two of the following Ticra and HFSS format field files:
+  - Ticra Cut files (.cut)
+  - Ticra Spherical Wave Files (.sph)
+  - HFSS Far-Field Files (.ffd)
+  - HFSS Spherical Wave Files (.swef)
 * Reading and writing tabulated electrical properties (TEP) files, both
   the original scattering surface format introduced in GRASP8, and the newer
   periodic unit cell format, introduced in QUPES.
@@ -49,4 +54,5 @@ You can obtain TicraUtilities using Julia's Pkg REPL-mode (hitting `]` as the fi
 * Version 1.1: Added functions to read and write TEP files, and convert between old and new TEP file formats.
 * Version 1.2: Added functions `issym` and `symsqueeze`.  Several bug fixes.
 * Version 1.3: Added function `discard_pol3`. `cut2sph` now accepts symmetric cuts and cuts with 3 polarization slots.
+* Version 1.4 Added support for HFSS-compatible FFD and SWEF files, and conversion between these and Ticra-compatible files.
 
