@@ -16,9 +16,9 @@ This package provides utilities in the Julia programming language for
 * Converting cut files to and from spherical wave expansion files.
 * Bidirectional conversion between any two of the following Ticra and HFSS format field files:
   - Ticra Cut files (.cut)
-  - Ticra Spherical Wave Files (.sph)
-  - HFSS Far-Field Files (.ffd)
-  - HFSS Spherical Wave Files (.swef)
+  - Ticra Spherical Wave files (.sph)
+  - HFSS Far-Field files (.ffd)
+  - HFSS Spherical Wave files (.swef)
 * Reading and writing tabulated electrical properties (TEP) files, both
   the original scattering surface format introduced in GRASP8, and the newer
   periodic unit cell format, introduced in QUPES.
