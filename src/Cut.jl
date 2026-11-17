@@ -315,7 +315,7 @@ function read_cutfile(fname::AbstractString)
         cutphi = Float64[]
         header = String[]
         kf = 0  # Initialize frequency counter
-        local dth, header, icomp, icut, kf, ncomp, nphi, nth, evecallphi, evecnext, ths, cuts
+        local dth, header, icomp, icut, kf, ncomp, nphi, nth, evecallphi, ths, cuts
         firstcut = true
         while !eof(fid)
             textline = rstrip(readline(fid))
@@ -329,12 +329,6 @@ function read_cutfile(fname::AbstractString)
                     cut = cuts[end]
                     evec = reshape(evecallphi, length(cut.theta), length(cut.phi))
                     cuts[end] = Cut(cut.ncomp, cut.icut, cut.icomp, cut.text, cut.theta, cut.phi, evec)
-                else
-                    if ncomp == 2
-                        evecnext = [@SVector[0.0 + 0.0im, 0.0 + 0.0im] for _ in 1:nth]
-                    else
-                        evecnext = [@SVector[0.0 + 0.0im, 0.0 + 0.0im, 0.0 + 0.0im] for _ in 1:nth]# Storage increment for reading field values
-                    end
                 end
                 kf += 1
                 header = String[textline]
@@ -363,7 +357,7 @@ function read_cutfile(fname::AbstractString)
             nth == length(cut.theta) || error("Inconsistent nth")
             isapprox(dth, cut.theta[2] - cut.theta[1], atol=1e-7) || error("Inconsistent dth")
 
-            append!(evecallphi, evecnext)
+            resize!(evecallphi, length(evecallphi) + nth)
             evecthisphi = @view evecallphi[end-nth+1:end]
 
             # Read in the field data for this phi cut
@@ -535,7 +529,7 @@ function phscen(cut::Cut, fghz=11.802852677165355; min_dropoff=-10.0)
         y0 = x0
     end
     z0 = kz ./ wn
-    return (x0, y0, z0[1], z0[2])
+    return (x0, y0, z0[1], length(z0) == 1 ? z0[1] : z0[2])
 end
 
 function phscen(cutfile::AbstractString, fghz=11.802852677165355; min_dropoff=-10)
@@ -1081,15 +1075,12 @@ function asym2sym(cut::Cut)
     iszero(first(theta)) || error("cut does begin at θ=0")
     iseven(length(phi)) || error("Number of ϕ cuts is not even")
     phitol = 1e-6 # tolerance for phi comparison
-    for ϕ in phi
-        found = false
-        for ϕ′ in ϕ
-            if abs(mod(ϕ - ϕ′, 360)) < phitol
-                found = true
-                break
-            end
-        end
-        !found && error("cut contains $ϕ but not $(ϕ±180)")
+    npairs = length(phi) ÷ 2
+    for i in 1:npairs
+        # The algorithm pairs the first and second halves of the phi grid.
+        separation = mod(phi[i + npairs] - phi[i], 360)
+        abs(separation - 180) < phitol ||
+            throw(ArgumentError("phi cuts must be paired 180 degrees apart"))
     end
 
     cut = deepcopy(cut) # Avoid mutating the input argument
@@ -1152,14 +1143,14 @@ end
 Create a copy of `cut` but discard the third polarization slot, if present.
 """
 function discard_pol3(cut::Cut{Tt, Tp, N}) where {Tt<:AbstractRange, Tp<:AbstractRange, N}
-    N == 3 || return deepcopy(cut2)
+    N == 3 || return deepcopy(cut)
     evec = [SVector(t[1], t[2]) for t in get_evec(cut)]
     cut2 = Cut{Tt,Tp,2}(icut = get_icut(cut),
                         icomp = get_icomp(cut),
                         ncomp = 2,
                         theta = get_theta(cut),
                         phi = get_phi(cut),
-                        text = get_text(cut),
+                        text = copy(get_text(cut)),
                         evec = evec)
     return cut2
 end
