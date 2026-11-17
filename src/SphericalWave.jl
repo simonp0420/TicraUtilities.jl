@@ -446,7 +446,7 @@ function sph2cut(sph::SPHQPartition;
     phi::AbstractRange=0.0:-1.0:1.0,
     ipol::Int=0)
 
-    (0 ≤ ipol ≤ 3) || Throw(ArgumentError("polarization must be either 0,1,2, or 3"))
+    (0 ≤ ipol ≤ 3) || throw(ArgumentError("polarization must be either 0,1,2, or 3"))
 
     if isempty(theta)
         Nθ = sph.nthe ÷ 2 + 1
@@ -527,7 +527,9 @@ function _q2evec(qsmns, θs, ϕs)
     # Precompute complex exponentials for fast lookup
     expmjmϕs_parent = ones(ComplexF64, Nϕ, mabsmax + 1)
     expmjmϕs = OffsetArray(expmjmϕs_parent, 1:Nϕ, 0:mabsmax)
-    expmjmϕs[:, 1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
+    if mabsmax ≥ 1
+        expmjmϕs[:, 1] .= (cis(deg2rad(-ϕ)) for ϕ in ϕs)
+    end
     for m in 2:mabsmax
         for iϕ in axes(expmjmϕs, 1)
             expmjmϕs[iϕ, m] = expmjmϕs[iϕ, m-1] * expmjmϕs[iϕ, 1]
@@ -556,7 +558,7 @@ function _q2evec(qsmns, θs, ϕs)
 
                 if θis0 || θis180
                     mPfactor = sqrt(n * (n + 1) * (2n + 1) / 8)
-                    mrange = -1:2:1
+                    mrange = iszero(mabsmax) ? (1:0) : (-1:2:1)
                 else
                     # General, non-endpoint θ
                     mlim = min(mabsmax, n)
@@ -704,7 +706,7 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000, frequency::Real = 0
     if 180 ≠ last(θs)
         # Extend cut to θ = 180 with zeros
         newθs = (last(θs)+Δθ):Δθ:180
-        newzeros = zeros(eltype(cut.evec), length(newθs), Nϕ)
+        newzeros = zeros(eltype(cutθϕ.evec), length(newθs), Nϕ)
         cutθϕ.evec = vcat(cutθϕ.evec, newzeros)
         cutθϕ.theta = first(θs):Δθ:180
         θs = get_theta(cutθϕ)
@@ -727,13 +729,14 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000, frequency::Real = 0
 
     N = min(Nθ - 1, nmax) # Maximum modal n value
     Nϕo2 = Nϕ ÷ 2
-    M = isodd(Nϕ) ? min(Nϕo2, mmax) : min(Nϕo2 - 1, mmax) # Max modal m value
+    M = isodd(Nϕ) ? min(Nϕo2, mmax, N) : min(Nϕo2 - 1, mmax, N) # Max modal m value
 
-    b̃p1 = zeros(ComplexF64, 4N) # Extended Fourier coefficients
-    b̃m1 = zeros(ComplexF64, 4N)
+    Nband = Nθ - 1 # Preserve the sampled bandwidth even when output nmax is smaller.
+    b̃p1 = zeros(ComplexF64, 4Nband) # Extended Fourier coefficients
+    b̃m1 = zeros(ComplexF64, 4Nband)
 
     # Step 12: Periodic extension of the Pi function
-    Π̃ = ComplexF64[Π(j > 2N ? j - 4N : j) for j in 0:(4N-1)]
+    Π̃ = ComplexF64[Π(j > 2Nband ? j - 4Nband : j) for j in 0:(4Nband-1)]
     ftΠ̃ = fft!(Π̃)
 
     qsmns = OffsetArray(zeros(ComplexF64, (2, 2M + 1, N)), 1:2, -M:M, 1:N)
@@ -759,12 +762,12 @@ function cut2sph(cut::Cut; pwrtol=0.0, mmax=1000, nmax=1000, frequency::Real = 0
         # Eq. 4.87:
         b̃p1 .= zero(ComplexF64)
         b̃m1 .= zero(ComplexF64)
-        Np1 = N + 1
+        Np1 = Nband + 1
         b̃p1[1:Np1] .= @view bp1[1:Np1]
         b̃p1[Np1] *= 0.5
         b̃m1[1:Np1] .= @view bm1[1:Np1]
         b̃m1[Np1] *= 0.5
-        Nm1 = N - 1
+        Nm1 = Nband - 1
         b̃p1[(end-Nm1):end] .= @view bp1[(end-Nm1):end]
         b̃p1[end-Nm1] *= 0.5
         b̃m1[(end-Nm1):end] .= @view bm1[(end-Nm1):end]
@@ -835,12 +838,16 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
     qpwr = sum(powerms)
     pwrtol ≤ 0 && return (qpwr, powerms, qsmns)
 
+    # Both truncations share one budget relative to the original total power.
+    power_limit = pwrtol * qpwr
+    total_power = qpwr
+
     # Retain only m modes with nonneglible power
     mretain = mabsmax
     if pwrtol > 0
         for mtest in 0:mabsmax
             mretain = mtest
-            qpwr - sum(powerms[m] for m in 0:mretain) < pwrtol && break
+            total_power - sum(powerms[m] for m in 0:mretain) ≤ power_limit && break
         end
         qpwr = sum(powerms[m] for m in 0:mretain)
     end
@@ -851,7 +858,7 @@ function _filter_qmodes_by_power(qsmns, pwrtol)
         for ntest in 1:nmax
             nretain = ntest
             qsretained = (qsmns[s, m, n] for s in 1:2 for m in -mretain:mretain for n in 1:nretain)
-            qpwr - 0.5 * sum(abs2, qsretained) < pwrtol && break
+            total_power - 0.5 * sum(abs2, qsretained) ≤ power_limit && break
         end
     end
 
