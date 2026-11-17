@@ -300,7 +300,7 @@ function _readncs(fid, ncs, firststr="")
     strs = split(readline(fid), x -> isspace(x) || x == ','; keepempty=false)
     if !isempty(firststr)
         actualfirst = popfirst!(strs)
-        actualfirst == firststr || error("Expected \"" * firststr * "\" but got \"" * actual * "\"")
+        actualfirst == firststr || error("Expected \"" * firststr * "\" but got \"" * actualfirst * "\"")
     end
     length(strs) ≥ 2ncs || error("Not enough entries on a line of the file")
     return ntuple(i -> complex(parse(Float64, strs[2i-1]), parse(Float64, strs[2i])), ncs)
@@ -354,6 +354,7 @@ end
 function _get_puc_str2(fid, str1)
     line = ""
     while isempty(line) || all(isspace, line)
+        eof(fid) && throw(EOFError())
         line = readline(fid)
     end
     strs = split(line)
