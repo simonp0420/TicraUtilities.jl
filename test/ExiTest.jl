@@ -31,3 +31,16 @@ using SafeTestsets
     @test str == str2
 end
 
+
+@safetestset "Unicode excitation headers" begin
+    using TicraUtilities
+    mktempdir() do dir
+        src, dest = joinpath(dir,"input.exi"), joinpath(dir,"output.exi")
+        write(src, "áááá\nαβγδε\n++++\nfeed1 0.0 45.0\n")
+        excitation = read_exifile(src)
+        @test excitation.header == ["áááá", "αβγδε"]
+        @test excitation.id == ["feed1"]
+        write_exifile(dest,excitation)
+        @test read_exifile(dest).header == excitation.header
+    end
+end
