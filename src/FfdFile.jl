@@ -159,10 +159,26 @@ end # function
     write_ffdfile(fname::AbstractString, ffds::AbstractVector{Ffd})
 
 Write `Ffd` data to an HFSS-compatible "Far Field Incident Wave Source" file.
+All partitions must have identical angular grids and matching field dimensions.
+Frequencies must be finite and nonnegative; multiple partitions require positive
+frequencies. Invalid input is rejected before opening the destination file.
 """
 write_ffdfile(fname::AbstractString, ffd::Ffd) = write_ffdfile(fname, [ffd])
 
 function write_ffdfile(fname::AbstractString, ffds::AbstractVector{<:Ffd})
+    isempty(ffds) && throw(ArgumentError("ffds must not be empty"))
+    theta, phi = ffds[1].theta, ffds[1].phi
+    (isempty(theta) || isempty(phi)) && throw(ArgumentError("FFD grids must not be empty"))
+    for ffd in ffds
+        (ffd.theta == theta && ffd.phi == phi) ||
+            throw(ArgumentError("All FFD partitions must use the same theta and phi grids"))
+        size(ffd.evec) == (length(theta), length(phi)) ||
+            throw(ArgumentError("FFD field dimensions must match the angular grids"))
+        (isfinite(ffd.frequency) && ffd.frequency ≥ 0) ||
+            throw(ArgumentError("FFD frequencies must be finite and nonnegative"))
+        length(ffds) > 1 && iszero(ffd.frequency) &&
+            throw(ArgumentError("Multifrequency FFD partitions require positive frequencies"))
+    end
     open(fname, "w") do fid
         ts = ffds[1].theta
         println(fid, first(ts), " ", last(ts), " ", length(ts))
@@ -240,7 +256,7 @@ function ffd2cut(ffd::Ffd; phi0 = true)
     ϕs_ffd = get_phi(ffd)
     evec_ffd = get_evec(ffd)
     if phi0 
-        dupphi = isequal(mod(ϕs_ffd[begin], 360), mod(ϕs_ffd[end], 360))
+        dupphi = length(ϕs_ffd) > 1 && isequal(mod(ϕs_ffd[begin], 360), mod(ϕs_ffd[end], 360))
         i0 = findfirst(iszero, ϕs_ffd)
         isnothing(i0) && error("ffd does not contain ϕ = 0")
         if isone(i0)
@@ -311,10 +327,10 @@ the fields are identically zero for θ₀ < θ ≤ 180°.
   modes' power is less than `pwrtol` times the total modal power.  A zero or negative value
   precludes removal of any modes. A small, nonzero value here prevents the inclusion of many
   insignificant modes when the far-field sphere is over-sampled.
-* `style = :hfss`: This argument (a `Symbol`) is only relevant for the 2-argument method of `ffd2sph` (i.e. 
-  when a spherical wave file is to be written.) In that case, the default value of `:hfss` ensures
+* `style = :ticra`: This argument (a `Symbol`) is only relevant for the 2-argument method of `ffd2sph` (i.e.
+  when a spherical wave file is to be written.) In that case, the value of `:hfss` ensures
   that an HFSS-compatible spherical wave file containing frequency information is created. When
-  `style = :ticra` (the only other legal value), then a standard, Ticra-compatible, Q-type, spherical
+  `style = :ticra` (the default), then a standard, Ticra-compatible, Q-type, spherical
    wave expansion file will be created, one that does not contain any frequency information.
 """
 function ffd2sph(ffd::Ffd; pwrtol = 1e-6, kwargs...)
@@ -323,9 +339,9 @@ function ffd2sph(ffd::Ffd; pwrtol = 1e-6, kwargs...)
     return sph
 end
 
-ffd2sph(ffds::AbstractVector{Ffd}; keywords...) = [ffd2sph(ffd) for ffd in ffds]
+ffd2sph(ffds::AbstractVector{<:Ffd}; kwargs...) = [ffd2sph(ffd; kwargs...) for ffd in ffds]
 
-ffd2sph(ffdfile::AbstractString; kwargs...) = ffd2sph(read_ffdfile(ffdfile))
+ffd2sph(ffdfile::AbstractString; kwargs...) = ffd2sph(read_ffdfile(ffdfile); kwargs...)
 
 function ffd2sph(ffdfile::AbstractString, sphfile::AbstractString; style::Symbol = :ticra, kwargs...)
     ffdfile == sphfile && error("ffdfile and sphfile must be distinct")
@@ -367,8 +383,10 @@ polarization basis conversion to Eθ/Eϕ will be performed automatically.
 """
 function cut2ffd end
 
-function cut2ffd(c::Cut; frequency::Float64 = 0.0)
-    frequency ≥ 0 || throw(ArgumentError("frequency must be ≥ 0"))
+function cut2ffd(c::Cut; frequency::Real = 0.0)
+    frequency = Float64(frequency)
+    (isfinite(frequency) && frequency ≥ 0) ||
+        throw(ArgumentError("frequency must be finite and ≥ 0"))
     get_ncomp(c) == 2 || error("Cut must contain only 2 polarization components")
     get_icut(c) == 1 || error("Cut.icut ≠ 1.  Only constant ϕ (polar) cuts are allowed.")
     c = convert_cut(c, 1) # Copy cut and ensure Eθ/Eϕ decomposition
@@ -382,7 +400,8 @@ end
 function cut2ffd(cuts::AbstractVector{<:Cut}; frequency::AbstractVector{<:Real})
     nf, nc = length.((frequency, cuts))
     nf == nc || error("# frequencies $nf does not equal # cuts $nc")
-    all(>(0), frequency) || throw(ArgumentError("frequency must be all positive numbers"))
+    all(f -> isfinite(f) && f > 0, frequency) ||
+        throw(ArgumentError("frequency must be all finite positive numbers"))
     ffds = [cut2ffd(cut; frequency=f) for (cut, f) in zip(cuts, frequency)]
     return ffds
 end

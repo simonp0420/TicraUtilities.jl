@@ -314,3 +314,66 @@ end
 
 end
 
+
+
+@safetestset "ffd2sph forwards options through every overload" begin
+    using TicraUtilities
+    theta, phi = 0:30:180, 0:45:315
+    evec = [TicraUtilities.SVector{2,ComplexF64}(sind(t), 0.2cosd(p)*sind(t)) for t in theta, p in phi]
+    ffd = Ffd(; frequency=1e9, theta, phi, evec)
+    options = (; pwrtol=0.0, nmax=3, mmax=1)
+    expected = ffd2sph(ffd; options...)
+    @test expected.nmax == 3
+    @test expected.mmax == 1
+    for inputs in ([ffd], Ffd[ffd, ffd])
+        results = ffd2sph(inputs; options...)
+        @test all(s -> s.qsmns ≈ expected.qsmns, results)
+        @test all(s -> s.frequency == 1e9, results)
+    end
+    mktempdir() do dir
+        for inputs in (ffd, Ffd[ffd, ffd])
+            src, dest = joinpath(dir, "input.ffd"), joinpath(dir, "output.sph")
+            write_ffdfile(src, inputs)
+            result = ffd2sph(src; options...)
+            results = result isa SPHQPartition ? [result] : result
+            @test all(s -> s.qsmns ≈ expected.qsmns, results)
+            for style in (:ticra, :hfss)
+                ffd2sph(src, dest; options..., style)
+                saved = read_sphfile(dest)
+                saved = saved isa SPHQPartition ? [saved] : saved
+                @test all(s -> s.qsmns ≈ expected.qsmns, saved)
+                @test all(s -> s.frequency == (style == :hfss ? 1e9 : 0), saved)
+            end
+            ffd2sph(src, dest; options...)
+            @test !occursin("Frequency", read(dest, String))
+        end
+    end
+end
+
+@safetestset "FFD boundary cases and write validation" begin
+    using TicraUtilities
+    cut = read_cutfile(joinpath(@__DIR__, "test.cut"))
+    @test cut2ffd(cut; frequency=10^9).frequency == 1e9
+    @test get_frequency.(cut2ffd([cut,cut]; frequency=[10^9,2*10^9])) == [1e9,2e9]
+    for frequency in (-1, NaN, Inf)
+        @test_throws ArgumentError cut2ffd(cut; frequency)
+    end
+    singleton = Ffd(; theta=0:30:180, phi=0:0, evec=fill(TicraUtilities.SVector{2,ComplexF64}(1,0),7,1))
+    converted = ffd2cut(singleton)
+    @test converted.phi == singleton.phi
+    @test converted.evec == singleton.evec
+    mktemp() do file, io
+        write(io, "existing file")
+        close(io)
+        mismatched = Ffd(; frequency=2e9, theta=0:15:90, phi=0:0, evec=singleton.evec)
+        bad_shape = Ffd(; theta=singleton.theta, phi=singleton.phi, evec=singleton.evec[1:2,:])
+        positive = Ffd(; frequency=1e9, theta=singleton.theta, phi=singleton.phi, evec=singleton.evec)
+        for ffds in (Ffd[], [singleton,singleton], [positive,mismatched], [bad_shape])
+            @test_throws ArgumentError write_ffdfile(file, ffds)
+            @test read(file,String) == "existing file"
+        end
+        valid = [Ffd(; frequency=f, theta=singleton.theta, phi=singleton.phi, evec=singleton.evec) for f in (1e9,2e9)]
+        write_ffdfile(file, valid)
+        @test all(isapprox.(read_ffdfile(file),valid))
+    end
+end
