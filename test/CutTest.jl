@@ -234,3 +234,60 @@ end
            """
     @test str == str2
 end
+
+@safetestset "discard_pol3 copies two-component input" begin
+    using TicraUtilities
+    cut = read_cutfile(joinpath(@__DIR__, "test.cut"))
+    copycut = discard_pol3(cut)
+    @test copycut ≈ cut
+    @test copycut !== cut
+    @test copycut.evec !== cut.evec
+    @test copycut.text !== cut.text
+    three = TicraUtilities._add_3rd_component(cut)
+    two = discard_pol3(three)
+    @test two ≈ cut
+    @test two.text !== three.text
+end
+
+@safetestset "asym2sym requires opposite phi cuts" begin
+    using TicraUtilities
+    ev = [TicraUtilities.SVector{2,ComplexF64}(sind(t)*cosd(p), sind(t)*sind(p)) for t in 0:30:180, p in 0:90:270]
+    for phi in (0:90:270, -180:90:90)
+        cut = Cut(; ncomp=2, icut=1, icomp=1, text=fill("",4), theta=0:30:180, phi, evec=copy(ev))
+        @test sym2asym(asym2sym(cut)) ≈ cut
+    end
+    bad = Cut(; ncomp=2, icut=1, icomp=1, text=fill("",4), theta=0:30:180, phi=0:30:90, evec=ev)
+    @test_throws ArgumentError asym2sym(bad)
+end
+
+@safetestset "phase center from a single symmetric phi cut" begin
+    using TicraUtilities
+    symmetric = asym2sym(read_cutfile(joinpath(@__DIR__, "test.cut")))
+    cut = Cut(; ncomp=2, icut=1, icomp=symmetric.icomp, text=symmetric.text[1:1],
+        theta=symmetric.theta, phi=0:0, evec=symmetric.evec[:,1:1])
+    x,y,z0,z90 = phscen(cut)
+    full = phscen(symmetric)
+    @test x ≈ full[1]
+    @test y ≈ x
+    @test z0 ≈ full[3]
+    @test z90 ≈ z0
+end
+
+@safetestset "multifrequency cut files with different theta counts" begin
+    using TicraUtilities
+    full = read_cutfile(joinpath(@__DIR__, "test.cut"))
+    short = deepcopy(full)
+    nt = length(full.theta) ÷ 2 + 1
+    short.theta = range(first(full.theta), full.theta[nt], length=nt)
+    short.evec = full.evec[1:nt,:]
+    mktemp() do file, io
+        close(io)
+        for cuts in ([full,short], [short,full])
+            write_cutfile(file,cuts)
+            restored = read_cutfile(file)
+            @test length(restored) == 2
+            @test restored[1] ≈ cuts[1]
+            @test restored[2] ≈ cuts[2]
+        end
+    end
+end
