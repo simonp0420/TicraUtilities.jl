@@ -24,7 +24,7 @@ jobs:
       matrix:
         version:
             - '1.10'
-            - '1.12'
+            - '1' # Latest stable Julia 1.x
             - 'nightly'
         os:
           - ubuntu-latest
