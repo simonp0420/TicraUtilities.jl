@@ -104,7 +104,7 @@ function read_exifile(filename::AbstractString)
         inheader = true
         for line in eachline(fid)
             if inheader
-                if length(line) ≥ 4 && isequal(view(line, 1:4), "++++")
+                if startswith(line, "++++")
                     inheader = false
                     continue
                 end
