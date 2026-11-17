@@ -19,7 +19,7 @@ cut = read_cutfile(cutfile)
 #!nb # We see that `read_cutfile` returns a `Cut` object.  The information printed to
 #!nb # the REPL shows that the `Cut` object contains 72 distinct ϕ cuts, each consisting of 361
 #!nb # points in the θ direction, with θ ranging from 0° to 180° in steps of 0.5°. 
-#!nb # See [Cut](@ref) for documentation on the remaining fields.
+#!nb # See [`Cut`](@ref) for documentation on the remaining fields.
 #
 #nb %% [code] {"slideshow": {"slide_type": "slide"}}
 #nb ?Cut
@@ -439,7 +439,7 @@ ffds = read_ffdfile(ffdsfile)
 #nb # %% [markdown] {"slideshow": {"slide_type": "slide"}}
 #!nb # ### `Ffd`/`Cut` Conversion
 # `Ffd` objects (or vectors of same) can be converted to/from `Cut` objects (or vectors of same) using 
-# functions [`ffd2cut`](@ref) and [cut2ffd](@ref). For example:
+# functions [`ffd2cut`](@ref) and [`cut2ffd`](@ref). For example:
 cuts_from_ffds = ffd2cut(ffds)
 # Note that the frequency information stored in `ffds` will be lost when creating `cuts_from_ffds`, since
 # `Cut` objects do not contain any frequency information.  One can easily gather up a vector of the
@@ -645,7 +645,7 @@ maximum(abs, get_z(sfc3))
 
 #
 # ## Array Excitation Files
-# TICRA-compatible array excitation (.exi) files can be read using the [`read_exifile](@ref) function, and written to 
+# TICRA-compatible array excitation (.exi) files can be read using the [`read_exifile`](@ref) function, and written to
 # disk using the [`write_exifile`](@ref) function.  The results of reading an array excitation file are stored in an
 # object of type [`Exi`](@ref) as in the following example:
 exifile = joinpath(joinpath(dirname(pathof(TicraUtilities)), "..", "test", "beam_A14R.exi"))
@@ -660,7 +660,7 @@ get_phsdeg(exi)
 #
 # ## Optimization Station Files
 # TICRA-compatible optimization station (.sta) files, also known as "Field Directions" file,
-# can be read using the [`read_stationfile](@ref) function, 
+# can be read using the [`read_stationfile`](@ref) function,
 # and written to disk using the [`write_stationfile`](@ref) function.  The results of reading a station file are 
 # stored in a vector of objects of type [`Station`](@ref) as in the following example:
 stationfile = joinpath(joinpath(dirname(pathof(TicraUtilities)), "..", "test", "scenario2_coverage.sta"))
