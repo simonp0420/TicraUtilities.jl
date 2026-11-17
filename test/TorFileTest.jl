@@ -41,3 +41,25 @@ using Unitful: @u_str
     @test TicraUtilities.parse_tor_struct(t[1].propval[end]) == (; status = "automatic", x = 0.0u"inch", y = 0.0u"inch")
 end
 
+
+
+@testset "TOR comment and compact-property parsing" begin
+    using TicraUtilities
+    mktemp() do file, io
+        write(io, """
+        /* comment spanning
+        multiple lines */
+        first type (a:1,b:struct(x: 2 mm, y: 3 mm)) /* inline */ /* second */
+        // line comment
+        second type (a:(nested: 4),b:2)
+        """)
+        close(io)
+        objs = read_torfile(file)
+        @test get_name.(objs) == ["first", "second"]
+        @test objs[1].propval == ["1", "struct(x: 2 mm, y: 3 mm)"]
+        @test objs[2].propval == ["(nested: 4)", "2"]
+    end
+    for s in ("struct", "struct x: 2 mm", "struct(x: 2 mm", "struct)x: 2 mm(")
+        @test_throws ArgumentError parse_tor_struct(s)
+    end
+end

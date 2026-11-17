@@ -146,46 +146,34 @@ an element of contents.  Comments are removed, as is white space at start
 and end of lines.  Tabs are replaced by blanks.
 """
 function _read_tor_file(filename)
-    CE = "*/" # comment end
-    CS = "/*" # comment start
-    in_block_comment = false  # /* */-style comment flag
-
-    content::Vector{String} = open(readlines, filename, "r")
-
-
-    for (k, line) in enumerate(content)
-        line = strip(replace(line, '\t' => ' '))
-        # Strip off material after // comment marker:
-        ir = findfirst("//", line)
-        isnothing(ir) || (line = strip(line[1:(first(ir)-1)]))
-
-        if in_block_comment
-            ir = findfirst(CE, line) # Test if comment ends on this line:
-            if isnothing(ir)
-                line = ""  # Erase this entire line since entire line is within comment region
-            else
-                line = strip(line[(last(ir)+1):end]) # Throw away commented portion
-                in_comment = false  # toggle comment state flag
-            end
-        else
-            ir = findfirst(CS, line) # Test if comment starts on this line
-            if !isnothing(ir)
-                # This line has a comment start '/*' in it.  Check if the 
-                # comment terminates on the same line:
-                i1r = findfirst(CE, line)
-                if !isnothing(i1r)
-                    @assert i1r[1] > ir[end] "*/ precedes /* on line $(k) of tor file "
-                    # Comment terminates on this line.
-                    line = line[1:first(ir)-1] * line[last(i1r)+1:end]  # Remove the comment
+    in_block_comment = false
+    content = String[]
+    for line in eachline(filename)
+        out = IOBuffer()
+        i = firstindex(line)
+        while i ≤ lastindex(line)
+            rest = SubString(line, i)
+            if in_block_comment
+                if startswith(rest, "*/")
+                    in_block_comment = false
+                    i = nextind(line, i, 2)
                 else
-                    # Comment does not terminate on this line.
-                    line = line[1:first(ir)-1]  # Remove the comment portion
-                    in_comment = true  # toggle comment state
+                    i = nextind(line, i)
                 end
+            elseif startswith(rest, "//")
+                break
+            elseif startswith(rest, "/*")
+                in_block_comment = true
+                print(out, ' ')
+                i = nextind(line, i, 2)
+            else
+                print(out, line[i] == '\t' ? ' ' : line[i])
+                i = nextind(line, i)
             end
         end
-        content[k] = strip(line)
+        push!(content, strip(String(take!(out))))
     end
+    in_block_comment && throw(ArgumentError("Unterminated TOR block comment"))
     return content
 end
 
@@ -199,11 +187,11 @@ function _next_token_from_i1(line, i1)
     while i1 ≤ length(line) && isspace(line[i1])
         i1 += 1
     end
-    i2 = findnext(x -> x ∈ (' ', ':'), line, i1) - 1
+    i2 = findnext(x -> x ∈ (' ', ':'), line, i1)
     if isnothing(i2)
-        return (line[i1:end], length(line))
+        return (line[i1:end], lastindex(line) + 1)
     else
-        return (line[i1:i2], i2 + 1)
+        return (line[i1:prevind(line, i2)], i2)
     end
 end
 
@@ -249,19 +237,19 @@ Find next comma or right parenthesis not preceded by a left parenthesis
 """
 function _find_next_comma_or_level0_rp(line, i1)
     plevel = 1 # paren level
-    i2 = i1 + 1
-    while i2 < length(line)
-        i2 += 1
+    i2 = i1
+    while i2 ≤ lastindex(line)
         if line[i2] == LP
             plevel += 1
         elseif line[i2] == RP
             plevel -= 1
-            plevel < 1 && (return i2)
-        end
-        if plevel == 1 && line[i2] == ','
+            plevel == 0 && return i2
+        elseif plevel == 1 && line[i2] == ','
             return i2
         end
+        i2 = nextind(line, i2)
     end
+    throw(ArgumentError("Unterminated TOR property list"))
 end
 
 
@@ -313,10 +301,11 @@ quantities.  In the example given, `t.status == "automatic"`, `t.x == 1.0u"inch"
 `t.y == 23.4u"mm"`.
 """
 function parse_tor_struct(s::AbstractString)
-    s[1:6] == "struct" || error("Not a Ticra struct")
+    startswith(s, "struct") || throw(ArgumentError("Not a Ticra struct"))
     i1 = findfirst('(', s)
     i2 = findlast(')', s)
-    (isempty(i1) || isempty(i2)) && error("Ill-formated Ticra struct")
+    (isnothing(i1) || isnothing(i2) || i1 ≥ i2) &&
+        throw(ArgumentError("Ill-formed Ticra struct"))
 
     cf = r"([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)"  # This RE captures a float
 
