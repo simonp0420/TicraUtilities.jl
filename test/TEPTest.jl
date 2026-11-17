@@ -55,3 +55,21 @@ using Unitful
         @test get_sfr(tep_s2[i]) ≈ get_sfr(tep_s4[i])
     end
 end
+
+
+@safetestset "truncated periodic TEP headers fail promptly" begin
+    using TicraUtilities
+    @test_throws EOFError TicraUtilities._get_puc_str2(IOBuffer("\n  \n"), "[Version]")
+    err = try
+        TicraUtilities._readncs(IOBuffer("[Wrong] 1 0 2 0\n"), 2, "[SFront]")
+    catch e
+        e
+    end
+    @test err isa ErrorException
+    @test occursin("[Wrong]", sprint(showerror, err))
+    mktemp() do file, io
+        write(io, "[Title] Electrical Properties of Periodic Unit Cell\n[Version] 1.0.0\n")
+        close(io)
+        @test_throws EOFError read_tepfile(file)
+    end
+end
