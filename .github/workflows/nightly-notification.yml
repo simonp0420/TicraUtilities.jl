@@ -1,0 +1,68 @@
+name: Notify nightly CI failures
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+# This runs from the default branch, including for fork PRs. It reads job
+# results through the API and never checks out or executes PR code.
+permissions:
+  actions: read
+  issues: write
+
+concurrency:
+  # Serialize retries of the same run without dropping other run notifications.
+  group: nightly-ci-notifications-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const jobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRun,
+              { ...context.repo, run_id: run.id, filter: 'latest', per_page: 100 }
+            );
+            const nightlyFailed = jobs.some(job =>
+              job.name.startsWith('Julia nightly - ') &&
+              ['failure', 'timed_out'].includes(job.conclusion)
+            );
+            if (!nightlyFailed) return;
+
+            const issueMarker = '<!-- ticra-nightly-ci -->';
+            const runMarker = `<!-- nightly-ci:${run.id}:${run.run_attempt} -->`;
+            const body = [
+              '@simonp0420 Julia nightly CI failed. This nightly failure does not fail the overall CI workflow; LTS and stable jobs remain blocking.',
+              '',
+              `[View workflow run](${run.html_url}) (attempt ${run.run_attempt}).`,
+              '',
+              issueMarker,
+              runMarker
+            ].join('\n');
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo, state: 'open', per_page: 100
+            });
+            const existing = issues.find(issue =>
+              !issue.pull_request && issue.body?.includes(issueMarker)
+            );
+            if (!existing) {
+              await github.rest.issues.create({
+                ...context.repo, title: 'Julia nightly CI failure', body,
+                assignees: ['simonp0420']
+              });
+              return;
+            }
+
+            if (existing.body?.includes(runMarker)) return;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo, issue_number: existing.number, per_page: 100
+            });
+            if (comments.some(comment => comment.body?.includes(runMarker))) return;
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: existing.number, body
+            });
