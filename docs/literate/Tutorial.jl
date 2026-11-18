@@ -470,7 +470,7 @@ ffd
 #-
 sph_from_ffd = ffd2sph(ffd)
 # Note that even though `ffd` contains fields sampled every 2° in both θ and ϕ, the maximum
-# spherical mode indices in `sph_from_ffd` are `nmax = 6` and `mmax = 4`.  This is because
+# spherical mode indices in `sph_from_ffd` are `nmax = 5` and `mmax = 4`.  This is because
 # [`ffd2sph`](@ref) includes spherical modes only until the excluded modes' power is less
 # than `pwrtol` times the total modal power, and the default value of `pwrtol` is `1e-6`.
 #
